@@ -8,11 +8,15 @@ router = APIRouter()
 
 # Get the absolute path to the current directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, "financial_data.csv")
+# Combine the path with '../data/financials'
+BASE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../api/financials"))
 
-@router.get("/data")
-async def get_financial_data():
+
+
+@router.get("/api/financials/{ticker}")
+async def get_financial_data(ticker: str):
     # Load the data from the CSV file into a DataFrame
+    DATA_FILE = os.path.join(BASE_DIR, f"{ticker}_balance_sheet.csv")
     df = pd.read_csv(DATA_FILE)
     
     # Extract years (columns) and financial items (rows)
