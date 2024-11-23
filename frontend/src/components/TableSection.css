@@ -1,0 +1,40 @@
+/* Ensure the table container supports horizontal scrolling */
+.table-container {
+    overflow-x: auto; /* Enable horizontal scrolling */
+    margin: 10px 0; /* Add some spacing */
+    border: 1px solid #ddd; /* Optional: border around the scrollable area */
+    border-radius: 5px; /* Optional: rounded corners */
+  }
+  
+  /* Style the table */
+  .financial-table {
+    width: 100%; /* Ensure the table stretches fully */
+    border-collapse: collapse; /* Remove gaps between cells */
+    min-width: 600px; /* Set a minimum width for the table to force scrolling */
+    background-color: #f9f9f9; /* Light background */
+    text-align: left; /* Align text to the left */
+  }
+  
+  /* Table header styling */
+  .financial-table th {
+    background-color: #2c3e50; /* Dark header background */
+    color: white; /* White text for contrast */
+    padding: 10px; /* Add spacing */
+    border: 1px solid #ddd; /* Cell borders */
+  }
+  
+  /* Table body styling */
+  .financial-table td {
+    padding: 10px; /* Add spacing */
+    border: 1px solid #ddd; /* Cell borders */
+  }
+  
+  /* Add alternate row coloring */
+  .financial-table tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+  }
+  
+  .financial-table tbody tr:nth-child(even) {
+    background-color: #ffffff;
+  }
+  

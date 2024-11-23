@@ -1,0 +1,56 @@
+/* Container styles for the graph section */
+.graph-section-container {
+    width: 90%;
+    padding: 10px;
+    margin: 0 auto; /* Center the section */
+  }
+  
+  /* Graph type selector container */
+  .graph-type-selector {
+    margin-bottom: 10px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .graph-type-selector label {
+    margin-right: 10px;
+    font-weight: bold;
+  }
+  
+  .graph-type-selector select {
+    padding: 5px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  /* Button styling */
+  .btn-primary {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Graph display container */
+  .graph-display {
+    margin-top: 20px;
+    height: 70%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  
