@@ -18,6 +18,8 @@ FIRST_SECTION = "FIRST SECTION"
 # currencies
 USD = "USD"
 USD_sign = "$"
+CAD = "CAD"
+CAD_sign = "$"
 EUR = "EUR"
 EUR_sign = "€"
 CNY = "CNY"
@@ -26,8 +28,8 @@ CNY_sign = "¥"
 INR = "INR"
 INR_sign = "₨"
 
-currency_keys = [USD, EUR, CNY, INR]
-currency_map = {USD: USD_sign, EUR: EUR_sign, CNY: CNY_sign, INR: INR_sign}
+currency_keys = [USD, CAD, EUR, CNY, INR]
+currency_map = {USD: USD_sign, CAD: CAD_sign   , EUR: EUR_sign, CNY: CNY_sign, INR: INR_sign}
 
 keep_value_unchanged = ['us-gaap_EarningsPerShareDiluted', 'us-gaap_EarningsPerShareBasic', 'us-gaap_WeightedAverageNumberOfSharesOutstandingBasic', 'us-gaap_WeightedAverageNumberOfDilutedSharesOutstanding']
 
@@ -102,3 +104,55 @@ statement_keys_map = {
         "consolidated statements of cash flows - southern",
     ],
 }
+
+
+## income statement
+GrossProfit = 'Gross profit'
+OperatingIncome = 'Operating income'
+EBT = 'EBT'
+NetIncome = 'Net income'
+NetIncome_with_unusal_items_1 = 'Net income including unusal items 1'
+NetIncome_with_unusal_items_2 = 'Net income including unusal items 2'
+NetIncome_with_unusal_items_3 = 'Net income including unusal items 3'
+NetIncome_with_unusal_items_4 = 'Net income including unusal items 4'
+TotalRevenue= 'Total revenue'
+TotalOperatingExpense = 'Total operating expense'
+TotalCostAndExpenses = 'C&E'
+MinorityInterest = 'Minority Interest'
+
+
+## Balance sheet
+# Fact const
+# Assets
+CashAndCashEquivalent = "Cash And Cash Equivalen"
+RestrictedCash = "Restricted Cash"
+Goodwill = "Goodwill"
+AccountsReceivable = "Accounts Receivable"
+IntangibleAssets = "Intangible Assets"
+OtherAssetsCurrent = "Other Assets Current"
+CurrentAssets = "Current Assets"
+OtherAssetsNoncurrent = "Other Assets Noncurrent"
+NonCurrentAssets = "Non Current Assets"
+OtherAssets = "Other Assets"
+TotalAssets = "Total Assets"
+
+#Liabilities
+AccountsPayable = "Accounts Payable"
+PropertyPlantAndEquipment = "Property Plant And Equipment"
+ShortTermDebtCurrent = "Current portion of Short Term Debt"
+LongTermDebtCurrent = "Current portion of Long Term Debt"
+ShortTermDebt = "Short Term Debt"
+LongTermDebt = "Long Term Debt"
+DeferredTaxLiabilityNonCurrent = "Deferred Tax Liability Non Current"
+LiabilitiesCurrent = "Current Liabilities"
+OtherLiabilitiesNoncurrent = "Other Liabilities Non current"
+NonLiabilitiesCurrent = "Non Current Liabilities"
+OtherLiabilities = "Other Liabilities"
+TotalLiabilities = "Total Liabilities"
+
+RetainedEarnings = "Retained Earnings"
+
+# equity
+StockholdersEquity = "Stockholders Equity"
+TotalEquity = "Total Equity"
+TotalLiabilitiesAndEquity = "Total Liabilities And Equity"

@@ -1,7 +1,7 @@
 from headers import *
 from constants import *
 from healpers import *
-
+from Filling import *
 import requests
 import pandas as pd
 
@@ -72,7 +72,6 @@ class Company():
         Returns:
             DataFrame or Series: DataFrame of filings or Series of accession numbers.
         """
-
         # Filter for 10-K or 10-Q forms
         ten_k = self.company_filings[(self.company_filings["form"] == "10-K") | (self.company_filings["form"] == "20-F") | (self.company_filings["form"] == "40-F")]
         ten_q = self.company_filings[(self.company_filings["form"] == "10-Q")]
@@ -82,13 +81,6 @@ class Company():
 
         ten_q = ten_q.set_index("reportDate")
         self.ten_q_fillings = ten_q["accessionNumber"]
-        # Return accession numbers if specified
-        # if just_accession_numbers:
-        #     df = df.set_index("reportDate")
-        #     accession_df = df["accessionNumber"]
-        #     return accession_df
-        # else:
-        #     return df
 
 
     def get_facts(self):

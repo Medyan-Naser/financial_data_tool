@@ -7,8 +7,6 @@ from collections import Counter # for currency check
 def check_for_two_currency(text):
     # Function to extract currency symbols (EUR, USD, €, $) from a text
     # currencies = [EUR, USD, EUR_sign, USD_sign, CNY, CNY_sign]
-    # if (EUR in text and USD in text) or (EUR_sign in text and USD_sign in text) or (EUR in text and USD in text) or (EUR_sign in text and USD_sign in text):
-    #     return True
     num_of_currencies = 0
     for currency, currency_sign in currency_map.items():
         if currency in text or currency_sign in text:

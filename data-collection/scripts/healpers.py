@@ -1,5 +1,8 @@
 import os
 import pandas as pd
+import re
+from typing import List, Dict, Tuple
+
 
 def save_dataframe_to_csv(dataframe, folder_name, ticker, statement_name, frequency):
     """

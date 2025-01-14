@@ -24,11 +24,6 @@ def get_part_before_pattern(input_string):
     print(input_string)
     print(match)
     new_string = input_string.rsplit("_", 1)[0]
-    
-    # if match:
-    #     # Split the string at the start of the pattern and take the first part
-    #     print(input_string[:match.start()])
-    #     new_string = input_string[:match.start()]
     if new_string.startswith("loc_"):
         new_string = new_string[len("loc_"):] 
     return new_string
@@ -63,7 +58,6 @@ def parse_calculation_arcs(content):
     for link in root.findall('.//link:calculationLink', ns):
         # Find the context reference (e.g., ConsolidatedBalanceSheets)
         context = link.attrib.get('{http://www.w3.org/1999/xlink}label', 'unknown_context')
-        
         # Determine which role this calculation link is for
         role_uri = link.get('{http://www.w3.org/1999/xlink}role')
         main_fact = link.find('link:loc', ns)
@@ -115,9 +109,6 @@ def main():
     all_equations = parse_calculation_arcs(content)
     print(all_equations)
 
-    print("Equations:")
-    # for eq in all_equations:
-    #     print(eq)
 
 if __name__ == "__main__":
     main()
