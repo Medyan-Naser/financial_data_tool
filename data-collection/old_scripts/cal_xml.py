@@ -1,15 +1,3 @@
-# def parse_calculation_arcs(content):
-#     root = ET.fromstring(content)
-#     ns = {'link': 'http://www.xbrl.org/2003/linkbase'}
-    
-#     equations = []
-#     for arc in root.findall('.//link:calculationArc', ns):
-#         from_element = arc.attrib['{http://www.w3.org/1999/xlink}from']
-#         to_element = arc.attrib['{http://www.w3.org/1999/xlink}to']
-#         weight = arc.attrib.get('weight', '1')
-#         equations.append(f"{to_element} = {weight} * {from_element}")
-#     return equations
-
 import requests
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -102,7 +90,18 @@ def parse_calculation_arcs(content):
             else:
                 stack.append({'element': from_element, 'level': len(stack) + 1})
                 calculations[from_element].append(to_element_dict)
-
+            # if sub_equation and from_element == main_fact:
+            #     # end of sub equation
+            #     sub_equation = False
+            #     pass
+            # elif from_element != main_fact:
+            #     # create a sub eqution
+            #     sub_equation = True
+            #     calculations[from_element] = []
+            # if sub_equation:
+            #     calculations[from_element].append(to_element_dict)
+            # else:
+            #     calculations[main_fact].append(to_element_dict)
     # return calculations
     return(dict(calculations))
 
@@ -121,3 +120,16 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# def parse_calculation_arcs(content):
+#     root = ET.fromstring(content)
+#     ns = {'link': 'http://www.xbrl.org/2003/linkbase'}
+    
+#     equations = []
+#     for arc in root.findall('.//link:calculationArc', ns):
+#         from_element = arc.attrib['{http://www.w3.org/1999/xlink}from']
+#         to_element = arc.attrib['{http://www.w3.org/1999/xlink}to']
+#         weight = arc.attrib.get('weight', '1')
+#         equations.append(f"{to_element} = {weight} * {from_element}")
+#     return equations
