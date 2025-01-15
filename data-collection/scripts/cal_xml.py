@@ -21,8 +21,8 @@ def get_part_before_pattern(input_string):
     pattern = r'_(?=\d{2,}|[^\d_])[\w-]+'
     pattern2 = r'_\d{2,}'
     match = re.search(pattern, input_string)
-    print(input_string)
-    print(match)
+    # print(input_string)
+    # print(match)
     new_string = input_string.rsplit("_", 1)[0]
     if new_string.startswith("loc_"):
         new_string = new_string[len("loc_"):] 
@@ -61,14 +61,14 @@ def parse_calculation_arcs(content):
         # Determine which role this calculation link is for
         role_uri = link.get('{http://www.w3.org/1999/xlink}role')
         main_fact = link.find('link:loc', ns)
-        print(main_fact)
+        # print(main_fact)
         main_fact = main_fact.attrib['{http://www.w3.org/1999/xlink}label']
         main_fact = get_part_before_pattern(main_fact)
         recent_from_element = main_fact
         current_equation = main_fact
         if main_fact in calculations:
-            print(calculations[main_fact])
-            print("====")
+            # print(calculations[main_fact])
+            # print("====")
             if len(calculations[main_fact]) > len(link.findall('link:calculationArc', ns)):
                 continue
         calculations[main_fact] = []
@@ -81,8 +81,8 @@ def parse_calculation_arcs(content):
             to_element = get_part_before_pattern(to_element)
             weight = arc.attrib.get('weight', '1')
             to_element_dict = {'fact': to_element, 'weight': weight}
-            print(to_element_dict)
-            print(from_element, main_fact, role_uri)
+            # print(to_element_dict)
+            # print(from_element, main_fact, role_uri)
 
             
             while stack and stack[-1]['element'] != from_element:
@@ -100,15 +100,15 @@ def parse_calculation_arcs(content):
     # return calculations
     return(dict(calculations))
 
-def main():
-    base_url = 'https://www.sec.gov/Archives/edgar/data/917851/000110465922046078/'
-    file = 'vale-20211231_cal.xml'
+# def main():
+#     base_url = 'https://www.sec.gov/Archives/edgar/data/917851/000110465922046078/'
+#     file = 'vale-20211231_cal.xml'
 
-    file_url = base_url + file
-    content = fetch_file_content(file_url)
-    all_equations = parse_calculation_arcs(content)
-    print(all_equations)
+#     file_url = base_url + file
+#     content = fetch_file_content(file_url)
+#     all_equations = parse_calculation_arcs(content)
+#     print(all_equations)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

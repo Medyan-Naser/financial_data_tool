@@ -2,47 +2,76 @@ from headers import *
 from constants import *
 from healpers import *
 from FinancialStatement import *
+from dates import *
 from cal_xml import fetch_file_content, parse_calculation_arcs
 
 import requests
 from bs4 import BeautifulSoup
 import re
-import calendar # for date standarization
 import logging
 
-def standardize_date(date: str) -> str:
-    """
-    Standardizes date strings by replacing abbreviations with full month names.
 
-    Args:
-        date (str): The date string to be standardized.
-
-    Returns:
-        str: The standardized date string.
-    """
-    for abbr, full in zip(calendar.month_abbr[1:], calendar.month_name[1:]):
-        date = date.replace(abbr, full)
-    return date
 
 class Filling():
 
-    def __init__(self, ticker, cik, accession_number) -> None:
+    def __init__(self, ticker, cik, acc_num_unfiltered, company_facts, quarterly=False) -> None:
         self.ticker = ticker
-        self.accession_number = accession_number
+        acc_num_filtered = acc_num_unfiltered.replace("-", "")
+        self.accession_number_unfiltered = acc_num_unfiltered
+        self.accession_number = acc_num_filtered
         self.cik = cik
+        self.company_facts = company_facts
+        self.quarterly = quarterly
+        self.yearly = not quarterly
         
         self.xml_equations = None
+        self.statements_file_name_dict = None
+        self.company_facts_DF = None
+        self.taxonomy = None
+        self.facts_taxonomy_to_financial_terms = {} # before named labels_dict
 
+        self.get_statement_file_names_in_filing_summary()
+        self.get_cal_xml_equations()
+        self.get_company_facts_DF
+
+    def get_company_facts_DF(self):
+        """
+        Converts company facts into a DataFrame.
+        Returns: tuple: DataFrame of facts and a dictionary of labels.
+        """
+        # Retrieve facts data
+        taxonomy = GAAP
+        try:
+            us_gaap_data = self.company_facts["facts"][GAAP]
+        except Exception as e:
+            try:
+                us_gaap_data = self.company_facts["facts"][IFRS]
+                taxonomy = IFRS
+            except Exception as e:
+                return None, None, None
+        df_data = []
+        # Process each fact and its details
+        for fact, details in us_gaap_data.items():
+            for unit in details["units"]:
+                for item in details["units"][unit]:
+                    row = item.copy()
+                    row["fact"] = fact
+                    df_data.append(row)
+
+        df = pd.DataFrame(df_data)
+        # Convert 'end' and 'start' to datetime
+        df["end"] = pd.to_datetime(df["end"])
+        df["start"] = pd.to_datetime(df["start"])
+        # Drop duplicates and set index
+        self.company_facts_DF = df.drop_duplicates(subset=["fact", "end", "val"])
+        self.facts_taxonomy_to_financial_terms = {fact: details["label"] for fact, details in us_gaap_data.items()}
+        self.taxonomy = taxonomy
 
     def _get_file_name(self, report):
         """
         Extracts the file name from an XML report tag.
-
-        Args:
-            report (Tag): BeautifulSoup tag representing the report.
-
-        Returns:
-            str: File name extracted from the tag.
+        Args: report (Tag): BeautifulSoup tag representing the report.
+        Returns: str: File name extracted from the tag.
         """
         html_file_name_tag = report.find("HtmlFileName")
         xml_file_name_tag = report.find("XmlFileName")
@@ -62,13 +91,13 @@ class Filling():
             short_name_tag is not None
             and long_name_tag is not None
             and file_name  # Ensure file_name is not an empty string
-            # and "Statement" in long_name_tag.text # check if this is needed
+            # and "Statement" in long_name_tag.text # not alway true!
         )
     
-    # TODO: what class this function belong to
     def get_statement_file_names_in_filing_summary(self):
         """
         Retrieves file names of financial statements from a filing summary.
+        The title of the R.htm files
         Returns:
             dict: Dictionary mapping statement types to their file names.
         """
@@ -90,93 +119,12 @@ class Filling():
                 short_name, long_name = report.find("ShortName"), report.find("LongName")
                 if self._is_statement_file(short_name, long_name, file_name):
                     statement_file_names_dict[short_name.text.lower()] = file_name
-            return statement_file_names_dict
+            self.statements_file_name_dict = statement_file_names_dict
         except requests.RequestException as e:
+            raise ValueError(f"Error fetching the Filing Summary: {e}")
             print(f"An error occurred: {e}")
-            return {}
-    
-    def get_date_indexes(self, column_indexes, target):
-        target_columns = ["1 Months", "2 Months", "3 Months", "4 Months", "5 Months", "6 Months", "7 Months", "8 Months", "9 Months", "10 Months", "11 Months", "12 Months"]
-        start_idx = 0
-        end_idx = 0
-        max_column_index = column_indexes[target]['index']
-        for target_column in target_columns:
-            if target_column in column_indexes:
-                if column_indexes[target_column]['index'] < max_column_index:
-                    start_idx += column_indexes[target_column]['colspan']
-        # end_idx is not included
-        end_idx = start_idx +  column_indexes[target]['colspan']
-        return start_idx, end_idx
-    
-    def get_statement_soup(self, statement_name):
-        """
-        Retrieves the BeautifulSoup object for a specific financial statement.
-
-        Args:
-            ticker (str): Stock ticker symbol.
-            accession_number (str): SEC filing accession number.
-            statement_name (str): has to be 'balance_sheet', 'income_statement', 'cash_flow_statement'
-        Returns:
-            BeautifulSoup: Parsed HTML/XML content of the financial statement.
-        """
-        session = requests.Session()
-        base_link = f"https://www.sec.gov/Archives/edgar/data/{self.cik}/{self.accession_number}"
-        print(base_link)
-        # Get statement file names
-        statement_file_name_dict = self.get_statement_file_names_in_filing_summary()
-        statement_link = None
-        # Find the specific statement link
-        for possible_key in statement_keys_map.get(statement_name.lower(), []):
-            file_name = statement_file_name_dict.get(possible_key.lower())
-            file_name_loss = statement_file_name_dict.get((possible_key.lower() + " (loss)"))
-            # print(possible_key.lower())
-            if file_name:
-                statement_link = f"{base_link}/{file_name}"
-                print(statement_link)
-                break
-            elif file_name_loss:
-                statement_link = f"{base_link}/{file_name_loss}"
-                print(statement_link)
-                break
-
-        if not statement_link:
-            #ShortNames = statement_file_name_dict.find_all("ShortName")
-            # TODO: check again if one of the maps is in one of files R1, R2,...
-
-            statement_link_found = False
-
-            for possible_key in statement_keys_map.get(statement_name.lower(), []):
-                for short in statement_file_name_dict:
-                    # check if the R{num} is less than R10
-                    if possible_key in short.lower():
-                        print(short.lower(), int(re.search(r'R(\d+)', statement_file_name_dict.get(short.lower())).group(1)))
-                        if int(re.search(r'R(\d+)', statement_file_name_dict.get(short.lower())).group(1)) < 10:
-                            file_name = statement_file_name_dict.get(short.lower())
-                            statement_link = f"{base_link}/{file_name}"
-                            print(statement_link)
-                            statement_link_found = True
-                            break
-                if statement_link_found:
-                    break
-
-            if not statement_link:
-                raise ValueError(f"Could not find statement file name for {statement_name}")
-        # Fetch the statement
-        try:
-            statement_response = session.get(statement_link, headers=headers)
-            statement_response.raise_for_status()  # Check for a successful request
-            # Parse and return the content
-            if statement_link.endswith(".xml"):
-                return BeautifulSoup(
-                    statement_response.content, "lxml-xml", from_encoding="utf-8"
-                )
-            else:
-                return BeautifulSoup(statement_response.content, "lxml")
-        except requests.RequestException as e:
-            raise ValueError(f"Error fetching the statement: {e}")
-        
-
-    def get_cal_xml_filename(self):
+            
+    def get_cal_xml_equations(self):
         """
         Retrieves the BeautifulSoup object for a specific financial statement.
         Returns:
@@ -212,14 +160,80 @@ class Filling():
         except requests.RequestException as e:
             raise ValueError(f"Error fetching the statement: {e}")
         
-
-    def extract_columns_values_and_dates_from_statement(self, soup: BeautifulSoup, ticker, accession_number, statement_name, get_duplicates=True, quarterly=False):
+    
+    def get_statement_soup(self, statement_name):
         """
-        Extracts columns, values, and dates from an HTML soup object representing a financial statement.
+        Retrieves the BeautifulSoup object for a specific financial statement.
 
         Args:
-            soup (BeautifulSoup): The BeautifulSoup object of the HTML document.
+            ticker (str): Stock ticker symbol.
+            accession_number (str): SEC filing accession number.
+            statement_name (str): has to be 'balance_sheet', 'income_statement', 'cash_flow_statement'
+        Returns:
+            BeautifulSoup: Parsed HTML/XML content of the financial statement.
+        """
+        session = requests.Session()
+        base_link = f"https://www.sec.gov/Archives/edgar/data/{self.cik}/{self.accession_number}"
+        print(base_link)
+        # Get statement file names
+        
+        statement_link = None
+        # Find the specific statement link
+        for possible_key in statement_keys_map.get(statement_name.lower(), []):
+            file_name = self.statements_file_name_dict.get(possible_key.lower())
+            file_name_loss = self.statements_file_name_dict.get((possible_key.lower() + " (loss)"))
+            # print(possible_key.lower())
+            if file_name:
+                statement_link = f"{base_link}/{file_name}"
+                print(statement_link)
+                break
+            elif file_name_loss:
+                statement_link = f"{base_link}/{file_name_loss}"
+                print(statement_link)
+                break
 
+        if not statement_link:
+            #ShortNames = self.statements_file_name_dict.find_all("ShortName")
+            # TODO: check again if one of the maps is in one of files R1, R2,...
+
+            statement_link_found = False
+
+            for possible_key in statement_keys_map.get(statement_name.lower(), []):
+                for short in self.statements_file_name_dict:
+                    # check if the R{num} is less than R10
+                    if possible_key in short.lower():
+                        print(short.lower(), int(re.search(r'R(\d+)', self.statements_file_name_dict.get(short.lower())).group(1)))
+                        if int(re.search(r'R(\d+)', self.statements_file_name_dict.get(short.lower())).group(1)) < 10:
+                            file_name = self.statements_file_name_dict.get(short.lower())
+                            statement_link = f"{base_link}/{file_name}"
+                            print(statement_link)
+                            statement_link_found = True
+                            break
+                if statement_link_found:
+                    break
+
+            if not statement_link:
+                raise ValueError(f"Could not find statement file name for {statement_name}")
+        # Fetch the statement
+        try:
+            statement_response = session.get(statement_link, headers=headers)
+            statement_response.raise_for_status()  # Check for a successful request
+            # Parse and return the content
+            if statement_link.endswith(".xml"):
+                return BeautifulSoup(
+                    statement_response.content, "lxml-xml", from_encoding="utf-8"
+                )
+            else:
+                return BeautifulSoup(statement_response.content, "lxml")
+        except requests.RequestException as e:
+            raise ValueError(f"Error fetching the statement: {e}")
+        
+
+    def extract_columns_values_and_dates_from_statement(self, soup: BeautifulSoup, ticker, accession_number, statement_name, get_duplicates=True):
+        """
+        Extracts columns, values, and dates from an HTML soup object representing a financial statement.
+        Args:
+            soup (BeautifulSoup): The BeautifulSoup object of the HTML document.
         Returns:
             tuple: Tuple containing columns, values_set, and date_time_index.
         """
@@ -252,9 +266,9 @@ class Filling():
         unit_multiplier_set = []
         text_set = {}
         if statement_name == "income_statement":
-            date_time_index, header_indices = self.get_datetime_index_dates_from_statement(soup, quarterly=quarterly)
+            date_time_index, header_indices = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly)
         else: 
-            date_time_index, header_indices = self.get_datetime_index_dates_from_statement(soup, quarterly=quarterly, check_date_indexes=False)
+            date_time_index, header_indices = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly, check_date_indexes=False)
         print(date_time_index)
         # TODO : this function is in company class
         company_facts, ld, taxonomy = facts_DF(ticker, headers)
@@ -469,74 +483,6 @@ class Filling():
         print(sections_dict)
         return columns, values_set, date_time_index, rows_that_are_sum, text_set, sections_dict
 
-    def get_datetime_index_dates_from_statement(self, soup: BeautifulSoup, quarterly=False, check_date_indexes=True) -> pd.DatetimeIndex:
-        """
-        Extracts datetime index dates from the HTML soup object of a financial statement.
-
-        Args:
-            soup (BeautifulSoup): The BeautifulSoup object of the HTML document.
-
-        Returns:
-            pd.DatetimeIndex: A Pandas DatetimeIndex object containing the extracted dates.
-            # TODO comapnies that file 20F might have columns for same date but differnet currency
-            # take the currency with the most columns as the base, also check its the same as previous statements
-        """
-        table_headers = soup.find_all("th", {"class": "th"})
-        # Define the target column headers
-        target_columns =  ["1 Months", "2 Months", "3 Months", "4 Months", "5 Months", "6 Months", "7 Months", "8 Months", "9 Months", "10 Months", "11 Months", "12 Months"]
-        column_indexes = {}
-        currencies = []
-        header_currency_mapping = {}
-        contain_two_currency = False
-        for header in soup.find_all("th", {"class": "tl"}):
-            if header:
-                header_text = header.get_text()
-                if not contain_two_currency:
-                    contain_two_currency = check_for_two_currency(header_text)
-        for index, header in enumerate(table_headers):
-            header_text = header.text.strip()
-            if contain_two_currency:
-                header_currency = extract_currency(header_text)
-                if header_currency:
-                    currencies.append(header_currency)
-            for target in target_columns:
-                if target in header_text:
-                    column_indexes[target] = {
-                        'index': index,
-                        'colspan': int(header.get("colspan", 1))  # Default colspan to 1 if not specified
-                    }
-
-        dates = [str(th.div.string) for th in table_headers if th.div and th.div.string]
-        print(dates)
-        if contain_two_currency:
-            main_currency = get_most_frequent_currency(currencies)
-            date_currencies = currencies #[extract_currency(date) for date in dates]
-            print(main_currency)
-            print(date_currencies)
-            # Filter dates and header indexes by the main currency
-            dates = [date for date, currency in zip(dates, date_currencies) if currency == main_currency]
-            dates = [standardize_date(date).replace(".", "") for date in dates]
-            filtered_indexes = [index for index, currency in enumerate(date_currencies) if currency == main_currency]
-            print(dates, filtered_indexes)
-        
-        # print(three_months_index)
-        if check_date_indexes:
-            if quarterly:
-                # dates = dates[three_months_index: three_months_index + three_colspan]
-                start_idx, end_idx = self.get_date_indexes(column_indexes, "3 Months")
-            else:
-                # dates = dates[three_months_index + three_colspan: three_months_index + three_colspan + twelve_colspan]
-                start_idx, end_idx = self.get_date_indexes(column_indexes, "12 Months")
-                print(start_idx, end_idx)
-            date_indexes = range(start_idx, end_idx)
-            dates = dates[start_idx: end_idx]
-        elif contain_two_currency:
-            date_indexes = filtered_indexes # range(len(dates))
-        else:
-            date_indexes =  range(len(dates))
-        index_dates = pd.to_datetime(dates)
-        print(dates, date_indexes)
-        return index_dates, date_indexes
     
 
     def create_dataframe_of_statement_values_columns_dates(self, values_set, columns, index_dates) -> pd.DataFrame:
@@ -556,12 +502,11 @@ class Filling():
         return df
     
 
-    def process_one_statement(self, ticker, accession_number, statement_name, acc_num_unfiltered, quarterly=False):
+    def process_one_statement(self, statement_name):
         """
         Processes a single financial statement identified by ticker, accession number, and statement name.
 
         Args:
-            ticker (str): The stock ticker.
             accession_number (str): The SEC accession number.
             statement_name (str): Name of the financial statement.
 
@@ -571,21 +516,21 @@ class Filling():
         try:
             # Fetch the statement HTML soup
             soup = self.get_statement_soup(
-                ticker,
-                accession_number,
+                self.ticker,
+                self.accession_number,
                 statement_name,
                 headers=headers,
                 statement_keys_map=statement_keys_map,
             )
         except Exception as e:
             logging.error(
-                f"Failed to get statement soup: {e} for accession number: {accession_number}"
+                f"Failed to get statement soup: {e} for accession number: {self.accession_number}"
             )
             return None, None, None, None
 
         try:
-            cal_facts = self.get_cal_xml_filename(ticker,
-                accession_number,
+            cal_facts = self.get_cal_xml_equations(self.ticker,
+                self.accession_number,
                 headers=headers)
         except Exception as e:
             cal_facts = None
@@ -594,7 +539,7 @@ class Filling():
             try:
                 # Extract data and create DataFrame
                 columns, values, dates, rows_that_are_sum, rows_text, sections_dict = self.extract_columns_values_and_dates_from_statement(
-                    soup, ticker, acc_num_unfiltered, statement_name, quarterly=quarterly
+                    soup, self.ticker, self.accession_number_unfiltered, statement_name, quarterly=self.quarterly
                 )
                 df = self.create_dataframe_of_statement_values_columns_dates(
                     values, columns, dates
@@ -607,7 +552,7 @@ class Filling():
                     pass
                 else:
                     logging.warning(
-                        f"Empty DataFrame for accession number: {accession_number}"
+                        f"Empty DataFrame for accession number: {self.accession_number}"
                     )
                     return None
                 
