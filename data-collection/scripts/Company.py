@@ -14,11 +14,10 @@ import pandas as pd
 
 class Company():
 
-    def __init__(self, cik=None, ticker=None, ) -> None:
+    def __init__(self, ticker, cik=None) -> None:
         if not ticker and not cik:
             raise ValueError(f"Must include the ticker or the CIK")
-        if not ticker:
-            self.ticker = ticker
+        self.ticker = ticker
         if not cik:
             self.cik = self.cik_matching_ticker()
         else:
@@ -29,6 +28,10 @@ class Company():
         self.ten_k_fillings = None
         self.ten_q_fillings = None
         self.company_facts = None
+
+        self.get_submission_data_for_ticker()
+        self.get_filtered_filings()
+        self.get_company_facts()
 
     def cik_matching_ticker(self):
         # return ticker
@@ -50,7 +53,6 @@ class Company():
             json: The submissions for the company.
         """
         cik = self.cik
-        headers = headers
         url = f"https://data.sec.gov/submissions/CIK{cik}.json"
         print(url)
         company_json = requests.get(url, headers=headers).json()
@@ -83,7 +85,7 @@ class Company():
         self.ten_q_fillings = ten_q["accessionNumber"]
 
 
-    def get_facts(self):
+    def get_company_facts(self):
         """
         Retrieves company facts for a given ticker.
         Returns:
