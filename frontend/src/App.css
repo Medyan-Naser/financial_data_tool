@@ -65,12 +65,13 @@ body {
 
 /* Main content styles */
 .app-main {
-  flex: 1;
+  /* flex: 1; */
   display: flex;
-  justify-content: center;
+  /* justify-content: center; */
   align-items: center;
   padding: 20px;
   background-color: #ecf0f1; /* Slightly lighter background */
+  width: 100%;
 }
 
 @media (min-width: 1400px) {
@@ -87,8 +88,10 @@ body {
 
 @media (min-width: 1400px) {
   main.container {
-    max-width: 2500px;
-    /* max-width: calc(100vw - 40px); Full width minus 40px padding (20px on each side) */
+    max-width: 100%;
+    /* 2500px; */
+    /* max-width: calc(100vw - 40px);  */
+    /* Full width minus 40px padding (20px on each side) */
     /* padding: 0 20px; /* Optional: Add the padding directly */
     /* margin: 0 auto; Center the container */
     /* box-sizing: border-box; Ensure padding is included in the width */
@@ -99,10 +102,10 @@ body {
 
 .app-main .responsive-container {
   display: flex;
-  justify-content: center; /* Center horizontally */
+  /* justify-content: center; Center horizontally */
   align-items: stretch; /* Ensure full height */
-  width: 200%;
-  max-width: 1200000px; /* Optional: Limit max width */
+  width: 100%;
+  /* max-width: 1200000px; Optional: Limit max width */
   margin: 0 auto; /* Center within the page */
 }
 
@@ -114,7 +117,7 @@ body {
 /* FinancialChart container (black box treatment) */
 .app-main .financial-chart-container {
   width: 90%;
-  max-width: 1200px;
+  /* max-width: 1200px; */
   background-color: white;
   padding: 20px;
   border-radius: 10px;

@@ -1,0 +1,51 @@
+.graph-container {
+    margin-top: 20px;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .tab-selector {
+    margin-bottom: 15px;
+  }
+  
+  .tab-selector select {
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    width: 200px;
+  }
+  
+  .row-selector {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  
+  .row-item {
+    padding: 10px 20px;
+    margin: 5px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .row-item.selected {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .row-item:hover {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  canvas {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  

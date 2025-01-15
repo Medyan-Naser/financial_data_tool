@@ -8,15 +8,12 @@ const FinancialChart = ({ ticker }) => {
   const [financialData, setFinancialData] = useState(null);
   const [dividerPosition, setDividerPosition] = useState(50); // Initial 50/50 split
   const [activeTab, setActiveTab] = useState("income"); // Track the active tab ("income" or "balance")
-  console.log("tickerf:", ticker)
-  
 
   const handleDrag = (e) => {
     const newDividerPosition = (e.clientX / window.innerWidth) * 100;
     setDividerPosition(Math.min(Math.max(newDividerPosition, 10), 90)); // Limit between 10% and 90%
   };
 
-  // Toggle between "income" and "balance" tabs
   const toggleTab = (tab) => {
     setActiveTab(tab);
   };
@@ -26,12 +23,11 @@ const FinancialChart = ({ ticker }) => {
       try {
         const data = await getFinancialData(ticker);
 
-        // Assuming the API returns income and balance data
         const structuredData = {
           balance: data.balance_sheet || { index: [], data: [], columns: [] },
           income: data.income_statement || { index: [], data: [], columns: [] },
         };
-        setFinancialData(structuredData); // Set the structured data
+        setFinancialData(structuredData);
       } catch (error) {
         console.error("Failed to fetch financial data", error);
       }
@@ -40,57 +36,42 @@ const FinancialChart = ({ ticker }) => {
     fetchData();
   }, [ticker]);
 
-  const handleTickerChange = (event) => {
-    const selectedTicker = event.target.value;
-    setTicker(selectedTicker);
-  };
-  console.log("tickerf:", ticker)
   if (!financialData) return <div>Loading...</div>;
-  
-  return (
-    <div className="container" style={{ height: "100vh", overflow: "hidden" }}>
 
+  return (
+    <div className="container">
       {/* Tab Buttons */}
-      <div className="tab-buttons" style={{ marginTop: "60px", marginBottom: "10px", textAlign: "center" }}>
-        <button 
-          onClick={() => toggleTab("income")} 
-          style={{ padding: "10px 20px", margin: "0 10px", cursor: "pointer",color: activeTab === "income" ? "white" : "black", backgroundColor: activeTab === "income" ? "#0056b3" : "#f5f5f5" }}>
+      <div className="tab-buttons">
+        <button
+          onClick={() => toggleTab("income")}
+          className={activeTab === "income" ? "active" : ""}
+        >
           Income
         </button>
-        <button 
-          onClick={() => toggleTab("balance")} 
-          style={{ padding: "10px 20px", margin: "0 10px", cursor: "pointer",color: activeTab === "balance" ? "white" : "black", backgroundColor: activeTab === "balance" ? "#0056b3" : "#f5f5f5" }}>
+        <button
+          onClick={() => toggleTab("balance")}
+          className={activeTab === "balance" ? "active" : ""}
+        >
           Balance
         </button>
       </div>
 
       {/* Content Section */}
-      <div style={{ display: "flex", height: "calc(100vh - 60px)" }}>
+      <div className="content">
         {/* Table Section */}
         <div
-          className="resizable-section"
-          style={{
-            width: `${dividerPosition}%`,
-            height: "100%",
-            overflowY: "auto",
-            borderRight: "1px solid #ccc",
-          }}
+          className="resizable-section table-section"
+          style={{ width: `${dividerPosition}%` }}
         >
           <TableSection
-            financialData={financialData}  // Pass the data
-            activeTab={activeTab}           // Pass the active tab ("income" or "balance")
+            financialData={financialData}
+            activeTab={activeTab}
           />
         </div>
 
         {/* Draggable Divider */}
         <div
           className="divider"
-          style={{
-            cursor: "col-resize",
-            backgroundColor: "#ccc",
-            width: "10px",
-            height: "100%",
-          }}
           onMouseDown={(e) => {
             e.preventDefault();
             document.addEventListener("mousemove", handleDrag);
@@ -102,12 +83,8 @@ const FinancialChart = ({ ticker }) => {
 
         {/* Chart Section */}
         <div
-          className="resizable-section"
-          style={{
-            width: `${100 - dividerPosition}%`,
-            height: "100%",
-            overflowY: "auto",
-          }}
+          className="resizable-section graph-section"
+          style={{ width: `${100 - dividerPosition}%` }}
         >
           <GraphSection financialData={financialData} />
         </div>

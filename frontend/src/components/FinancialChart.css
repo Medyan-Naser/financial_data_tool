@@ -1,100 +1,72 @@
-.financial-chart {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-  }
-  
-  .header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .suggestions {
-    list-style-type: none;
-    padding: 0;
-    margin: 5px 0 0;
-    border: 1px solid #ddd;
-    max-height: 100px;
-    overflow-y: auto;
-  }
-  
-  .suggestions li {
-    padding: 5px 10px;
-    cursor: pointer;
-  }
-  
-  .suggestions li:hover {
-    background-color: #f0f0f0;
-  }
-  
-  .tabs {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-  }
-  
-  .tabs button {
-    margin: 0 10px;
-    padding: 10px 20px;
-    cursor: pointer;
-  }
-  
-  .tabs button.active {
-    background-color: #007bff;
-    color: white;
-  }
-  
-  .content {
-    display: flex;
-    flex-direction: row;
-  }
-  
-  .resizable-container {
-    display: flex;
-    flex-grow: 1;
-    position: relative;
-  }
-  
-  .resizable-section {
-    overflow: auto;
-  }
-  
-  .divider {
-    width: 5px;
-    cursor: ew-resize;
-    background-color: #ccc;
-  }
-  
-  .container {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .tab-buttons button {
-    font-size: 16px;
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: #1524a8;
-    border: none;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-  }
-  
-  .tab-buttons button:hover {
-    background-color: #ddd;
-  }
-  
-  .resizable-section {
-    height: 100%;
-    width: 100%;
-    overflow: auto;
-  }
-  
-  .divider {
-    background-color: #ccc;
-    cursor: col-resize;
-    width: 10px;
-    height: 100%;
-  }
-  
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%; /* Ensure it spans the full width of the page */
+  padding: 0;   /* Remove any default padding */
+  margin: 0;    /* Remove any default margins */
+  box-sizing: border-box; /* Include padding and border in the width/height calculation */
+  font-family: Arial, sans-serif;
+  margin-right: 10;
+  margin-left: 10;
+}
+
+
+.tab-buttons {
+  display: flex;
+  justify-content: center;
+  margin-top: 60px;
+  margin-bottom: 10px;
+}
+
+.tab-buttons button {
+  font-size: 16px;
+  padding: 10px 20px;
+  cursor: pointer;
+  background-color: #f5f5f5;
+  border: none;
+  margin: 0 10px;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.tab-buttons button.active {
+  color: white;
+  background-color: #0056b3;
+}
+
+.tab-buttons button:hover {
+  background-color: #ddd;
+}
+
+.content {
+  display: flex;
+  flex-grow: 1;
+  height: calc(100vh - 100px); /* Adjust height based on the space taken by buttons */
+  width: 100%; /* Ensure it spans the full width of the page */
+  padding: 0;   /* Remove any default padding */
+  margin: 0;    /* Remove any default margins */
+}
+
+.resizable-section {
+  overflow: auto;
+  height: 100%;
+}
+
+.resizable-section.table-section {
+  border-right: 1px solid #ccc;
+}
+
+.divider {
+  background-color: #ccc;
+  cursor: col-resize;
+  width: 10px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.graph-section {
+  overflow: auto;
+  height: 100%;
+}

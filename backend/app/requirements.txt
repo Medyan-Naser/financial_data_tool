@@ -1,0 +1,52 @@
+fastapi
+uvicorn
+pandas
+
+
+
+#stocks_tool
+
+
+// import React, { useEffect, useState } from "react";
+// import { Line } from "react-chartjs-2";
+// import { getFinancialData } from "./api";
+// import { Chart, CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend } from 'chart.js';
+
+// // Register the necessary components (scales, elements, etc.)
+// Chart.register(CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend);
+
+// const FinancialChart = () => {
+//   const [chartData, setChartData] = useState(null);
+
+//   useEffect(() => {
+//     const fetchData = async () => {
+//       const financialData = await getFinancialData();
+
+//       // Transform data into Chart.js format
+//       const chartData = {
+//         labels: financialData.columns, // Years (columns)
+//         datasets: financialData.index.map((item, i) => ({
+//           label: item, // Financial item (row)
+//           data: financialData.data[i], // The financial data for each year
+//           fill: false,
+//           borderColor: `hsl(${i * 50}, 70%, 50%)`,
+//           tension: 0.1,
+//         })),
+//       };
+//       setChartData(chartData);
+//     };
+
+//     fetchData();
+//   }, []);
+
+//   if (!chartData) return <div>Loading...</div>;
+
+//   return (
+//     <div>
+//       <h2>Financial Data Visualization</h2>
+//       <Line data={chartData} />
+//     </div>
+//   );
+// };
+
+// export default FinancialChart;
