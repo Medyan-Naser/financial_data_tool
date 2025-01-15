@@ -81,10 +81,10 @@ def get_datetime_index_dates_from_statement(soup: BeautifulSoup, quarterly=False
     if check_date_indexes:
         if quarterly:
             # dates = dates[three_months_index: three_months_index + three_colspan]
-            start_idx, end_idx = self.get_date_indexes(column_indexes, "3 Months")
+            start_idx, end_idx = get_date_indexes(column_indexes, "3 Months")
         else:
             # dates = dates[three_months_index + three_colspan: three_months_index + three_colspan + twelve_colspan]
-            start_idx, end_idx = self.get_date_indexes(column_indexes, "12 Months")
+            start_idx, end_idx = get_date_indexes(column_indexes, "12 Months")
             print(start_idx, end_idx)
         date_indexes = range(start_idx, end_idx)
         dates = dates[start_idx: end_idx]
@@ -92,6 +92,6 @@ def get_datetime_index_dates_from_statement(soup: BeautifulSoup, quarterly=False
         date_indexes = filtered_indexes # range(len(dates))
     else:
         date_indexes =  range(len(dates))
-    index_dates = pd.to_datetime(dates)
+    dates = pd.to_datetime(dates)
     print(dates, date_indexes)
-    return index_dates, date_indexes
+    return dates, date_indexes
