@@ -10,6 +10,51 @@ from bs4 import BeautifulSoup
 import re
 import logging
 
+def check_units(num1, num2):
+    # Define the conversion factors
+    num1 = float(num1)
+    num2 = float(num2)
+    print( num1, num2)
+    conversion_factors = {
+        "dollars": 1,
+        "thousands": 1000,
+        "millions": 1000000,
+        "cent": 1/1000
+    }
+    # Check if the second number represents the same value as the first number
+    for unit, factor in conversion_factors.items():
+        print("##############")
+        print(num1)
+        print(num2 * factor)
+        if num1 == num2 * factor:
+            return factor # * 1/1000 add for thousand def
+    # If the second number doesn't represent the same value in any unit
+    return False
+
+
+def parse_table_header(table):
+    print("Parsing table header")
+    # Check table headers for unit multipliers and special cases
+    # TODO: using the get_facts function duoble check that the unit_multiplier is correct
+    # The facts will have the right units. 
+    unit_multiplier = IN_THOUSANDS
+    special_case = False
+    table_header = table.find("th")
+    
+    if table_header:
+        header_text = table_header.get_text()
+        # Determine unit multiplier based on header text
+        if "in thousands" in header_text.lower():
+            unit_multiplier = IN_THOUSANDS
+        elif "in millions" in header_text.lower():
+            unit_multiplier = IN_MILLIONS
+        else:
+            unit_multiplier = IN_DOLLARS
+        # Check for special case scenario
+        if "unless otherwise specified" in header_text:
+            special_case = True
+    print("End of Parsing table header")
+    return unit_multiplier
 
 
 class Filling():
@@ -29,10 +74,11 @@ class Filling():
         self.company_facts_DF = None
         self.taxonomy = None
         self.facts_taxonomy_to_financial_terms = {} # before named labels_dict
+        self.unit_multiplier_set = []
 
         self.get_statement_file_names_in_filing_summary()
         self.get_cal_xml_equations()
-        self.get_company_facts_DF
+        self.get_company_facts_DF()
 
     def get_company_facts_DF(self):
         """
@@ -48,7 +94,7 @@ class Filling():
                 us_gaap_data = self.company_facts["facts"][IFRS]
                 taxonomy = IFRS
             except Exception as e:
-                return None, None, None
+                pass
         df_data = []
         # Process each fact and its details
         for fact, details in us_gaap_data.items():
@@ -161,7 +207,7 @@ class Filling():
             raise ValueError(f"Error fetching the statement: {e}")
         
     
-    def get_statement_soup(self, statement_name):
+    def get_statement_file_soup(self, statement_name):
         """
         Retrieves the BeautifulSoup object for a specific financial statement.
 
@@ -229,82 +275,69 @@ class Filling():
             raise ValueError(f"Error fetching the statement: {e}")
         
 
-    def extract_columns_values_and_dates_from_statement(self, soup: BeautifulSoup, ticker, accession_number, statement_name, get_duplicates=True):
+    def get_unit_multiplier(self, row_title, end_date, value_from_table):
+        unit_multiplier = 1
+        if (row_title not in keep_value_unchanged) : #and ("in dollars" not in onclick_elements[0].get_text(strip=True).lower()) and ("in shares" not in onclick_elements[0].get_text(strip=True).lower()) and ("per share" not in onclick_elements[0].get_text(strip=True).lower()) :
+            index = row_title.find(f"{self.taxonomy}_")
+            if index != -1:  # TODO now i filter through every cell, only filter if the firct cell is 0
+                # Slice the string to get the part after "us-gaap_"
+                fact = row_title[index + len(f"{self.taxonomy}_"):]
+                end_date = str(end_date)
+                end_date = end_date.split(" ")[0]
+                # print(end_date)
+                criteria = f'fact=="{fact}" and accn=="{self.accession_number_unfiltered}" and end=="{end_date}"'
+                # print(criteria)
+                try:
+                    filtered_data = self.company_facts_DF[(self.company_facts_DF['fact'] == fact) & (self.company_facts_DF['end'] == end_date) ]
+                except Exception as e:
+                    pass
+                filtered_value = 0
+                try:
+                    filtered_value = filtered_data.iloc[0]['val']
+                except Exception as e:
+                    pass
+
+                if filtered_value != 0:
+                    fact_unit = check_units(abs(filtered_value), value_from_table)
+                    print("##############unit")
+                    print(fact_unit)
+                    if fact_unit:
+                        unit_multiplier = fact_unit
+        return unit_multiplier
+
+
+    def extract_columns_values_and_dates_from_statement(self, soup: BeautifulSoup, statement_name, get_duplicates=True):
         """
         Extracts columns, values, and dates from an HTML soup object representing a financial statement.
         Args:
             soup (BeautifulSoup): The BeautifulSoup object of the HTML document.
         Returns:
-            tuple: Tuple containing columns, values_set, and date_time_index.
+            tuple: Tuple containing columns, values_set, and dates.
         """
 
-
-        def check_units(num1, num2):
-            # Define the conversion factors
-            # TODO: should it be int or float
-            num1 = float(num1)
-            num2 = float(num2)
-            print( num1, num2)
-            conversion_factors = {
-                "dollars": 1,
-                "thousands": 1000,
-                "millions": 1000000,
-                "cent": 1/1000
-            }
-            # Check if the second number represents the same value as the first number
-            for unit, factor in conversion_factors.items():
-                print("##############")
-                print(num1)
-                print(num2 * factor)
-                if num1 == num2 * factor:
-                    return factor # * 1/1000 add for thousand def
-            # If the second number doesn't represent the same value in any unit
-            return False
 
         columns = []
         values_set = []
         unit_multiplier_set = []
         text_set = {}
         if statement_name == "income_statement":
-            date_time_index, header_indices = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly)
+            dates, date_indexes = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly)
         else: 
-            date_time_index, header_indices = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly, check_date_indexes=False)
-        print(date_time_index)
+            dates, date_indexes = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly, check_date_indexes=False)
+        print(dates)
         # TODO : this function is in company class
-        company_facts, ld, taxonomy = facts_DF(ticker, headers)
 
 
         rows_that_are_sum = []
         sections_dict = {}
 
         for table in soup.find_all("table"):
-            unit_multiplier = IN_THOUSANDS
-            special_case = False
-
-            # Check table headers for unit multipliers and special cases
-            # TODO: using the get_facts function duoble check that the unit_multiplier is correct
-            # The facts will have the right units. 
-
-            table_header = table.find("th")
-            print("=================1")
-            if table_header:
-                header_text = table_header.get_text()
-                # Determine unit multiplier based on header text
-                if "in thousands" in header_text.lower():
-                    unit_multiplier = IN_THOUSANDS
-                elif "in millions" in header_text.lower():
-                    unit_multiplier = IN_MILLIONS
-                else:
-                    unit_multiplier = IN_DOLLARS
-                # Check for special case scenario
-                if "unless otherwise specified" in header_text:
-                    special_case = True
+            unit_multiplier = parse_table_header(table)
             # Fact check the multipler later
             # Process each row of the table
             inside_section = False
             is_row_header = False
             current_section_name = FIRST_SECTION
-            print("=================2")
             for row in table.select("tr"):
                 onclick_elements = row.select("td.pl a, td.pl.custom a")
                 if not onclick_elements:
@@ -316,18 +349,15 @@ class Filling():
 
                 if get_duplicates:
                     row_contain_number = row.select("td.num, td.nump")
-                    if not row_contain_number:
-                        print(row_title)
-
+                    if row_contain_number:
+                        is_row_header = False
+                    else:
                         if row_title.endswith("Abstract"):
                             current_section_name = onclick_elements[0].get_text(strip=True)
                             if current_section_name:
                                 if is_row_header: # previous row is also header
                                     row_section_name += ":" + current_section_name
                                     current_section_name = row_section_name
-                                    # Get the text content of the <a> element
-                                    # if not inside_section:
-                                    print("=================")
                                 else:
                                     row_section_name = current_section_name
                                 is_row_header = True
@@ -335,20 +365,15 @@ class Filling():
                                 continue
                             else:
                                 continue
-                        else:
-                            pass
-                    else:
-                        is_row_header = False
-                    
-                print("=================3")
-                
+
+                                    
                 row_class = row.get('class')
                 print("row class:" , row_class)
                 if row_class == ['reu'] or row_class == ['rou']:
                     rows_that_are_sum.append(row_title)
                 # TODO 'rh' is the class for row header
                 if row_class == ['rh']:
-                    pass
+                    continue
                 if row_title in columns and (not get_duplicates):
                     continue
                 if row_title in columns and inside_section:
@@ -356,18 +381,9 @@ class Filling():
                     while (row_title in columns):
                         # TODO: fix when multiple valuea are the same even when they are inside the section
                         row_title = "D1:" + row_title # str(random.randint(1, 10))
-                        # continue
-                    file_name = "terms_that_share_fact_name.txt"
-                    with open(file_name, 'a+') as file:
-                        # Check if the string_to_append already exists in the file
-                        file.seek(0)  # Move the cursor to the beginning of the file
-                        if row_title not in file.read():
-                            # If the string does not exist, write it to the file
-                            file.write(row_title + '\n')
                 
                 # Add the fact to the corresponding section in the dictionary
-                # if row_text.endswith("Abstract"):
-                #     current_section_name = FIRST_SECTION
+
                 if current_section_name in sections_dict:
                     sections_dict[current_section_name].append(row_title)
                 else:
@@ -377,123 +393,78 @@ class Filling():
                 column = row_title
                 columns.append(column)
                 text_set[column] = row_text
-                print("=================4")
-
-                length_date_time_index = len(date_time_index)
-                values = [0] * length_date_time_index
-                values_counter = 0
-                print("=================5")
+                length_dates = len(dates)
+                values = [0] * length_dates
+                column_counter = 0
                 # Process each cell in the row
-                for i, cell in enumerate((row.select("td.text, td.nump, td.num"))):
-                    print("=================6")
-                    # if quarterly:
-                    if i not in header_indices:
+                for date_idx, cell in enumerate((row.select("td.text, td.nump, td.num"))):
+                    if date_idx not in date_indexes:
                         continue
 
                     if "text" in cell.get("class"):
-                        values_counter += 1
+                        column_counter += 1
                         continue
 
                     # Clean and parse cell value
                     a_tag = cell.find('a')
                     if a_tag:
-                        # sys.exit(f"{cell}----- {cell.get_text()}")
                         value = keep_numbers_and_decimals_only_in_string(
                         a_tag.get_text().replace("$", "")
-                        .replace(",", "")
-                        .replace("(", "")
-                        .replace(")", "")
-                        .strip()
+                        .replace(",", "") .replace("(", "")
+                        .replace(")", "").strip()
                     )
-                        # sys.exit(f"{cell}----- {cell.get_text()}------{value}")
                     else:
                         value = keep_numbers_and_decimals_only_in_string(
                             cell.text.replace("$", "")
-                            .replace(",", "")
-                            .replace("(", "")
-                            .replace(")", "")
-                            .strip()
+                            .replace(",", "").replace("(", "")
+                            .replace(")", "").strip()
                         )
-                    print("=================7")
-                    if value:
+                    if value and date_idx == date_indexes[0]:
                         value = float(value)
-                        # print(value)
                         # Adjust value based on special case and cell class
                         # TODO can not get the unit for the stuff that have the same name.
                         # edgar tools knows how to do it!
                         if (row_title not in keep_value_unchanged) : #and ("in dollars" not in onclick_elements[0].get_text(strip=True).lower()) and ("in shares" not in onclick_elements[0].get_text(strip=True).lower()) and ("per share" not in onclick_elements[0].get_text(strip=True).lower()) :
-                            index = row_title.find(f"{taxonomy}_")
-                            if index != -1: #and i == 0:
-                                # Slice the string to get the part after "us-gaap_"
-                                fact = row_title[index + len(f"{taxonomy}_"):]
-                                print("=================8")
-                                print(date_time_index, values_counter)
-                                end_date = str(date_time_index[values_counter])
-                                end_date = end_date.split(" ")[0]
-                                # print(end_date)
-                                criteria = f'fact=="{fact}" and accn=="{accession_number}" and end=="{end_date}"'
-                                # print(criteria)
-                                try:
-                                    filtered_data = company_facts[(company_facts['fact'] == fact) & (company_facts['end'] == end_date) ]
-                                except Exception as e:
-                                    pass
-                                filtered_value = 0
-                                print("=================9")
-                                try:
-                                    filtered_value = filtered_data.iloc[0]['val']
-                                except Exception as e:
-                                    pass
-
-                                # TODO now i filter through every cell, only filter if the firct cell is 0
-                                print("fact and table value")
-                                print(filtered_data)
-                                print(value)
-                                if ":" in row_title: # use same unit as base fact
-                                    if filtered_value != 0:
-                                        if row_title.split(":")[-1] in columns:
-                                            index = columns.index(row_title.split(":")[-1])
-                                            unit_multiplier = unit_multiplier_set[index]
-                                elif filtered_value != 0:
-                                    fact_unit = check_units(abs(filtered_value), value)
-                                    print("##############unit")
-                                    print(fact_unit)
-                                    if fact_unit:
-                                        unit_multiplier = fact_unit
-
-                            print(f"===== {i}")
-                            if "nump" in cell.get("class"):
-                                values[values_counter] = value * unit_multiplier
-                                values_counter += 1
+                            if ":" in row_title: # use same unit as base fact
+                                if row_title.split(":")[-1] in columns:
+                                    index = columns.index(row_title.split(":")[-1])
+                                    unit_multiplier = unit_multiplier_set[index]
+                                # else:
+                                #     unit_multiplier = self.get_unit_multiplier(row_title, date_indexes[column_counter], value)
                             else:
-                                values[values_counter] = -value * unit_multiplier
-                                values_counter += 1
+                                unit_multiplier = self.get_unit_multiplier(row_title, dates[column_counter], value)
+                            if "nump" in cell.get("class"):
+                                values[column_counter] = value * unit_multiplier
+                            else:
+                                values[column_counter] = -value * unit_multiplier
                         else:
                             if "nump" in cell.get("class"):
-                                values[values_counter] = value
-                                values_counter += 1
+                                values[column_counter] = value
                             else:
-                                values[values_counter] = -value
-                                values_counter += 1
-                        # check if the untit multiplier is correct
+                                values[column_counter] = -value
+                        column_counter += 1
+                    elif value:
+                        value = float(value)
+                        if "nump" in cell.get("class"):
+                            values[column_counter] = value * unit_multiplier
+                        else:
+                            values[column_counter] = -value * unit_multiplier
+                        column_counter += 1
                     else:
                         pass # it is a title row
                 values_set.append(values)
                 unit_multiplier_set.append(unit_multiplier)
-        print("return values")
-        print(sections_dict)
-        return columns, values_set, date_time_index, rows_that_are_sum, text_set, sections_dict
+        return columns, values_set, dates, rows_that_are_sum, text_set, sections_dict
 
-    
+
 
     def create_dataframe_of_statement_values_columns_dates(self, values_set, columns, index_dates) -> pd.DataFrame:
         """
         Creates a DataFrame from statement values, columns, and index dates.
-
         Args:
             values_set (list): List of values for each column.
             columns (list): List of column names.
             index_dates (pd.DatetimeIndex): DatetimeIndex for the DataFrame index.
-
         Returns:
             pd.DataFrame: DataFrame constructed from the given data.
         """
@@ -515,35 +486,17 @@ class Filling():
         """
         try:
             # Fetch the statement HTML soup
-            soup = self.get_statement_soup(
-                self.ticker,
-                self.accession_number,
-                statement_name,
-                headers=headers,
-                statement_keys_map=statement_keys_map,
-            )
+            soup = self.get_statement_file_soup(statement_name)
         except Exception as e:
-            logging.error(
-                f"Failed to get statement soup: {e} for accession number: {self.accession_number}"
-            )
-            return None, None, None, None
-
-        try:
-            cal_facts = self.get_cal_xml_equations(self.ticker,
-                self.accession_number,
-                headers=headers)
-        except Exception as e:
-            cal_facts = None
-            print(e)
+            logging.error(f"Failed to get statement soup: {e} for accession number: {self.accession_number}")
+            return None
         if soup:
             try:
                 # Extract data and create DataFrame
                 columns, values, dates, rows_that_are_sum, rows_text, sections_dict = self.extract_columns_values_and_dates_from_statement(
-                    soup, self.ticker, self.accession_number_unfiltered, statement_name, quarterly=self.quarterly
+                    soup, statement_name,
                 )
-                df = self.create_dataframe_of_statement_values_columns_dates(
-                    values, columns, dates
-                )
+                df = self.create_dataframe_of_statement_values_columns_dates(values, columns, dates)
 
                 if not df.empty:
                     # Remove duplicate columns
@@ -551,18 +504,16 @@ class Filling():
                     df = df.T
                     pass
                 else:
-                    logging.warning(
-                        f"Empty DataFrame for accession number: {self.accession_number}"
-                    )
+                    logging.warning(f"Empty DataFrame for accession number: {self.accession_number}")
                     return None
                 
-                # TODO remove this
-                if len(df.columns) > 3:
-                    # Select the last 3 columns
-                    last_three_columns = df.iloc[:, -3:]
-                    df = last_three_columns
+                # TODO remove the check for 3 columns
+                # if len(df.columns) > 3:
+                #     # Select the last 3 columns
+                #     last_three_columns = df.iloc[:, -3:]
+                #     df = last_three_columns
                 df = df.round(2)
-                financial_statement = DataFrameWithStringListTracking(df, rows_that_are_sum, rows_text, cal_facts, sections_dict)
+                financial_statement = FinancialStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
                 return financial_statement
             except Exception as e:
                 logging.error(f"Error processing statement: {e}")

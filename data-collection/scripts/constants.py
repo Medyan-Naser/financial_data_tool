@@ -18,8 +18,9 @@ FIRST_SECTION = "FIRST SECTION"
 # currencies
 USD = "USD"
 USD_sign = "$"
-CAD = "CAD"
-CAD_sign = "$"
+#TODO: the CAD sign is the same as USD, whcich cause issue when checking if the statement has more than one currency
+# CAD = "CAD"
+# CAD_sign = "$"
 EUR = "EUR"
 EUR_sign = "€"
 CNY = "CNY"
@@ -28,8 +29,8 @@ CNY_sign = "¥"
 INR = "INR"
 INR_sign = "₨"
 
-currency_keys = [USD, CAD, EUR, CNY, INR]
-currency_map = {USD: USD_sign, CAD: CAD_sign   , EUR: EUR_sign, CNY: CNY_sign, INR: INR_sign}
+currency_keys = [USD, EUR, CNY, INR]
+currency_map = {USD: USD_sign, EUR: EUR_sign, CNY: CNY_sign, INR: INR_sign} #CAD: CAD_sign   , 
 
 keep_value_unchanged = ['us-gaap_EarningsPerShareDiluted', 'us-gaap_EarningsPerShareBasic', 'us-gaap_WeightedAverageNumberOfSharesOutstandingBasic', 'us-gaap_WeightedAverageNumberOfDilutedSharesOutstanding']
 
