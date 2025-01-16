@@ -27,7 +27,7 @@ def check_units(num1, num2):
         print(num1)
         print(num2 * factor)
         if num1 == num2 * factor:
-            return factor # * 1/1000 add for thousand def
+            return float(factor) # * 1/1000 add for thousand def
     # If the second number doesn't represent the same value in any unit
     return False
 
@@ -38,23 +38,37 @@ def parse_table_header(table):
     # TODO: using the get_facts function duoble check that the unit_multiplier is correct
     # The facts will have the right units. 
     unit_multiplier = IN_THOUSANDS
+    shares_unit_multiplier = IN_DOLLARS
     special_case = False
     table_header = table.find("th")
     
     if table_header:
         header_text = table_header.get_text()
         # Determine unit multiplier based on header text
-        if "in thousands" in header_text.lower():
+        if "in thousand" in header_text.lower():
             unit_multiplier = IN_THOUSANDS
-        elif "in millions" in header_text.lower():
+        elif "in million" in header_text.lower():
             unit_multiplier = IN_MILLIONS
         else:
             unit_multiplier = IN_DOLLARS
         # Check for special case scenario
         if "unless otherwise specified" in header_text:
             special_case = True
+
+        # check for shares unit
+        if "shares in" in header_text.lower():
+            # Find the position of "shares in"
+            start_index = header_text.lower().find("shares in") + len("shares in")
+            # Extract the unit by splitting the text after "shares in" and taking the first word
+            unit = header_text[start_index:].lower().strip().split()[0]
+            print(unit)
+            if "thousand" in unit:
+                shares_unit_multiplier = IN_THOUSANDS
+            elif "million" in unit:
+                shares_unit_multiplier = IN_MILLIONS
+            print(shares_unit_multiplier)
     print("End of Parsing table header")
-    return unit_multiplier
+    return unit_multiplier, shares_unit_multiplier
 
 
 class Filling():
@@ -332,7 +346,7 @@ class Filling():
         sections_dict = {}
 
         for table in soup.find_all("table"):
-            unit_multiplier = parse_table_header(table)
+            unit_multiplier, shares_unit_multiplier = parse_table_header(table)
             # Fact check the multipler later
             # Process each row of the table
             inside_section = False
@@ -438,10 +452,15 @@ class Filling():
                             else:
                                 values[column_counter] = -value * unit_multiplier
                         else:
-                            if "nump" in cell.get("class"):
-                                values[column_counter] = value
+                            # this will make sure the other columns of that row to not be changed
+                            if row_title in shares_facts:
+                                unit_multiplier = shares_unit_multiplier
                             else:
-                                values[column_counter] = -value
+                                unit_multiplier = 1 
+                            if "nump" in cell.get("class"):
+                                values[column_counter] = value * unit_multiplier
+                            else:
+                                values[column_counter] = -value * unit_multiplier
                         column_counter += 1
                     elif value:
                         value = float(value)
@@ -469,18 +488,21 @@ class Filling():
             pd.DataFrame: DataFrame constructed from the given data.
         """
         transposed_values_set = list(zip(*values_set))
+        print("testttttttt")
+        print(values_set)
+        print(transposed_values_set)
         df = pd.DataFrame(transposed_values_set, columns=columns, index=index_dates)
+        # ensure that data is displayed as float
+        pd.set_option('display.float_format', '{:.2f}'.format)
         return df
     
 
     def process_one_statement(self, statement_name):
         """
         Processes a single financial statement identified by ticker, accession number, and statement name.
-
         Args:
             accession_number (str): The SEC accession number.
             statement_name (str): Name of the financial statement.
-
         Returns:
             pd.DataFrame or None: DataFrame of the processed statement or None if an error occurs.
         """

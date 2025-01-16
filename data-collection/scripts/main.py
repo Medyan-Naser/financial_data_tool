@@ -12,7 +12,7 @@ t = f.process_one_statement("income_statement")
 # df, labels_dict, taxonomy = f.get_company_facts_DF()
 
 print(t.df)
-print(t.sections_dict)
+# print(t.sections_dict)
 print("#######################")
 
 # print(labels_dict)

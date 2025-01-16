@@ -33,6 +33,7 @@ currency_keys = [USD, EUR, CNY, INR]
 currency_map = {USD: USD_sign, EUR: EUR_sign, CNY: CNY_sign, INR: INR_sign} #CAD: CAD_sign   , 
 
 keep_value_unchanged = ['us-gaap_EarningsPerShareDiluted', 'us-gaap_EarningsPerShareBasic', 'us-gaap_WeightedAverageNumberOfSharesOutstandingBasic', 'us-gaap_WeightedAverageNumberOfDilutedSharesOutstanding']
+shares_facts = ['us-gaap_WeightedAverageNumberOfSharesOutstandingBasic', 'us-gaap_WeightedAverageNumberOfDilutedSharesOutstanding']
 
 
 statement_keys_map = {
