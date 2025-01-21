@@ -4,6 +4,34 @@ from typing import List, Dict, Tuple
 from constants import *
 
 
+# income statement
+'''
+Total Revenue
+cogs
+
+gross profit
+SG&A
+R&D
+
+total operating expenses
+operating income
+interest expense
+interest and invetment income
+currency exchange 
+other non operationg income
+
+EBT excl unusla items
+income tax expense
+asset writedown
+legal settlements
+
+EBT include unusual items
+
+eariing from continuing operations
+
+net icnome
+'''
+
 
 
 class FinancialStatement():
