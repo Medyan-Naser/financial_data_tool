@@ -61,6 +61,8 @@ def parse_calculation_arcs(content):
         # Determine which role this calculation link is for
         role_uri = link.get('{http://www.w3.org/1999/xlink}role')
         main_fact = link.find('link:loc', ns)
+        if not main_fact :
+            continue
         # print(main_fact)
         main_fact = main_fact.attrib['{http://www.w3.org/1999/xlink}label']
         main_fact = get_part_before_pattern(main_fact)
