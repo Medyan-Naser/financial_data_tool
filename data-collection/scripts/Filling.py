@@ -83,6 +83,10 @@ class Filling():
         self.quarterly = quarterly
         self.yearly = not quarterly
         
+        self.income_statement = None
+        self.balance_sheet = None
+        self.cash_flow = None
+
         self.xml_equations = None
         self.statements_file_name_dict = None
         self.company_facts_DF = None
@@ -535,11 +539,13 @@ class Filling():
                 #     last_three_columns = df.iloc[:, -3:]
                 #     df = last_three_columns
                 df = df.round(2)
-                financial_statement = FinancialStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
-                return financial_statement
+                if statement_name == 'income_statement':
+                    self.income_statement = IncomeStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                elif statement_name == 'balance_sheet':
+                    self.balance_sheet = BalanceSheet(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
             except Exception as e:
                 logging.error(f"Error processing statement: {e}")
-                return None
+
             
 
 

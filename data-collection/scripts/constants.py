@@ -109,6 +109,8 @@ statement_keys_map = {
 
 
 ## income statement
+income_names = ['OperatingIncome', 'ProfitLoss', 'NetIncomeLoss', 'IncomeLossFromContinuingOperations', 'ComprehensiveIncomeNet', 'IncomeLoss', 'IncomeFromContinuingOperation']
+
 TotalRevenue= 'Total revenue'
 COGS = 'COGS'
 GrossProfit = 'Gross profit'
@@ -116,7 +118,7 @@ GrossProfit = 'Gross profit'
 
 SGnA = 'SG&A'
 RnD = 'R&D'
-AmoritizationDepreciatio = 'Amoritization & Depreciatio'
+AmortizationDepreciation = 'Amoritization & Depreciation'
 OtherOperatingExpense = 'Other operating expenses'
 TotalOperatingExpense = 'Total operating expense'
 TotalCostAndExpenses = 'C&E'
@@ -124,8 +126,8 @@ OperatingIncome = 'Operating income'
 InterestExpense = 'Interest expense'
 InterestInvestmentIncome = 'Interest and investment income'
 CurencyExchange = 'Cureency Exchange'
-OtherNonOperationgIncomeExpense = 'Other Non Operationg Income Expense'
-TotalNonOperationgIncomeExpense = 'Total Non Operationg Income Expense'
+OtherNonOperatingIncomeExpense = 'Other Non Operationg Income Expense'
+TotalNonOperatingIncomeExpense = 'Total Non Operationg Income Expense'
 EBTexcl = 'EBT exclusing unusual items'
 
 AssetWritedown = "Asset Writedown"
