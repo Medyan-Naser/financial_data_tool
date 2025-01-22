@@ -54,7 +54,44 @@ class IncomeStatement(FinancialStatement):
         self.mapped_df = zeroed_df
 
     def map_facts(self):
-        pass
+        # Extract all the facts and patterns from the IncomeStatementMap
+        map_facts = vars(self.IncomeStatementMap)
+        
+        # Iterate through each row in the original dataframe
+        for idx, row in self.og_df.iterrows():
+            found_match = False
+            print(f"Checking row '{idx}'...")
+
+            # Extract the human string from rows_text using the row index
+            human_string = self.rows_text.get(idx, "")
+            print(f"Human string for {idx}: {human_string}")
+            
+            # Iterate over each MapFact
+            for fact_name, map_fact in map_facts.items():
+                if found_match:
+                    break
+                if isinstance(map_fact, MapFact):
+                    # Check if any of the GAAP patterns match the row index (for GAAP)
+                    for pattern in map_fact.gaap_pattern:
+                        if re.search(pattern, idx):
+                            # If a GAAP pattern matches, copy the row to the mapped_df under the corresponding fact row
+                            fact_row = map_fact.fact
+                            self.mapped_df.loc[fact_row] = row
+                            print(f"GAAP match found for '{idx}' with pattern '{pattern}'. Mapped to fact '{fact_row}'")
+                            found_match = True
+                            break
+                    
+                    # Check if any of the human patterns match the human string
+                    print(map_fact.fact)
+                    for pattern in map_fact.human_pattern:
+                        if re.search(pattern, human_string):
+                            # If a human pattern matches, copy the row to the mapped_df under the corresponding fact row
+                            fact_row = map_fact.fact
+                            self.mapped_df.loc[fact_row] = row
+                            print(f"Human match found for '{idx}' with pattern '{pattern}'. Mapped to fact '{fact_row}'")
+                            found_match = True
+                            break
+        
     
 
 class BalanceSheet(FinancialStatement):

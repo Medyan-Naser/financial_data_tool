@@ -1,7 +1,15 @@
 from constants import *
 
-income_names = ['OperatingIncome', 'ProfitLoss', 'NetIncomeLoss', 'IncomeLossFromContinuingOperations', 'ComprehensiveIncomeNet', 'IncomeLoss', 'IncomeFromContinuingOperation']
-
+# income_names = ['OperatingIncome', 'ProfitLoss', 'NetIncomeLoss', 'IncomeLossFromContinuingOperations', 'ComprehensiveIncomeNet', 'IncomeLoss', 'IncomeFromContinuingOperation']
+gapp_income_patterns = [
+    r"(?i)\bOperatingIncome\b",
+    r"(?i)\bProfitLoss\b",
+    r"(?i)\bNetIncomeLoss\b",
+    r"(?i)\bIncomeLossFromContinuingOperations\b",
+    r"(?i)\bComprehensiveIncomeNet\b",
+    r"(?i)\bIncomeLoss\b",
+    r"(?i)\bIncomeFromContinuingOperation\b"
+]
 
 class MapFact:
 
@@ -151,7 +159,7 @@ class IncomeStatementMap():
             fact=OperatingIncome,
             gaap_pattern=[
                 r"(?i)\boperating\w*income\b",  r"(?i)\bincome\w*loss\b",
-                r"(?i)\bprofit\w*loss\b"
+                r"(?i)\bprofit\w*loss\b", *gapp_income_patterns
             ],
             human_pattern=[
                 r"(?i)\boperating\s+\w*\s+income\b", r"(?i)\bincome\s+\w*\s+loss\b",
@@ -216,7 +224,7 @@ class IncomeStatementMap():
         self.EBTexcl = MapFact(
             fact=EBTexcl,
             gaap_pattern=[
-                r"(?i)\bebt\w*excluding\w*unusual\w*items\b"
+                r"(?i)\bebt\w*excluding\w*unusual\w*items\b" , *gapp_income_patterns
             ],
             human_pattern=[
                 r"(?i)\bebt\s+\w*\s+excluding\s+unusual\s+items\b"
@@ -287,7 +295,7 @@ class IncomeStatementMap():
         self.EBTincl = MapFact(
             fact=EBTincl,
             gaap_pattern=[
-                r"(?i)\bebt\w*include\w*unusual\w*items\b"
+                r"(?i)\bebt\w*include\w*unusual\w*items\b", *gapp_income_patterns
             ],
             human_pattern=[
                 r"(?i)\bebt\s+\w*\s+include\s+unusual\s+items\b"
@@ -307,7 +315,7 @@ class IncomeStatementMap():
         self.NetIncome = MapFact(
             fact=NetIncome,
             gaap_pattern=[
-                r"(?i)\bnet\w*income\b", r"(?i)\bincome\w*net\b"
+                r"(?i)\bnet\w*income\b", r"(?i)\bincome\w*net\b", *gapp_income_patterns
             ],
             human_pattern=[
                 r"(?i)\bnet\s+\w*\s+income\b", r"(?i)\bincome\s+\w*\s+net\b"
@@ -330,7 +338,7 @@ class IncomeStatementMap():
                 r"(?i)\bearnings\w*per\w*share\w*basic\b"
             ],
             human_pattern=[
-                r"(?i)\bEPS\s+(basic/weighted"
+                r"(?i)\bEPS\s+basic/weighted"
             ]
         )
 
