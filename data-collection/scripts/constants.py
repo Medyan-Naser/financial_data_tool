@@ -109,18 +109,50 @@ statement_keys_map = {
 
 
 ## income statement
+TotalRevenue= 'Total revenue'
+COGS = 'COGS'
 GrossProfit = 'Gross profit'
+
+
+SGnA = 'SG&A'
+RnD = 'R&D'
+AmoritizationDepreciatio = 'Amoritization & Depreciatio'
+OtherOperatingExpense = 'Other operating expenses'
+TotalOperatingExpense = 'Total operating expense'
+TotalCostAndExpenses = 'C&E'
 OperatingIncome = 'Operating income'
-EBT = 'EBT'
+InterestExpense = 'Interest expense'
+InterestInvestmentIncome = 'Interest and investment income'
+CurencyExchange = 'Cureency Exchange'
+OtherNonOperationgIncomeExpense = 'Other Non Operationg Income Expense'
+TotalNonOperationgIncomeExpense = 'Total Non Operationg Income Expense'
+EBTexcl = 'EBT exclusing unusual items'
+
+AssetWritedown = "Asset Writedown"
+LegalSettlements = 'legal settlements'
+MergerRestructuringCharges = 'Merger & Restructuring Charges'
+GainLossSaleInvestments = 'Gain/loss on sale of investments'
+GainLossSaleAssets = 'Gain/loss on sale of assets'
+OtherUnusualItems = 'other unusual items'
+
+
+EBTincl = 'EBT include unusual items'
+IncomeTaxExpense = 'Income Tax Expense'
 NetIncome = 'Net income'
+
+MinorityInterest = 'Minority Interest'
+
+EarningsPerShareBasic = 'Earnings Per Share Basic'
+EarningsPerShareDiluted = 'Earnings Per Share Diluted'
+WeightedAverageSharesOutstandingBasic = 'Weighted Average Number Of Shares Outstanding Basic'
+WeightedAverageSharesOutstandingDiluted = 'Weighted Average Number Of Shares Outstanding Diluted'
+
+
 NetIncome_with_unusal_items_1 = 'Net income including unusal items 1'
 NetIncome_with_unusal_items_2 = 'Net income including unusal items 2'
 NetIncome_with_unusal_items_3 = 'Net income including unusal items 3'
 NetIncome_with_unusal_items_4 = 'Net income including unusal items 4'
-TotalRevenue= 'Total revenue'
-TotalOperatingExpense = 'Total operating expense'
-TotalCostAndExpenses = 'C&E'
-MinorityInterest = 'Minority Interest'
+
 
 
 ## Balance sheet
