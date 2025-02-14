@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: backend-service
+    env: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    envVars:
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_bNBnIuwHj40U@ep-divine-grass-a4kjfwqv-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    regions:
+      - us-east-1
