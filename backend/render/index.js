@@ -1,7 +1,17 @@
 const express = require('express');
+const cors = require('cors');  // <-- Import CORS
 const { Client } = require('pg');
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Use CORS middleware
+app.use(cors({
+  origin: "https://financial-data-tool-hjkdo28ly-medyans-projects.vercel.app", // Allow only your frontend
+  methods: "GET,POST,PUT,DELETE",  // Allow necessary HTTP methods
+  allowedHeaders: "Content-Type"
+}));
+
+
 
 // Setup PostgreSQL connection
 const client = new Client({
