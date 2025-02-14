@@ -5,7 +5,7 @@ const port = process.env.PORT || 3000;
 
 // Setup PostgreSQL connection
 const client = new Client({
-  connectionString: process.env.DATABASE_URL, // Use the DATABASE_URL environment variable from Render
+  connectionString: "postgresql://neondb_owner:npg_bNBnIuwHj40U@ep-divine-grass-a4kjfwqv-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require",
   ssl: {
     rejectUnauthorized: false,
   },
