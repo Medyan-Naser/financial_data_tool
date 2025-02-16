@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Income Statement Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1 class="title">Income Statement Viewer</h1>
+            <div class="input-container">
+                <input type="text" id="ticker" class="ticker-input" placeholder="Enter Company Ticker">
+                <button id="fetchData" class="fetch-btn">Get Income Statement</button>
+            </div>
+        </header>
+
+        <!-- Table Section -->
+        <div id="tableContainer" class="table-container">
+            <button id="toggleTable" class="toggle-btn">Toggle Table</button>
+            <div id="result" class="table-result">
+                <!-- Table will be populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Graph Section -->
+        <div id="graphArea" class="graph-area">
+            <!-- Graph divs will be added dynamically here -->
+        </div>
+
+        <!-- Add Graph Button -->
+        <button id="addGraph" class="add-graph-btn">Add Graph</button>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="table.js" defer></script>
+    <script src="graph.js" defer></script>
+    <script src="app.js" defer></script>
+    
+</body>
+
+</html>
