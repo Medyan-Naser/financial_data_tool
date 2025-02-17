@@ -1,0 +1,14 @@
+/* Table Section */
+.table-container {
+    margin-top: 20px;
+}
+
+.toggle-btn {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.table-result {
+    margin-top: 10px;
+}

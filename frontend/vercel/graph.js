@@ -3,106 +3,98 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Expose addGraph globally
     window.addGraph = function () {
-        const table = document.querySelector("#result table");
-        if (!table) {
-            alert("Please fetch data first!");
-            return;
-        }
+        const { years, metrics, data } = getStoredFinancialData();
 
-        const { years, metrics } = getTableData(table);
         if (metrics.length === 0) {
-            alert("No valid financial data found.");
+            alert("No stored financial data found. Please fetch data first.");
             return;
         }
 
-        createGraphSelection(years, metrics);
+        createGraphSelection(years, metrics, data);
     };
 
-    function getTableData(table) {
-        const rows = table.querySelectorAll("tr");
-        if (rows.length < 2) return { years: [], metrics: [] };
-
-        // Extract years (column headers)
-        const years = Array.from(rows[0].cells).slice(1).map(cell => cell.textContent.trim());
-
-        // Extract metric names and values
-        const metrics = [];
-        const data = {};
-
-        rows.forEach((row, index) => {
-            if (index === 0) return; // Skip header row
-            const metricName = row.cells[0].textContent.trim();
-            metrics.push(metricName);
-            data[metricName] = Array.from(row.cells).slice(1).map(cell => parseFloat(cell.textContent) || 0);
-        });
-
-        return { years, metrics, data };
+    function getStoredFinancialData() {
+        let storedData = sessionStorage.getItem("financialData");
+        let currentTicker = sessionStorage.getItem("currentTicker"); // Track the current company
+    
+        if (!storedData || !currentTicker) {
+            return { years: [], metrics: [], data: {} };
+        }
+    
+        storedData = JSON.parse(storedData);
+        
+        if (!storedData[currentTicker]) {
+            return { years: [], metrics: [], data: {} };
+        }
+        
+        // TODO: there will be multiple statements
+        const statementType = Object.keys(storedData[currentTicker])[0]; // Get the first statement type (e.g., "income_statement")
+        if (!statementType) return { years: [], metrics: [], data: {} };
+    
+        const { years, metrics } = storedData[currentTicker][statementType];
+    
+        return { years, metrics: Object.keys(metrics), data: metrics };
     }
+    
 
-    function createGraphSelection(years, metrics) {
+    function createGraphSelection(years, metrics, data) {
         const graphContainer = document.createElement("div");
         graphContainer.className = "graph-container";
-    
+
         const select = document.createElement("select");
         select.multiple = true;
-        select.size = 5; // Show multiple options at once
-    
+        select.size = 5;
+
         metrics.forEach(metric => {
             const option = document.createElement("option");
             option.value = metric;
             option.textContent = metric;
             select.appendChild(option);
         });
-    
+
         const plotButton = document.createElement("button");
         plotButton.textContent = "Plot Graph";
-        plotButton.onclick = () => plotGraph(years, select, graphContainer);
-    
-        // Create the Remove Graph button
+        plotButton.onclick = () => plotGraph(years, data, select, graphContainer);
+
         const removeButton = document.createElement("button");
         removeButton.textContent = "Remove Graph";
         removeButton.onclick = () => removeGraph(graphContainer);
-    
+
         graphContainer.appendChild(select);
         graphContainer.appendChild(plotButton);
-        graphContainer.appendChild(removeButton); // Add the remove button
+        graphContainer.appendChild(removeButton);
+
         const canvas = document.createElement("canvas");
         graphContainer.appendChild(canvas);
-    
         graphArea.appendChild(graphContainer);
     }
-    
 
-    function plotGraph(years, select, graphContainer) {
-        const table = document.querySelector("#result table");
-        const { data } = getTableData(table);
-    
+    function plotGraph(years, data, select, graphContainer) {
         const selectedMetrics = Array.from(select.selectedOptions).map(option => option.value);
+
         if (selectedMetrics.length === 0) {
             alert("Select at least one metric to plot.");
             return;
         }
-    
+
         const datasets = selectedMetrics.map((metric, index) => ({
             label: metric,
-            data: data[metric],
+            data: data[metric] || [],
             borderColor: getRandomColor(index),
             fill: false
         }));
-    
+
         const canvas = graphContainer.querySelector("canvas");
         const ctx = canvas.getContext("2d");
-    
-        // Check if a chart already exists on the canvas, and destroy it if it does
+
         if (canvas.chart) {
             canvas.chart.destroy();
         }
-    
-        // Create a new chart
-        const newChart = new Chart(ctx, {
+
+        canvas.chart = new Chart(ctx, {
             type: "line",
             data: {
-                labels: years.sort((a, b) => a - b), // Sort years numerically
+                labels: years.sort((a, b) => a - b),
                 datasets
             },
             options: {
@@ -113,28 +105,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
-    
-        // Store the chart on the canvas for later reference
-        canvas.chart = newChart;
-    
-        // Ensure the chart resizes when the container is resized
-        window.addEventListener('resize', () => {
-            if (canvas.chart) {
-                canvas.chart.resize();
-            }
-        });
     }
-    
-    
+
     function removeGraph(graphContainer) {
         if (graphContainer) {
-            // If a chart is present, destroy it before removing
             const canvas = graphContainer.querySelector("canvas");
             if (canvas && canvas.chart) {
                 canvas.chart.destroy();
             }
-    
-            // Remove the graph container from the DOM
             graphContainer.remove();
         }
     }

@@ -1,7 +1,6 @@
 /* Container Styles */
 .container {
     width: 100%;
-    /* max-width: 1200px; */
     margin: 0 auto;
     padding: 20px;
     box-sizing: border-box;
@@ -37,64 +36,13 @@ header {
     cursor: pointer;
 }
 
-/* Table Section */
-.table-container {
-    margin-top: 20px;
-}
-
-.toggle-btn {
-    padding: 10px 15px;
-    cursor: pointer;
-    font-size: 1rem;
-}
-
-.table-result {
-    margin-top: 10px;
-}
-
-/* Graph Section */
-.graph-area {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 20px;
-    width: 100%;
-    min-height: 300px;
-}
-
-.graph-container {
-    position: relative;
-    width: 100%;
-    min-height: 300px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    box-sizing: border-box;
-    background-color: #fff;
-    resize: both;
-    overflow: auto;
-}
-
-.graph-container select,
-.graph-container button {
-    display: block;
-    margin: 10px 0;
-    width: 100%;
-}
-
-.graph-container canvas {
-    width: 100% !important;
-    height: auto !important;
-}
-
 /* Button Styling */
 button {
     padding: 10px 15px;
     font-size: 1rem;
     cursor: pointer;
     border: none;
-    background-color: #4CAF50;
+    background-color: #4c54af;
     color: white;
     border-radius: 5px;
     margin-bottom: 10px;
@@ -108,13 +56,7 @@ button:focus {
     outline: none;
 }
 
-/* Add Graph Button */
-.add-graph-btn {
-    display: block;
-    width: 100%;
-    max-width: 200px;
-    margin: 20px auto;
-}
+
 
 /* Make the input box and button in one line */
 .input-container {

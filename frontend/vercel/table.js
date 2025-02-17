@@ -1,5 +1,22 @@
-async function fetchTableData(ticker) {
-    const apiUrl = `http://localhost:3000/income-statement/${ticker}`;
+function storeFinancialData(ticker, statementType, data) {
+    let storedData = sessionStorage.getItem("financialData");
+    storedData = storedData ? JSON.parse(storedData) : {};
+
+    // Ensure structure: { ticker: { statementType: data } }
+    if (!storedData[ticker]) {
+        storedData[ticker] = {};
+    }
+
+    storedData[ticker][statementType] = data;
+
+    sessionStorage.setItem("financialData", JSON.stringify(storedData));
+    sessionStorage.setItem("currentTicker", ticker)
+    console.log("test")
+}
+
+
+async function fetchTableData(ticker, statementType = "income-statement") {
+    const apiUrl = `http://localhost:3000/${statementType}/${ticker}`;
     const result = document.getElementById("result");
 
     try {
@@ -22,6 +39,12 @@ async function fetchTableData(ticker) {
             "R&D": data.map(item => item.r_d)
         };
 
+        // Store data in sessionStorage
+        storeFinancialData(ticker, statementType, { years, metrics });
+        console.log(sessionStorage.getItem("financialData"));
+        console.log("test2")
+
+        // Generate Table
         let tableHTML = `<table><thead><tr><th>Metric</th>`;
 
         // Add Year Headers

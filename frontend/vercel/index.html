@@ -6,17 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Income Statement Viewer</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="table.css">
+    <link rel="stylesheet" href="graph.css">
 </head>
 
 <body>
     <div class="container">
         <header>
             <h1 class="title">Income Statement Viewer</h1>
-            <div class="input-container">
-                <input type="text" id="ticker" class="ticker-input" placeholder="Enter Company Ticker">
-                <button id="fetchData" class="fetch-btn">Get Income Statement</button>
-            </div>
         </header>
+        <div class="input-container">
+            <input type="text" id="ticker" class="ticker-input" placeholder="Enter Company Ticker">
+            <button id="fetchData" class="fetch-btn">Get Income Statement</button>
+        </div>
 
         <!-- Table Section -->
         <div id="tableContainer" class="table-container">
