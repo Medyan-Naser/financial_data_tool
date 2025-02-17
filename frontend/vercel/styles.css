@@ -1,6 +1,7 @@
 /* Container Styles */
 .container {
     width: 100%;
+    max-width: 100%;
     margin: 0 auto;
     padding: 20px;
     box-sizing: border-box;
@@ -73,3 +74,23 @@ button:focus {
 .hidden {
     display: none;
 }
+
+
+
+/* Container for table and graph */
+.table-graph-container {
+    display: flex;
+    width: 100%;
+    height: 500px; /* Adjust this height based on your design */
+}
+
+
+/* Divider between the table and graph */
+.divider {
+    width: 10px;
+    background-color: #ccc;
+    cursor: ew-resize;
+    height: 100%;
+}
+
+/* Add any other styles here */

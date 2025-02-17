@@ -1,9 +1,13 @@
 /* Graph Section */
+
 .graph-area {
+    flex: 1;
+    overflow: auto;
+    padding: 10px;
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
-    /* justify-content: center; */
+    justify-content: center;
     margin-top: 20px;
     width: 100%;
     min-height: 300px;
