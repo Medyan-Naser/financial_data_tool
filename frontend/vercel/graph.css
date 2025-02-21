@@ -1,21 +1,23 @@
 /* Graph Section */
 
 .graph-area {
+    height: 100%;
     flex: 1;
-    overflow: auto;
+    flex-grow: 1;
     padding: 10px;
     display: flex;
     flex-wrap: wrap;
     gap: 15px;
-    justify-content: center;
     margin-top: 20px;
     width: 100%;
     min-height: 300px;
+    /* justify-items: right; */
 }
 
 .graph-container {
     position: relative;
-    width: 600px;
+    resize: both;
+    /* width: 600px; */
     min-width: 300px;
     min-height: 300px;
     border: 2px solid #ddd;
@@ -23,13 +25,10 @@
     padding: 10px;
     box-sizing: border-box;
     background-color: #fff;
-    resize: both;
-    overflow: auto;
+    /* justify-content: right; */
 }
 
-.graph-container:active {
-    cursor: grabbing;
-}
+
 
 .graph-container select,
 .graph-container button {
@@ -38,13 +37,6 @@
     width: 100%;
 }
 
-.graph-container canvas {
-    width: 100% !important;
-    height: auto !important;
-}
-
-
-/* Add Graph Button */
 .add-graph-btn {
     display: block;
     width: 100%;

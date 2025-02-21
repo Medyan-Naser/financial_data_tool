@@ -1,9 +1,11 @@
 /* Table Section */
 .table-container {
     margin-top: 20px;
-    overflow: auto;
     border-right: 2px solid #ccc;
     padding: 10px;
+    position: relative;
+    flex-wrap: wrap;
+    border: 2px solid #ccc;
 }
 
 .toggle-btn {
@@ -15,3 +17,35 @@
 .table-result {
     margin-top: 10px;
 }
+
+
+
+
+/* CSS styles for the financial table */
+table {
+    width: 100%; /* Make the table take the full width of the container */
+    border-collapse: collapse; /* Remove spacing between table cells */
+    margin: 20px 0; /* Add some margin above and below the table */
+    font-family: Arial, sans-serif; /* Set a clean font */
+}
+
+th, td {
+    border: 1px solid #dddddd; /* Add borders to the table cells */
+    text-align: left; /* Align text to the left */
+    padding: 8px; /* Add padding inside table cells */
+}
+
+th {
+    background-color: #f2f2f2; /* Light gray background for table headers */
+    font-weight: bold; /* Make the header text bold */
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9; /* Alternate row background color for better readability */
+}
+
+td:hover {
+    background-color: #976565; /* Highlight row on hover */
+}
+
+

@@ -79,18 +79,35 @@ button:focus {
 
 /* Container for table and graph */
 .table-graph-container {
+    flex: 1;
+    flex-grow: 1;
+    overflow: hidden;
+    padding: 10px;
     display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
     width: 100%;
-    height: 500px; /* Adjust this height based on your design */
+    min-height: 300px;
+    /* height: 100vh; */
 }
 
 
-/* Divider between the table and graph */
-.divider {
-    width: 10px;
-    background-color: #ccc;
-    cursor: ew-resize;
-    height: 100%;
+
+.resize-handle {
+    position: absolute;
+    background-color: #888;
 }
 
-/* Add any other styles here */
+.resizable {
+    resize: both;
+    overflow: auto;
+}
+
+
+
+
+
+
+

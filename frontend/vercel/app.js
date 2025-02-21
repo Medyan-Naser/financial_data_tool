@@ -1,12 +1,23 @@
+
 document.addEventListener("DOMContentLoaded", function () {
     const toggleTableBtn = document.getElementById("toggleTable");
     const fetchDataBtn = document.getElementById("fetchData");
     const addGraphBtn = document.getElementById("addGraph");
     const tickerInput = document.getElementById("ticker");
 
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let startWidth = 0, startHeight = 0;
+    let resizeDirection = "";
+    let activeElement = null;
+    const edgeThreshold = 10; // Distance from edge to trigger resize
+
     // Toggle table visibility
     toggleTableBtn.addEventListener("click", function () {
-        document.getElementById("tableContainer").classList.toggle("hidden");
+        const tableContainer = document.querySelector(".resizable.tableContainer");
+        if (tableContainer) {
+            tableContainer.classList.toggle("hidden");
+        }
     });
 
     // Fetch income statement data
@@ -16,47 +27,88 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Please enter a company ticker.");
             return;
         }
-        fetchTableData(ticker); // Call function from table.js
+        fetchTableData(ticker);
     });
-
     // Dynamically add a graph
     addGraphBtn.addEventListener("click", function () {
-        addGraph(); // Call function from graph.js
+        addGraph();
     });
 
-    // Get references to the divider and the sections
-    const divider = document.getElementById("divider");
-    const tableContainer = document.getElementById("tableContainer");
-    const graphArea = document.getElementById("graphArea");
 
-    // Initialize variables for tracking the mouse position
-    let isDragging = false;
-    let startX = 0;
-    let startWidth = 0;
+    // Function to detect resize region
+    function detectResizeRegion(element, e) {
+        const rect = element.getBoundingClientRect();
+        let direction = "";
 
-    // Mouse down event on the divider to start dragging
-    divider.addEventListener("mousedown", (e) => {
+        if (Math.abs(e.clientX - rect.left) < edgeThreshold) {
+            direction = "left";
+        } else if (Math.abs(e.clientX - rect.right) < edgeThreshold) {
+            direction = "right";
+        }
+        if (Math.abs(e.clientY - rect.top) < edgeThreshold) {
+            direction += "top";
+        } else if (Math.abs(e.clientY - rect.bottom) < edgeThreshold) {
+            direction += "bottom";
+        }
+
+        return direction;
+    }
+
+    // Function to start resizing
+    function startResize(e, element) {
+        resizeDirection = detectResizeRegion(element, e);
+        if (!resizeDirection) return;
+
         isDragging = true;
-        startX = e.clientX;  // Mouse position when dragging starts
-        startWidth = tableContainer.offsetWidth;  // Current width of the table container
-        document.body.style.cursor = "ew-resize";  // Change cursor to resizing
-    });
+        activeElement = element;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = element.getBoundingClientRect();
+        startWidth = rect.width;
+        startHeight = rect.height;
 
-    // Mouse move event to resize the table and graph
-    document.addEventListener("mousemove", (e) => {
-        if (!isDragging) return;
+        e.preventDefault();
+        // document.body.style.cursor = "ew-resize";
+        // resizeDirection.includes("left") || resizeDirection.includes("right") ? "ew-resize" : "ns-resize"
+    }
 
-        const diff = e.clientX - startX;  // Calculate how far the mouse has moved
-        const newTableWidth = startWidth + diff;  // Calculate new width for the table
+    // Function to handle resizing
+    function handleResize(e) {
+        if (!isDragging || !activeElement) return;
 
-        // Set new widths for the table and graph containers
-        tableContainer.style.width = `${newTableWidth}px`;
-        graphArea.style.width = `calc(100% - ${newTableWidth + 10}px)`;  // 10px for the divider width
-    });
+        if (resizeDirection.includes("right")) {
+            activeElement.style.width = `${startWidth + (e.clientX - startX)}px`;
+        }
+        if (resizeDirection.includes("left")) {
+            activeElement.style.width = `${startWidth - (e.clientX - startX)}px`;
+            // activeElement.style.left = `${activeElement.offsetLeft + (e.clientX - startX)}px`;
+        }
+        if (resizeDirection.includes("bottom")) {
+            activeElement.style.height = `${startHeight + (e.clientY - startY)}px`;
+        }
+        if (resizeDirection.includes("top")) {
+            activeElement.style.height = `${startHeight - (e.clientY - startY)}px`;
+            // activeElement.style.top = `${activeElement.offsetTop + (e.clientY - startY)}px`;
+        }
+    }
 
-    // Mouse up event to stop dragging
-    document.addEventListener("mouseup", () => {
+    // Function to stop resizing
+    function stopResize() {
         isDragging = false;
-        document.body.style.cursor = "default";  // Reset cursor
+        activeElement = null;
+        document.body.style.cursor = "default";
+    }
+
+    // Attach resizing to all resizable elements
+    document.addEventListener("mousedown", (e) => {
+        document.querySelectorAll(".resizable").forEach(element => {
+            if (element.contains(e.target)) {
+                startResize(e, element);
+            }
+        });
     });
+
+    // Global event listeners for resizing
+    document.addEventListener("mousemove", handleResize);
+    document.addEventListener("mouseup", stopResize);
 });

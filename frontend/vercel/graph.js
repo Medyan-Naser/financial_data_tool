@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const graphArea = document.getElementById("graphArea");
+    const graphArea = document.getElementById("tableGraphContainer");
 
     // Expose addGraph globally
     window.addGraph = function () {
@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function createGraphSelection(years, metrics, data) {
         const graphContainer = document.createElement("div");
-        graphContainer.className = "graph-container";
+        graphContainer.className = "graph-container resizable";
 
         const select = document.createElement("select");
         select.multiple = true;
