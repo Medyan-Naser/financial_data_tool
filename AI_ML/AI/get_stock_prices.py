@@ -26,14 +26,9 @@ def interval_to_df(ticker, time_periods, valid_intervals):
         interval = valid_intervals,
         progress = False
     )
-    print(df)
-    print(df.columns.tolist())
-    print(df["Close"])
     df = pd.DataFrame(df["Close"])
     df.index = pd.to_datetime(df.index)
-    print(df)
     df = df.rename(columns = {ticker : "Close"})
-    print(df)
     df.index.rename("Date", inplace = True)
     df["Returns"] = 100*df["Close"].pct_change()
     df["Color"] = np.where(df["Returns"]<0, "red", "green")
@@ -51,7 +46,6 @@ def max_interval_to_df(ticker):
     )
     ticker_close = pd.DataFrame(ticker_data["Close"])
     ticker_close.index = pd.to_datetime(ticker_close.index)
-    print(ticker_close)
     ticker_close = ticker_close.rename(columns = {ticker: "Close"})
     ticker_close.index.rename("Date", inplace = True)
     return ticker_close

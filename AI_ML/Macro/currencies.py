@@ -16,7 +16,7 @@ response = requests.get(url, headers=headers)
 
 # Use pandas to read tables from the response content
 currencies = pd.read_html(response.text)
-print(currencies)
+# print(currencies)
 
 
 # Declare columns we will drop from each commodity dataframe
@@ -25,7 +25,7 @@ columns = ['Unnamed: 0', 'Date']
 # Create dataframes
 major_currencies=currencies[0].drop(columns=columns)
 
-print(major_currencies)
+# print(major_currencies)
 # Create functions to display dataframes in plotly format
 
 def get_major_currencies():
@@ -39,5 +39,4 @@ def get_major_currencies():
 ])
     return (major_currencies_table)
 
-print(get_major_currencies())
 

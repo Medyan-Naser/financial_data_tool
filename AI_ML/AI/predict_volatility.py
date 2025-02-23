@@ -6,7 +6,7 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import plotly.graph_objs as go
 from datetime import timedelta
 import plotly.express as px
-from get_stock_prices import *
+from .get_stock_prices import *
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
 def go_generate_index_chart(ticker):

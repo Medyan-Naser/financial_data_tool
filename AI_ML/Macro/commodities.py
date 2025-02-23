@@ -17,7 +17,7 @@ response = requests.get(url, headers=headers)
 
 # Use pandas to read tables from the response content
 commodities = pd.read_html(response.text)
-print(commodities)
+# print(commodities)
 
 # Declare columns we will drop from each commodity dataframe
 columns = ['Date']
@@ -26,9 +26,10 @@ columns = ['Date']
 energy=commodities[0].drop(columns=columns)
 metals=commodities[1].drop(columns=columns)
 agricultural=commodities[2].drop(columns=columns)
-livestock=commodities[3].drop(columns=columns)
-industrial=commodities[4].drop(columns=columns)
+industrial=commodities[3].drop(columns=columns)
+livestock=commodities[4].drop(columns=columns)
 commodities_index=commodities[5].drop(columns=columns)
+
 
 
 # Create functions to display dataframes in plotly format
@@ -98,6 +99,4 @@ def get_index():
                align='left'))
 ])
     return (index_table)
-
-
 

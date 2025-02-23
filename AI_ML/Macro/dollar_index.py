@@ -14,7 +14,6 @@ import yfinance as yf
 # Retreive data
 ticker = "DX-Y.NYB"
 dollar_index = yf.download(f'{ticker}', progress = False)
-print(dollar_index)
 #dollar_index.tail()
 
 def get_dollar_index_vis():

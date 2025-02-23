@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import plotly.express as px
-from get_stock_prices import *
+from .get_stock_prices import *
 
 
 def window_data(df, window, feature_col_number, target_col_number):

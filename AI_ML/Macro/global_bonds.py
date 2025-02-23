@@ -17,8 +17,6 @@ response = requests.get(url, headers=headers)
 
 # Use pandas to read tables from the response content
 bonds = pd.read_html(response.text)
-print(bonds)
-
 
 # Declare columns we will drop from each bond dataframe
 columns = ['Unnamed: 0', 'Date']
@@ -26,7 +24,6 @@ columns = ['Unnamed: 0', 'Date']
 # Create dataframes
 major_10year = bonds[0].drop(columns=columns)
 # major_10year.columns = ['Major', 'Yield', 'Day', 'Weekly', 'Monthly', 'YTD', 'Yearly']
-print(major_10year)
 europe_bonds = bonds[1].drop(columns=columns)
 america_bonds = bonds[2].drop(columns=columns)
 asia_bonds = bonds[3].drop(columns=columns)
