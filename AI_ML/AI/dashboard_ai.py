@@ -1,3 +1,5 @@
+# panel serve dashboard.py 
+
 import panel as pn
 import plotly.graph_objects as go
 from get_stock_prices import *
@@ -54,7 +56,9 @@ def update_dashboard(ticker):
     ai_row5 = pn.Row(max_linechart_ticker(ticker), forecast_plot)
 
     # Update tabs
-    tabs[1] = pn.Column(ai_row1, ai_row2, ai_row3, ai_row4, ai_row5)
+    print(tabs)
+    print(pn.Column(ai_row1, ai_row2, ai_row3, ai_row4, ai_row5))
+    tabs[3] =("AI", pn.Column(ai_row1, ai_row2, ai_row3, ai_row4, ai_row5))
 
 # Create a tab layout for the dashboard
 tabs = pn.Tabs(
