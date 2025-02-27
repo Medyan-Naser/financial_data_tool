@@ -38,32 +38,29 @@
         </div>
     </header>
     <div class="container main-container">
-      <!-- Add Graph Button -->
-      <button id="addGraph" class="add-graph-btn">Add Graph</button>
-        <div id="tableGraphContainer" class="table-graph-container">
-            <!-- Table Section -->
-            <div id="tableContainer" class="table-container resize-handle resizable">
-                <button id="toggleTable" class="toggle-btn">Toggle Table</button>
-                <div id="result" class="table-result">
-                    <!-- Table will be populated dynamically -->
-                </div>
-            </div>
+      <!-- Nav -->
+      <nav id="nav">
+        <ul class="links">
+            <li class="active"><a href="#" data-page="macro.html">Macro</a></li>
+            <li><a href="#" data-page="company.html">Company></li>
+            <li><a href="#" data-page="projects.html">Projects</a></li>
+            <li><a href="#" data-page="certificates.html">Certifications</a></li>
+        </ul>
+      </nav>
+      <div id="main">
         
-            <!-- Graph Section -->
-            <div id="graphArea" class="graph-area">
-                <!-- Graph divs will be added dynamically here -->
-            </div>
-        
-            
-        </div>
-
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Add Plotly.js for rendering the graph -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
-    <script src="table.js" defer></script>
-    <script src="graph.js" defer></script>
-    <script src="app.js" defer></script>
+    <script src="js/table.js" defer></script>
+    <script src="js/graph.js" defer></script>
+    <script src="js/app.js" defer></script>
+    <script src="js/tab_script.js" defer></script>
+    <script src="js/macro.js" defer></script>
     
 </body>
 
