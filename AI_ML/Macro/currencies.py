@@ -1,6 +1,9 @@
 import requests
 import pandas as pd
 import plotly.graph_objects as go
+import json
+from io import StringIO  # Import StringIO
+
 
 # URL of the page to scrape
 url = "https://tradingeconomics.com/currencies"
@@ -15,7 +18,8 @@ headers = {
 response = requests.get(url, headers=headers)
 
 # Use pandas to read tables from the response content
-currencies = pd.read_html(response.text)
+# print(response.text)
+currencies = pd.read_html(StringIO(response.text))
 # print(currencies)
 
 
@@ -24,6 +28,7 @@ columns = ['Unnamed: 0', 'Date']
 
 # Create dataframes
 major_currencies=currencies[0].drop(columns=columns)
+print(major_currencies.to_json(orient='records'))
 
 # print(major_currencies)
 # Create functions to display dataframes in plotly format
@@ -37,6 +42,5 @@ def get_major_currencies():
                fill_color='white',
                align='left'))
 ])
+    
     return (major_currencies_table)
-
-

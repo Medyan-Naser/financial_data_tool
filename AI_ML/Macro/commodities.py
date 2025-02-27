@@ -1,7 +1,8 @@
-
 import requests
 import pandas as pd
 import plotly.graph_objects as go
+from io import StringIO  # Import StringIO
+import json
 
 
 # URL of the page to scrape
@@ -16,7 +17,7 @@ headers = {
 response = requests.get(url, headers=headers)
 
 # Use pandas to read tables from the response content
-commodities = pd.read_html(response.text)
+commodities = pd.read_html(StringIO(response.text))
 # print(commodities)
 
 # Declare columns we will drop from each commodity dataframe
@@ -30,6 +31,19 @@ industrial=commodities[3].drop(columns=columns)
 livestock=commodities[4].drop(columns=columns)
 commodities_index=commodities[5].drop(columns=columns)
 
+# print(energy.to_json(orient='records'))
+# print(metals.to_json(orient='records'))
+# Convert to JSON, then parse it into Python objects before dumping
+energy_json = json.loads(energy.to_json(orient='records'))
+metals_json = json.loads(metals.to_json(orient='records'))
+agricultural_json = json.loads(agricultural.to_json(orient='records'))
+industrial_json = json.loads(industrial.to_json(orient='records'))
+livestock_json = json.loads(livestock.to_json(orient='records'))
+commodities_index_json = json.loads(commodities_index.to_json(orient='records'))
+
+# Now dump the final JSON
+print(json.dumps([energy_json, metals_json, agricultural_json, industrial_json, livestock_json, commodities_index_json], indent=2))
+# print(json.dumps([energy.to_json(orient='records'), metals.to_json(orient='records')]))
 
 
 # Create functions to display dataframes in plotly format
