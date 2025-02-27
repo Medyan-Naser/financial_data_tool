@@ -7,9 +7,9 @@ import os
 import time
 import panel as pn
 pn.extension('plotly')
-from AI_ML.get_stock_prices import *
-from AI_ML.stock_ml_model import *
-from AI_ML.predict_volatility import *
+from AI.get_stock_prices import *
+from AI.stock_ml_model import *
+from AI.predict_volatility import *
 
 from Macro.commodities import *
 from Macro.core_cpi_yoy_inflation import *
