@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const fetchDataBtn = document.getElementById("fetchData");
     const addGraphBtn = document.getElementById("addGraph");
     const tickerInput = document.getElementById("ticker");
+    const currencyGraphContainer = document.getElementById("currencyGraph");
 
     let isDragging = false;
     let startX = 0, startY = 0;
@@ -34,6 +35,46 @@ document.addEventListener("DOMContentLoaded", function () {
         addGraph();
     });
 
+    // Function to fetch and display currency data
+    async function fetchCurrencyData() {
+        try {
+            const response = await fetch("http://localhost:3000/"); // Request data from backend
+            if (!response.ok) {
+                throw new Error("Failed to fetch currency data");
+            }
+            const data = await response.json();
+            console.log(data)
+            displayCurrencyData(data.currenciesTable);
+        } catch (error) {
+            console.error("Error fetching currency data:", error);
+            currencyGraphContainer.innerHTML = "<p>Error loading currency data.</p>";
+        }
+    }
+
+    // Function to display currency data in the div
+    function displayCurrencyData(currenciesTable) {
+        if (!currenciesTable || currenciesTable.length === 0) {
+            currencyGraphContainer.innerHTML = "<p>No currency data available.</p>";
+            return;
+        }
+
+        // Create the header and rows for the table
+        let tableHtml = "<table border='1'><tr><th>Currency</th><th>Price</th><th>Day Change</th><th>Weekly Change</th><th>Monthly Change</th><th>Year-over-Year Change</th></tr>";
+        currenciesTable.forEach(currency => {
+            tableHtml += `<tr>
+                <td>${currency.Major}</td>
+                <td>${currency.Price}</td>
+                <td>${currency.Day}</td>
+                <td>${currency.Weekly}</td>
+                <td>${currency.Monthly}</td>
+                <td>${currency.YoY}</td>
+            </tr>`;
+        });
+        tableHtml += "</table>";
+
+        // Insert the table HTML into the container
+        currencyGraphContainer.innerHTML = tableHtml;
+    }
 
     // Function to detect resize region
     function detectResizeRegion(element, e) {
@@ -111,4 +152,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Global event listeners for resizing
     document.addEventListener("mousemove", handleResize);
     document.addEventListener("mouseup", stopResize);
+    // Fetch data on page load
+    fetchCurrencyData();
 });
