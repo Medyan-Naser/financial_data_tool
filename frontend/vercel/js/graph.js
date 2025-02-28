@@ -1,21 +1,32 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const graphArea = document.getElementById("tableGraphContainer");
+    function initializeGraphContent() {
+        const graphArea = document.getElementById("tableGraphContainer");
+        const addGraphBtn = document.getElementById("addGraph");
 
-    // Expose addGraph globally
-    window.addGraph = function () {
+        console.log("reloaded");
+        
+        if (addGraphBtn) {
+            addGraphBtn.replaceWith(addGraphBtn.cloneNode(true)); // Removes all existing event listeners
+            const newAddGraphBtn = document.getElementById("addGraph");
+            newAddGraphBtn.addEventListener("click", function () {
+                addGraph();
+            });
+        }
+    }
+
+    function addGraph(){
+        console.log("add graph");
         const { years, metrics, data } = getStoredFinancialData();
-
         if (metrics.length === 0) {
             alert("No stored financial data found. Please fetch data first.");
             return;
         }
-
         createGraphSelection(years, metrics, data);
-    };
+    }
 
     function getStoredFinancialData() {
         let storedData = sessionStorage.getItem("financialData");
-        let currentTicker = sessionStorage.getItem("currentTicker"); // Track the current company
+        let currentTicker = sessionStorage.getItem("currentTicker");
     
         if (!storedData || !currentTicker) {
             return { years: [], metrics: [], data: {} };
@@ -27,8 +38,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return { years: [], metrics: [], data: {} };
         }
         
-        // TODO: there will be multiple statements
-        const statementType = Object.keys(storedData[currentTicker])[0]; // Get the first statement type (e.g., "income_statement")
+        const statementType = Object.keys(storedData[currentTicker])[0];
         if (!statementType) return { years: [], metrics: [], data: {} };
     
         const { years, metrics } = storedData[currentTicker][statementType];
@@ -36,7 +46,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return { years, metrics: Object.keys(metrics), data: metrics };
     }
     
-
     function createGraphSelection(years, metrics, data) {
         const graphContainer = document.createElement("div");
         graphContainer.className = "graph-container resizable";
@@ -66,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const canvas = document.createElement("canvas");
         graphContainer.appendChild(canvas);
-        graphArea.appendChild(graphContainer);
+        document.getElementById("tableGraphContainer").appendChild(graphContainer);
     }
 
     function plotGraph(years, data, select, graphContainer) {
@@ -121,4 +130,26 @@ document.addEventListener("DOMContentLoaded", function () {
         const colors = ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"];
         return colors[index % colors.length];
     }
+
+    const mainContainer = document.getElementById("main");
+
+    const observer = new MutationObserver((mutations) => {
+        let contentAdded = false;
+        
+        mutations.forEach(mutation => {
+            if (mutation.addedNodes.length > 0) {
+                contentAdded = true;
+            }
+        });
+
+        if (contentAdded) {
+            console.log("New content loaded into #main, initializing scripts...");
+            
+            observer.disconnect(); // Disconnect observer before modifying the DOM
+            initializeGraphContent();
+            observer.observe(mainContainer, { childList: true, subtree: true }); // Reconnect observer
+        }
+    });
+
+    observer.observe(mainContainer, { childList: true, subtree: true });
 });

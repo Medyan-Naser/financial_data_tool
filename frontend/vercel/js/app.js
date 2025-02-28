@@ -1,11 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const mainContainer = document.getElementById("main");
 
     // Function to initialize event listeners when new content is added
     function initializeContent() {
         const toggleTableBtn = document.getElementById("toggleTable");
         const fetchDataBtn = document.getElementById("fetchData");
-        const addGraphBtn = document.getElementById("addGraph");
         const tickerInput = document.getElementById("ticker");
 
         // if (!toggleTableBtn || !fetchDataBtn || !addGraphBtn || !tickerInput || !currencyGraphContainer) {
@@ -31,12 +29,10 @@ document.addEventListener("DOMContentLoaded", function () {
             fetchTableData(ticker);
         });
 
-        // Dynamically add a graph
-        addGraphBtn.addEventListener("click", function () {
-            addGraph();
-        });
 
     }
+
+    const mainContainer = document.getElementById("main");
 
     // MutationObserver to detect when new content is loaded into #main
     const observer = new MutationObserver((mutations) => {
