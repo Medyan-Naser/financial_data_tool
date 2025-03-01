@@ -15,7 +15,7 @@ ticker="AAPL"
 model_evaluation, ml_plot, forecast_plot, loss_plot, forecast_df = get_ml_model(ticker)
 
 # Generate index charts
-# spy_index = go_generate_index_chart("SPY")
+spy_index = go_generate_index_chart("SPY")
 # djia_index = go_generate_index_chart("DJIA")
 # ndaq_index = go_generate_index_chart("NDAQ")
 # iwm_index = go_generate_index_chart("IWM")
@@ -26,4 +26,8 @@ model_evaluation, ml_plot, forecast_plot, loss_plot, forecast_df = get_ml_model(
 # returns_plot_NDAQ, model_summary_NDAQ, rolling_volatility_plot_NDAQ, forecast_plot_NDAQ = predict_volatility("NDAQ")
 # returns_plot_IWM, model_summary_IWM, rolling_volatility_plot_IWM, forecast_plot_IWM = predict_volatility("IWM")
 
-print(forecast_df.to_json(orient='records'))
+# print(forecast_df.to_json(orient='records'))
+forecast_plot_json = json.loads(forecast_plot.to_json())
+spy_index_json = json.loads(spy_index.to_json())
+
+print(json.dumps([forecast_plot_json, spy_index_json], indent=2))

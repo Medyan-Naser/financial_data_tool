@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const toggleTableBtn = document.getElementById("toggleTable"); 
         const tableContainer = document.getElementById("tableContainer");
 
-        if (!toggleTableBtn) { //|| !fetchDataBtn || !addGraphBtn || !tickerInput || !currencyGraphContainer
+        if (!toggleTableBtn) { 
             return; // Elements not yet available
         }
 

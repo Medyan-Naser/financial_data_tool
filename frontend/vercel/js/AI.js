@@ -34,6 +34,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     function displayAIData(AI_Data) {
+        console.log("display ai")
+        console.log(AI_Data)
         const aiContainer = document.getElementById("aiContainer");
         if (!aiContainer || !AI_Data || AI_Data.length === 0) {
             if (aiContainer) {
@@ -41,20 +43,21 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             return;
         }
-        let tableHtml = "<table border='1'><tr><th>Currency</th><th>Price</th><th>Day Change</th><th>Weekly Change</th><th>Monthly Change</th><th>Year-over-Year Change</th></tr>";
-        AI_Data.forEach(currency => {
-            tableHtml += `<tr>
-                <td>${currency.Major}</td>
-                <td>${currency.Price}</td>
-                <td>${currency.Day}</td>
-                <td>${currency.Weekly}</td>
-                <td>${currency.Monthly}</td>
-                <td>${currency.YoY}</td>
-            </tr>`;
-        });
-        tableHtml += "</table>";
+        // let tableHtml = `<div><Plot data=${AI_Data.data} layout=${AI_Data.layout} /></div>`;
+        // aiContainer.innerHTML = tableHtml;
 
-        aiContainer.innerHTML = tableHtml;
+        // Create a new div element
+        let div = document.createElement("div");
+
+        // You can create a new Plotly plot, assuming you're using Plotly.js
+        if (window.Plotly) {
+            // Create the chart using Plotly
+            Plotly.newPlot(div, AI_Data.data, AI_Data.layout);
+        }
+
+        // Append the newly created div to the aiContainer
+        aiContainer.innerHTML = '';  // Clear any existing content
+        aiContainer.appendChild(div);
     }
 
 });
