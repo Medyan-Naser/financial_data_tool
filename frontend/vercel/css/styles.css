@@ -93,7 +93,51 @@ button:focus {
     /* height: 100vh; */
 }
 
+/* Container for table and graph */
+.macro-container {
+    flex: 1;
+    flex-grow: 1;
+    overflow: hidden;
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+    width: 100%;
+    min-height: 300px;
+    /* height: 100vh; */
+}
 
+/* .macro-container > .resizable {
+width: 100%
+} */
+
+/* .macro-table {
+    height: 500px;
+    width: 500px;
+    border: #ef1818;
+    border-width: 2cm;
+} */
+
+
+.macro-table {
+    border: 1px solid rgba(0, 0, 0, 0.1); /* Light subtle border */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Soft shadow for a modern feel */
+    padding: 16px; /* Adds space inside */
+    margin: 16px 0; /* Spacing between elements */
+    background: white; /* Clean background */
+    transition: all 0.3s ease-in-out; /* Smooth hover effects */
+    height: 500px;
+    width: 500px;
+}
+
+/* Optional: Hover effect for interactivity */
+.macro-table:hover {
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+    border-color: rgba(0, 0, 0, 0.2);
+}
 
 .resize-handle {
     position: absolute;
@@ -119,7 +163,7 @@ button:focus {
 /* Nav */
 
 #nav {
-    color: #ffffff;
+    color: #1952bb;
     display: -moz-flex;
     display: -webkit-flex;
     display: -ms-flex;
@@ -128,14 +172,15 @@ button:focus {
     -webkit-transition: -webkit-transform 1s ease, opacity 1s ease;
     -ms-transition: -ms-transform 1s ease, opacity 1s ease;
     transition: transform 1s ease, opacity 1s ease;
-    background: rgba(255, 255, 255, 0.175);
+    background: rgba(47, 9, 137, 0.432);
     height: 4rem;
     line-height: 4rem;
-    margin: -4rem auto 0 auto;
+    margin:  -2rem auto 0 auto;
     overflow: hidden;
     padding: 0 2rem 0 0;
     position: relative;
-    width: calc(100% - 4rem);
+    /* width: calc(100% - 4rem); */
+    width: 350px;
     max-width: 72rem;
     z-index: 2;
 }
@@ -216,6 +261,8 @@ button:focus {
         #nav ul.links li {
             display: block;
             padding-left: 0;
+            margin: 0 auto;
+            /* margin: 2px; */
         }
 
             #nav ul.links li a {
@@ -235,11 +282,11 @@ button:focus {
                 }
 
             #nav ul.links li.active {
-                background-color: #ffffff;
+                background-color: rgba(47, 9, 137, 0.504);
             }
 
                 #nav ul.links li.active a {
-                    color: #1e252d;
+                    color: #b8babc;
                 }
 
                     #nav ul.links li.active a:hover {
