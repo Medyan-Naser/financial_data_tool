@@ -137,6 +137,28 @@ app.get("/income-statement/:ticker", async (req, res) => {
   }
 });
 
+
+// Income statement endpoint
+app.get("/AI/:ticker", async (req, res) => {
+  const { ticker } = req.params;
+
+  try {
+    const result = await client.query(
+      "SELECT * FROM income_statement WHERE company_id = $1 ORDER BY year DESC",
+      [ticker]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Company not found or no data available." });
+    }
+
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    console.error("Error fetching income statement:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // Start server and load initial data
 app.listen(port, async () => {
   console.log(`Server running on http://localhost:${port}`);
