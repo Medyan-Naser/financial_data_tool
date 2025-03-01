@@ -41,18 +41,19 @@ let cachedData = {};
 // Function to execute a Python script and return JSON data
 const runPythonScript = (scriptName) => {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn("python3", [scriptName]);
+    const pythonProcess = spawn("/usr/local/bin/python3", [scriptName]);
 
     let output = "";
     pythonProcess.stdout.on("data", (data) => {
       output += data.toString();
     });
 
-    pythonProcess.stderr.on("data", (data) => {
-      console.error(`Python Error (${scriptName}): ${data}`);
-      reject(data.toString());
-    });
-
+    // pythonProcess.stderr.on("data", (data) => {
+    //   console.error(`Python Error (${scriptName}): ${data}`);
+    //   reject(data.toString());
+    // });
+    console.log("script output")
+    console.log(output)
     pythonProcess.on("close", () => {
       try {
         const parsedData = JSON.parse(output.trim());
@@ -79,7 +80,9 @@ const loadInitialData = async () => {
     ]);
 
     const [energy, metals, agricultural, industrial, livestock, commodities_index] = await runPythonScript("../../AI_ML/Macro/commodities.py");
-
+    const [AI_Data] = await
+    Promise.all([runPythonScript("../../AI_ML/AI/get_ai_prices.py") // Add more scripts here later
+    ]);
     cachedData = {
       currenciesTable: currenciesData,
       energyTable: energy,
@@ -143,18 +146,14 @@ app.get("/AI/:ticker", async (req, res) => {
   const { ticker } = req.params;
 
   try {
-    const result = await client.query(
-      "SELECT * FROM income_statement WHERE company_id = $1 ORDER BY year DESC",
-      [ticker]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Company not found or no data available." });
-    }
-
-    return res.status(200).json(result.rows);
+    const AI_Data = await
+      runPythonScript("../../AI_ML/AI/for_backend.py") // Add more scripts here later
+    ;
+    return res.status(200).json({
+      AI_Data: AI_Data
+    });
   } catch (error) {
-    console.error("Error fetching income statement:", error);
+    console.error("Error fetching AI data:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 });

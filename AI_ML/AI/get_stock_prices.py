@@ -6,6 +6,9 @@ import numpy as np
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objs as go
+import contextlib
+import io
+
 
 
 time_periods = ["1d","5d","1mo","60d","3mo","6mo","1y","2y","5y","10y","ytd","max"]
@@ -20,12 +23,14 @@ valid_intervals= ["1m","2m","2m","2m","1h","1h","1h","1h","1d","1d","1d","1d"]
 
 
 def interval_to_df(ticker, time_periods, valid_intervals):
-    df = yf.download(
-        ticker,
-        period = time_periods,
-        interval = valid_intervals,
-        progress = False
-    )
+    # Suppress all stdout/stderr output from yfinance
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        df = yf.download(
+            ticker,
+            period=time_periods,
+            interval=valid_intervals,
+            progress=False
+        )
     df = pd.DataFrame(df["Close"])
     df.index = pd.to_datetime(df.index)
     df = df.rename(columns = {ticker : "Close"})
@@ -53,23 +58,25 @@ def max_interval_to_df(ticker):
 
 
 def df_go_to_barchart_30d(ticker, df):
-    fig = go.Figure()
-    fig.add_trace(
-        go.Bar(name = ticker,
-               x = df.index,
-               y = df["Returns"],
-               marker_color = df["Color"],
-               text = df["Close"]
-              )
-    )
-    fig.update_xaxes(
-        rangeslider_visible=True
-    )
-    fig.update_layout(barmode="stack",
-                      title_text = ticker,
-                      xaxis = dict(title_text = "Last 30 Days"),
-                      yaxis = dict(title_text = 'Percent Change (%)')
-                     )
+    # Suppress all stdout/stderr output from yfinance
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        fig = go.Figure()
+        fig.add_trace(
+            go.Bar(name = ticker,
+                x = df.index,
+                y = df["Returns"],
+                marker_color = df["Color"],
+                text = df["Close"]
+                )
+        )
+        fig.update_xaxes(
+            rangeslider_visible=True
+        )
+        fig.update_layout(barmode="stack",
+                        title_text = ticker,
+                        xaxis = dict(title_text = "Last 30 Days"),
+                        yaxis = dict(title_text = 'Percent Change (%)')
+                        )
     return fig
 
 

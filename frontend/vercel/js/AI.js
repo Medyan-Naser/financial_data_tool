@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         mutations.forEach(mutation => {
             if (mutation.addedNodes.length > 0) {
-                console.log("New content loaded into #main, initializing scripts...");
+                console.log("New content loaded into #main, initializing scripts... test");
                 initializeAIContent();
             }
         });
@@ -27,8 +27,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     async function fetchAIData() {
+        console.log("get ai data")
         let currentTicker = sessionStorage.getItem("currentTicker");
         try {
+            console.log(currentTicker)
             const response = await fetch(`http://localhost:3000/AI/${currentTicker}`); // Single endpoint for all data
             if (!response.ok) {
                 throw new Error("Failed to fetch data");
