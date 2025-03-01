@@ -1,30 +1,20 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const mainContainer = document.getElementById("main");
-    
-    let isUpdating = false; // Flag to prevent infinite loop
 
-    function initializeContent() {
-        if (!isUpdating) {
+    // fetch the data for the first time when the user load
+    setTimeout(() => {
+        fetchAllData();
+    }, 50);
+
+
+    const tabContainer = document.getElementById("macro-tab"); // Assuming this is your tab wrapper
+
+    tabContainer.addEventListener("click", function (event) {
+        setTimeout(() => {
             fetchAllData();
-        }
-    }
-
-    const observer = new MutationObserver((mutations) => {
-        if (isUpdating) return; // Ignore changes made by the script itself
-
-        mutations.forEach(mutation => {
-            if (mutation.addedNodes.length > 0) {
-                console.log("New content loaded into #main, initializing scripts...");
-                initializeContent();
-            }
-        });
+        }, 50);
+        // }
     });
 
-    if (mainContainer) {
-        observer.observe(mainContainer, { childList: true, subtree: true });
-    } else {
-        console.error("#main container not found.");
-    }
 
     async function fetchAllData() {
         try {
@@ -33,12 +23,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 throw new Error("Failed to fetch data");
             }
             const data = await response.json();
-            isUpdating = true; // Prevent observer from reacting to changes
             console.log(data)
             displayCurrencyData(data.currenciesTable);
             displayMetalsData(data.metalsTable);
             displayEnergyData(data.energyTable);
-            setTimeout(() => { isUpdating = false; }, 500); // Reset after a short delay
         } catch (error) {
             console.error("Error fetching data:", error);
             const currencyGraphContainer = document.getElementById("currencyGraph");

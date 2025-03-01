@@ -1,9 +1,20 @@
 document.addEventListener("DOMContentLoaded", function () {
+
+    const tabContainer = document.getElementById("company-tab"); // Assuming this is your tab wrapper
+
+    tabContainer.addEventListener("click", function (event) {
+        console.log(event.target.classList)
+        // if (event.target.classList.contains("tab")) { 
+        console.log("Tab clicked:", event.target.textContent);
+        setTimeout(() => {
+            initializeGraphContent();
+        }, 50);
+        // }
+    });
+
     function initializeGraphContent() {
         const graphArea = document.getElementById("tableGraphContainer");
         const addGraphBtn = document.getElementById("addGraph");
-
-        console.log("reloaded");
         
         if (addGraphBtn) {
             addGraphBtn.replaceWith(addGraphBtn.cloneNode(true)); // Removes all existing event listeners
@@ -130,26 +141,4 @@ document.addEventListener("DOMContentLoaded", function () {
         const colors = ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"];
         return colors[index % colors.length];
     }
-
-    const mainContainer = document.getElementById("main");
-
-    const observer = new MutationObserver((mutations) => {
-        let contentAdded = false;
-        
-        mutations.forEach(mutation => {
-            if (mutation.addedNodes.length > 0) {
-                contentAdded = true;
-            }
-        });
-
-        if (contentAdded) {
-            console.log("New content loaded into #main, initializing scripts...");
-            
-            observer.disconnect(); // Disconnect observer before modifying the DOM
-            initializeGraphContent();
-            observer.observe(mainContainer, { childList: true, subtree: true }); // Reconnect observer
-        }
-    });
-
-    observer.observe(mainContainer, { childList: true, subtree: true });
 });

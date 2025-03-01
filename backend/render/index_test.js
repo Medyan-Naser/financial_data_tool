@@ -80,9 +80,6 @@ const loadInitialData = async () => {
     ]);
 
     const [energy, metals, agricultural, industrial, livestock, commodities_index] = await runPythonScript("../../AI_ML/Macro/commodities.py");
-    const [AI_Data] = await
-    Promise.all([runPythonScript("../../AI_ML/AI/get_ai_prices.py") // Add more scripts here later
-    ]);
     cachedData = {
       currenciesTable: currenciesData,
       energyTable: energy,
@@ -146,9 +143,12 @@ app.get("/AI/:ticker", async (req, res) => {
   const { ticker } = req.params;
 
   try {
-    const AI_Data = await
-      runPythonScript("../../AI_ML/AI/for_backend.py") // Add more scripts here later
-    ;
+    const [AI_Data] = await
+    Promise.all([runPythonScript("../../AI_ML/AI/get_ai_prices.py") // Add more scripts here later
+    ]);
+    // const AI_Data = await
+    //   runPythonScript("../../AI_ML/AI/for_backend.py") // Add more scripts here later
+    // ;
     return res.status(200).json({
       AI_Data: AI_Data
     });

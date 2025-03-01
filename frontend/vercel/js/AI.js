@@ -1,30 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const mainContainer = document.getElementById("main");
-    
-    let isUpdating = false; // Flag to prevent infinite loop
 
-    function initializeAIContent() {
-        if (!isUpdating) {
+    const tabContainer = document.getElementById("ai-tab"); // Assuming this is your tab wrapper
+
+    tabContainer.addEventListener("click", function (event) {
+        setTimeout(() => {
             fetchAIData();
-        }
-    }
-
-    const observer = new MutationObserver((mutations) => {
-        if (isUpdating) return; // Ignore changes made by the script itself
-
-        mutations.forEach(mutation => {
-            if (mutation.addedNodes.length > 0) {
-                console.log("New content loaded into #main, initializing scripts... test");
-                initializeAIContent();
-            }
-        });
+        }, 50);
+        // }
     });
-
-    if (mainContainer) {
-        observer.observe(mainContainer, { childList: true, subtree: true });
-    } else {
-        console.error("#main container not found.");
-    }
 
     async function fetchAIData() {
         console.log("get ai data")
@@ -36,10 +19,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 throw new Error("Failed to fetch data");
             }
             const data = await response.json();
-            isUpdating = true; // Prevent observer from reacting to changes
             console.log(data)
             displayAIData(data.AI_Data);
-            setTimeout(() => { isUpdating = false; }, 500); // Reset after a short delay
         } catch (error) {
             console.error("Error fetching data:", error);
             const aiContainer = document.getElementById("aiContainer");
