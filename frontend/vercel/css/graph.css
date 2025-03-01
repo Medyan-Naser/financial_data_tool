@@ -37,9 +37,9 @@
     width: 100%;
 }
 
-.add-graph-btn {
+.add-graph-btn, .toggle-btn {
     display: block;
-    width: 100%;
+    width: 50%;
     max-width: 200px;
     margin: 20px auto;
 }

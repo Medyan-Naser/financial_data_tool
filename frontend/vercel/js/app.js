@@ -26,7 +26,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Function to initialize event listeners when new content is added
     function initializeContent() {
-        const toggleTableBtn = document.getElementById("toggleTable");
+        const toggleTableBtn = document.getElementById("toggleTable"); 
+        const tableContainer = document.getElementById("tableContainer");
 
         if (!toggleTableBtn) { //|| !fetchDataBtn || !addGraphBtn || !tickerInput || !currencyGraphContainer
             return; // Elements not yet available
@@ -34,7 +35,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Toggle table visibility
         toggleTableBtn.addEventListener("click", function () {
-            const tableContainer = document.querySelector(".resizable.tableContainer");
             if (tableContainer) {
                 tableContainer.classList.toggle("hidden");
             }

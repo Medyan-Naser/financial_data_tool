@@ -60,34 +60,26 @@ document.addEventListener("DOMContentLoaded", function () {
     function createGraphSelection(years, metrics, data) {
         const graphContainer = document.createElement("div");
         graphContainer.className = "graph-container resizable";
-
-        const select = document.createElement("select");
-        select.multiple = true;
-        select.size = 5;
-
-        metrics.forEach(metric => {
-            const option = document.createElement("option");
-            option.value = metric;
-            option.textContent = metric;
-            select.appendChild(option);
-        });
-
-        const plotButton = document.createElement("button");
-        plotButton.textContent = "Plot Graph";
+    
+        graphContainer.innerHTML = `
+            <select multiple size="4">
+                ${metrics.map(metric => `<option value="${metric}">${metric}</option>`).join("")}
+            </select>
+            <button class="plot-btn">Plot Graph</button>
+            <button class="remove-btn">Remove Graph</button>
+            <canvas></canvas>
+        `;
+    
+        const select = graphContainer.querySelector("select");
+        const plotButton = graphContainer.querySelector(".plot-btn");
+        const removeButton = graphContainer.querySelector(".remove-btn");
+    
         plotButton.onclick = () => plotGraph(years, data, select, graphContainer);
-
-        const removeButton = document.createElement("button");
-        removeButton.textContent = "Remove Graph";
         removeButton.onclick = () => removeGraph(graphContainer);
-
-        graphContainer.appendChild(select);
-        graphContainer.appendChild(plotButton);
-        graphContainer.appendChild(removeButton);
-
-        const canvas = document.createElement("canvas");
-        graphContainer.appendChild(canvas);
+    
         document.getElementById("tableGraphContainer").appendChild(graphContainer);
     }
+    
 
     function plotGraph(years, data, select, graphContainer) {
         const selectedMetrics = Array.from(select.selectedOptions).map(option => option.value);

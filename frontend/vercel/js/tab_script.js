@@ -26,14 +26,11 @@ document.addEventListener("DOMContentLoaded", async function () {
             event.preventDefault();
             // Remove active class from all list items
             document.querySelectorAll(".links li").forEach(li => li.classList.remove("active"));
-            
             // Add active class to the clicked item's parent <li>
             this.parentElement.classList.add("active");
-
             // Load the requested page and wait for it to finish
             const page = this.getAttribute("data-page");
             await loadPage(page);
-
             // Close the navigation panel
             closeNavPanel();
         });

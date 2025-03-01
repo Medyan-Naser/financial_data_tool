@@ -13,9 +13,21 @@ function storeFinancialData(ticker, statementType, data) {
     sessionStorage.setItem("currentTicker", ticker)
 }
 
+function createTableSelection() {
+    const tableContainer = document.createElement("div");
+    tableContainer.className = "table-container resize-handle resizable";
+
+    tableContainer.innerHTML = `
+        <div id="result" class="table-result">
+        </div>
+    `;
+    document.getElementById("tableGraphContainer").appendChild(tableContainer);
+}
+
 
 async function fetchTableData(ticker, statementType = "income-statement") {
     const apiUrl = `http://localhost:3000/${statementType}/${ticker}`;
+    createTableSelection()
     const result = document.getElementById("result");
 
     try {
