@@ -58,9 +58,9 @@ const runPythonScript = (scriptName) => {
       try {
         const parsedData = JSON.parse(output.trim());
 
-        if (!Array.isArray(parsedData)) {
-          return reject(`Expected an array but got: ${output.trim()}`);
-        }
+        // if (!Array.isArray(parsedData)) {
+        //   return reject(`Expected an array but got: ${output.trim()}`);
+        // }
 
         resolve(parsedData);
       } catch (error) {
@@ -80,6 +80,11 @@ const loadInitialData = async () => {
     ]);
 
     const [energy, metals, agricultural, industrial, livestock, commodities_index] = await runPythonScript("../../AI_ML/Macro/commodities.py");
+
+    // const [company_plot, spy_index] = await runPythonScript("../../AI_ML/AI/get_ai_prices.py");
+    // console.log(company_plot)
+    // console.log(spy_index)
+
     cachedData = {
       currenciesTable: currenciesData,
       energyTable: energy,
@@ -143,14 +148,10 @@ app.get("/AI/:ticker", async (req, res) => {
   const { ticker } = req.params;
 
   try {
-    const [AI_Data] = await
-    Promise.all([runPythonScript("../../AI_ML/AI/get_ai_prices.py") // Add more scripts here later
-    ]);
-    // const AI_Data = await
-    //   runPythonScript("../../AI_ML/AI/for_backend.py") // Add more scripts here later
-    // ;
+    const [company_plot, spy_index] = await runPythonScript("../../AI_ML/AI/get_ai_prices.py");
     return res.status(200).json({
-      AI_Data: AI_Data
+      company_plot : company_plot, 
+      spy_index : spy_index,
     });
   } catch (error) {
     console.error("Error fetching AI data:", error);

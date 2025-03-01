@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             const data = await response.json();
             console.log(data)
-            displayAIData(data.AI_Data);
+            displayAIData(data);
         } catch (error) {
             console.error("Error fetching data:", error);
             const aiContainer = document.getElementById("aiContainer");
@@ -47,17 +47,24 @@ document.addEventListener("DOMContentLoaded", function () {
         // aiContainer.innerHTML = tableHtml;
 
         // Create a new div element
-        let div = document.createElement("div");
-
+        let company_plot_div = document.createElement("div");
         // You can create a new Plotly plot, assuming you're using Plotly.js
         if (window.Plotly) {
             // Create the chart using Plotly
-            Plotly.newPlot(div, AI_Data.data, AI_Data.layout);
+            Plotly.newPlot(company_plot_div, AI_Data.company_plot.data, AI_Data.company_plot.layout);
         }
-
         // Append the newly created div to the aiContainer
-        aiContainer.innerHTML = '';  // Clear any existing content
-        aiContainer.appendChild(div);
+        aiContainer.appendChild(company_plot_div);
+
+        // Create a new div element
+        let spy_index_div = document.createElement("div");
+        // You can create a new Plotly plot, assuming you're using Plotly.js
+        if (window.Plotly) {
+            // Create the chart using Plotly
+            Plotly.newPlot(spy_index_div, AI_Data.spy_index.data, AI_Data.spy_index.layout);
+        }
+        // Append the newly created div to the aiContainer
+        aiContainer.appendChild(spy_index_div);
     }
 
 });
