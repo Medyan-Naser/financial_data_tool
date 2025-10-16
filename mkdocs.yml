@@ -3,11 +3,13 @@ site_name: Finance Knowledge Hub
 nav:
   - Home: index.md
   - Stocks: 
-    - Overview: Stocks/overview.md
-    - Metrics: Stocks/metrics.md
+    - Overview: stocks/overview.md
+    - Metrics: stocks/metrics.md
+  - Books:
+    - Security Analysis: books/security_analysis.md
   # cycles
   # Interest
-  
+
 
 theme:
   name: material
