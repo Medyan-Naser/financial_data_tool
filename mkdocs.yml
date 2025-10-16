@@ -2,6 +2,12 @@ site_name: Finance Knowledge Hub
 
 nav:
   - Home: index.md
+  - Stocks: 
+    - Overview: Stocks/overview.md
+    - Metrics: Stocks/metrics.md
+  # cycles
+  # Interest
+  
 
 theme:
   name: material
