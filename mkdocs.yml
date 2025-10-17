@@ -7,6 +7,7 @@ nav:
     - Metrics: stocks/metrics.md
   - Books:
     - Security Analysis: books/security_analysis.md
+    - "Rule #1": books/rule_1.md
   # cycles
   # Interest
 
