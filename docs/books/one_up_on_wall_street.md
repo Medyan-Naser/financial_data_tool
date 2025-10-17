@@ -1,7 +1,5 @@
 # One Up On Wall Street — Key Concepts & Notes
 
-_A distilled guide combining Peter Lynch's main ideas (from One Up On Wall Street) with your notes and practical checks you can use when researching stocks._
-
 ---
 
 ## 1. Book at-a-glance
@@ -20,13 +18,13 @@ _A distilled guide combining Peter Lynch's main ideas (from One Up On Wall Stree
 
 ---
 
-## 3. Important lessons from Chapter 3 (bonds vs stocks)
+## 3. Important lessons from (bonds vs stocks)
 - Lynch warns that corporate bonds are often callable (which removes downside protection when rates fall). If your aim is to profit from interest-rate declines, **Treasuries** (non-callable government bonds) are typically preferable to callable corporate bonds.
 - More broadly: understand the terms of fixed-income instruments before using them as a hedge or safe alternative.
 
 ---
 
-## 4. The six stock categories (from your notes + clarifications)
+## 4. The six stock categories
 Peter Lynch groups companies into six types — each requires a different approach and different expectations.
 
 ### 1) Slow growers
@@ -48,11 +46,11 @@ Peter Lynch groups companies into six types — each requires a different approa
 ### 5) Turnarounds
 - Characteristics: Companies with depressed results that may recover after restructuring, management changes, spin-offs, or asset sales.
 - Types (from your notes):
-  - Bail-out-dependent (government guarantees) — risky and often avoidable.
-  - Unexpected recoveries ("who-would-have-thunk-it").
-  - Small problems magnified by sentiment (a solvable issue driving the price down).
-  - Good company inside a bankrupt entity (possible spin-off).
-  - Restructuring to improve shareholder value (sell off non-core assets, cost cuts).
+    - Bail-out-dependent (government guarantees) — risky and often avoidable.
+    - Unexpected recoveries ("who-would-have-thunk-it").
+    - Small problems magnified by sentiment (a solvable issue driving the price down).
+    - Good company inside a bankrupt entity (possible spin-off).
+    - Restructuring to improve shareholder value (sell off non-core assets, cost cuts).
 - Caveat: Avoid tragedies where outcomes are unmeasurable. Turnarounds require precise facts and conservative assumptions.
 
 ### 6) Asset plays
@@ -92,3 +90,31 @@ Lynch favored simple, understandable metrics. Below are the ones he stresses, mi
 
 ---
 
+## 6. Price vs Earnings charting
+- Lynch illustrated that **price often moves ahead of earnings** and that价格/earnings relationships revert: when price is above earnings expectations, the risk of a decline rises until the P/E normalizes.
+- Practical tip: plot trailing earnings per share on the same axis as price (or plot price / earnings multiple through time). Look for divergence: a sustained price-earnings decoupling requires corresponding earnings growth to justify the price.
+
+---
+
+## 7. How to use these ideas in a checklist (quick research workflow)
+1. **Spot the idea with everyday observation.** Ask: why is this product/service selling now? What changed?
+2. **Categorize the company.** Which of Peter Lynch’s six types fits? Apply that category’s rules.
+3. **Run the quick financial checks:**
+    - P/E and PEG. Is PEG ≈ 1 or lower?
+    - Price-to-cash-flow. Aim for lower ratios.
+    - Net cash per share and long-term debt ratio.
+    - Inventories vs sales trend.
+    - Pension fund (if relevant).
+    - Hidden assets or asset value materially above market cap.
+    - Percent of sales for the product that excites you.
+4. **Understand management and story:** Are there one-off items, cyclical timing, or structural changes? Is the turnaround story measurable?
+5. **Decide sizing & thesis:** How big will the position be if the thesis plays out? What are the downside risks? Set a sell rule (e.g., story broken, fundamentals deteriorate, or stock becomes richly valued).
+
+---
+
+## 8. Special considerations & caveats
+- Lynch’s rules are **practical heuristics** — not guaranteed formulas. They are designed for common-sense research, not quantitative arbitrage.
+- The PEG = 1 rule is helpful but can be misleading during macro shifts, near-zero interest rates, or for commodities-driven earnings. Always pair with qualitative business understanding.
+- Turnarounds and cyclicals often require extra caution: know the industry cycle, capital needs, and covenant structure on debt.
+
+---
