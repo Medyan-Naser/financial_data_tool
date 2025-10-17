@@ -69,3 +69,64 @@ margin_of_safety_buy_price (50%) = $46.58
 
 ---
 
+## 5) Technical tools for timing (three tools)
+
+Phil Town recommends three technical indicators to help time entries and exits (used only after you’ve verified the company is fundamentally sound and priced below your Sticker Price):
+
+1. **MACD (Moving Average Convergence Divergence)**
+   - MACD is the difference between a short EMA and a long EMA. Town prefers a faster setting he finds better for his style (commonly reported as **8–17–9** in Rule #1 commentary rather than the classic 12–26–9).
+   - Plot MACD and a trigger (signal) line (a short EMA of the MACD, e.g., 9-day). Buy signals are when MACD crosses **above** the signal line; sell signals the opposite.
+
+2. **Stochastics (momentum / overbought-oversold)**
+   - Measures where the current close sits within the high-low range over a lookback (book recommends 14 for the %K window).
+   - A smoothed moving average of the %K (often %D) is used as a trigger (book recommends a 5-period smoothing).
+   - When the %K crosses above %D from low territory, it’s a momentum buy; crossing below from high territory is a sell.
+
+3. **Moving averages (market psychology)**
+   - Simple or exponential moving averages smooth price action (book recommends tracking a 10-day MA for short-term timing).
+   - If price crosses above the moving average, it’s bullish; if it crosses below, it’s bearish.
+
+**Important:** These are **timing tools** — they do not replace the fundamental analysis. Use them to help avoid buying at the top or selling into panic.
+
+---
+
+## 6) Cash flow vs Free cash flow
+
+- If **Free Cash Flow** (FCF) is volatile or hard to predict, Rule #1 suggests checking **Operating Cash Flow** as a more stable indicator of cash generated from core operations before large capital expenditures or dividend payouts.
+- Operating Cash Flow growing year-to-year is a good sign; it can act as a substitute when FCF is inconsistent.
+
+---
+
+## 7) Liquidity guideline
+
+Phil Town suggests a practical liquidity cutoff: prefer stocks that trade **at least ~500,000 shares/day** on average. The idea is to avoid illiquid names where large orders (yours or others’) move the price dramatically.
+
+---
+
+## 8) Practical checklist (to apply Rule #1 using your highlights)
+
+1. Does the company have a clear moat (one or more of the five types)?
+2. Do the Big Five metrics average ≥ 10% over the past 10 years? If not, why?
+3. Is current EPS, and projected future EPS (using a conservative growth estimate), reasonable and backed by company fundamentals (use equity/book growth as a sanity check)?
+4. Estimate a future PE (compare sector & historical PEs). Compute Sticker Price and your MOS buy price.
+5. Check cash flow stability — operating cash flow if FCF is erratic.
+6. Check liquidity — average daily volume ≥ ~500k shares.
+7. Use MACD + Stochastics + Moving Average for timing entries/exits (don’t buy unless technicals aren’t screaming sell).
+8. Confirm management honesty, sensible capital allocation, and reasonable debt levels.
+
+---
+
+## 9) Common pitfalls & notes
+
+- **Relying solely on historical EPS** can mislead; Town recommends looking at equity/book growth as a steadier measure of business growth.
+- **Technical indicators are tools, not rules** — they can give false signals; keep fundamentals first.
+- **Estimations vary widely** — the Sticker Price is only as reliable as your growth and multiple assumptions. Use a conservative approach and wide MOS.
+
+---
+
+## 10) Suggested next actions
+
+- Convert your favorite companies into the checklist above and compute Sticker Price + MOS for each.
+- Keep a simple spreadsheet tracking the Big Five annually and technical signals so you can compare reality vs assumptions.
+
+---
