@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from . import data
+from . import ai_endpoints
+from . import macro_endpoints
 from starlette.middleware.cors import CORSMiddleware
 
 
@@ -13,5 +15,8 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
 )
+
 # Include the API routes
 app.include_router(data.router)
+app.include_router(ai_endpoints.router)
+app.include_router(macro_endpoints.router)

@@ -6,6 +6,8 @@ import ChartManager from './components/ChartManager';
 import TickerSearch from './components/TickerSearch';
 import DraggableResizablePanel from './components/DraggableResizablePanel';
 import AlignmentGuides from './components/AlignmentGuides';
+import MacroView from './components/MacroView';
+import AIView from './components/AIView';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -15,11 +17,12 @@ function App() {
   const [financialData, setFinancialData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activeMainTab, setActiveMainTab] = useState('stocks'); // Main navigation: stocks, economy, ai
   const [activeTab, setActiveTab] = useState('income_statement');
   const [charts, setCharts] = useState([]);
   const [tablePanel, setTablePanel] = useState({
-    position: { x: 30, y: 30 },
-    size: { width: 800, height: 600 }
+    position: { x: 20, y: 20 },
+    size: { width: 1000, height: 700 }
   });
   const [chartPanels, setChartPanels] = useState({});
   const [draggingPanel, setDraggingPanel] = useState(null);
@@ -69,13 +72,13 @@ function App() {
     
     // Position new chart to the right of the last chart or table
     const allPanels = Object.values(chartPanels);
-    let xPos = tablePanel.position.x + tablePanel.size.width + 20;
+    let xPos = tablePanel.position.x + tablePanel.size.width + 15;
     let yPos = tablePanel.position.y;
     
     if (allPanels.length > 0) {
       const lastPanel = allPanels[allPanels.length - 1];
       xPos = lastPanel.position.x;
-      yPos = lastPanel.position.y + lastPanel.size.height + 20;
+      yPos = lastPanel.position.y + lastPanel.size.height + 15;
     }
     
     setCharts([...charts, newChart]);
@@ -83,7 +86,7 @@ function App() {
       ...prev,
       [newChartId]: {
         position: { x: xPos, y: yPos },
-        size: { width: 600, height: 400 }
+        size: { width: 800, height: 500 }
       }
     }));
   };
@@ -169,18 +172,46 @@ function App() {
     <div className="App">
       <header className="app-header">
         <h1>📊 Financial Data Tool</h1>
-        <TickerSearch
-          tickers={availableTickers}
-          onSelect={handleTickerSelect}
-          selectedTicker={selectedTicker}
-        />
+        
+        {/* Main Navigation Tabs */}
+        <div className="main-tabs">
+          <button
+            className={`main-tab ${activeMainTab === 'stocks' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('stocks')}
+          >
+            📈 Individual Stocks
+          </button>
+          <button
+            className={`main-tab ${activeMainTab === 'economy' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('economy')}
+          >
+            🌍 Economy
+          </button>
+          <button
+            className={`main-tab ${activeMainTab === 'ai' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('ai')}
+          >
+            🤖 AI Predictions
+          </button>
+        </div>
+        
+        {activeMainTab === 'stocks' && (
+          <TickerSearch
+            tickers={availableTickers}
+            onSelect={handleTickerSelect}
+            selectedTicker={selectedTicker}
+          />
+        )}
       </header>
 
       <main className="app-main">
-        {loading && <div className="loading">Loading financial data...</div>}
-        {error && <div className="error">{error}</div>}
+        {/* Individual Stocks Tab */}
+        {activeMainTab === 'stocks' && (
+          <>
+            {loading && <div className="loading">Loading financial data...</div>}
+            {error && <div className="error">{error}</div>}
 
-        {financialData && (
+            {financialData && (
           <div className="canvas-container">
             <AlignmentGuides 
               guides={alignmentGuides} 
@@ -260,13 +291,25 @@ function App() {
               );
             })}
           </div>
+            )}
+
+            {!selectedTicker && !loading && (
+              <div className="welcome">
+                <h2>Welcome to Financial Data Tool</h2>
+                <p>Search for a ticker above to view financial statements and create visualizations.</p>
+              </div>
+            )}
+          </>
         )}
 
-        {!selectedTicker && !loading && (
-          <div className="welcome">
-            <h2>Welcome to Financial Data Tool</h2>
-            <p>Search for a ticker above to view financial statements and create visualizations.</p>
-          </div>
+        {/* Economy Tab */}
+        {activeMainTab === 'economy' && (
+          <MacroView />
+        )}
+
+        {/* AI Predictions Tab */}
+        {activeMainTab === 'ai' && (
+          <AIView />
         )}
       </main>
     </div>

@@ -111,8 +111,10 @@ function DraggableResizablePanel({
 
   // Handle mouse move for resizing
   useEffect(() => {
+    if (!isResizing.horizontal && !isResizing.vertical) return;
+
     const handleResizeMove = (e) => {
-      if (!isResizing.horizontal && !isResizing.vertical) return;
+      e.preventDefault();
 
       const deltaX = e.clientX - resizeStartPos.current.x;
       const deltaY = e.clientY - resizeStartPos.current.y;
@@ -129,20 +131,19 @@ function DraggableResizablePanel({
       onSizeChange(newSize);
     };
 
-    const handleResizeEnd = () => {
+    const handleResizeEnd = (e) => {
+      e.preventDefault();
       setIsResizing({ horizontal: false, vertical: false, corner: false });
     };
 
-    if (isResizing.horizontal || isResizing.vertical) {
-      document.addEventListener('mousemove', handleResizeMove);
-      document.addEventListener('mouseup', handleResizeEnd);
-    }
+    document.addEventListener('mousemove', handleResizeMove, true);
+    document.addEventListener('mouseup', handleResizeEnd, true);
 
     return () => {
-      document.removeEventListener('mousemove', handleResizeMove);
-      document.removeEventListener('mouseup', handleResizeEnd);
+      document.removeEventListener('mousemove', handleResizeMove, true);
+      document.removeEventListener('mouseup', handleResizeEnd, true);
     };
-  }, [isResizing, size, minWidth, minHeight, onSizeChange]);
+  }, [isResizing, minWidth, minHeight, onSizeChange]);
 
   return (
     <div 
