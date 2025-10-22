@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException
 import pandas as pd
 import os
+import glob
+import re
+from typing import Dict, List, Optional
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
@@ -9,40 +12,114 @@ router = APIRouter()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../api/financials"))
 
+STATEMENT_TYPES = ["income_statement", "balance_sheet", "cash_flow"]
+
+
+def get_available_tickers() -> List[str]:
+    """Get all unique tickers from the financials directory."""
+    tickers = set()
+    for file in glob.glob(os.path.join(BASE_DIR, "*.csv")):
+        filename = os.path.basename(file)
+        # Extract ticker from filename (e.g., AAPL_income_statement.csv -> AAPL)
+        match = re.match(r"^(.+?)_(income_statement|balance_sheet|cash_flow)", filename)
+        if match:
+            tickers.add(match.group(1))
+    return sorted(list(tickers))
+
+
+def load_statement(ticker: str, statement_type: str) -> Optional[Dict]:
+    """Load a specific financial statement for a ticker."""
+    # Try different file patterns (with and without _custom suffix)
+    patterns = [
+        f"{ticker}_{statement_type}.csv",
+        f"{ticker}_{statement_type}_custom.csv"
+    ]
+    
+    for pattern in patterns:
+        file_path = os.path.join(BASE_DIR, pattern)
+        if os.path.exists(file_path):
+            try:
+                df = pd.read_csv(file_path)
+                # Get columns (dates) - skip first column which is row names
+                columns = df.columns[1:].tolist()
+                # Get row names (first column)
+                row_names = df.iloc[:, 0].tolist()
+                # Get data values
+                data = df.iloc[:, 1:].values.tolist()
+                
+                return {
+                    "columns": columns,
+                    "row_names": row_names,
+                    "data": data,
+                    "available": True
+                }
+            except Exception as e:
+                print(f"Error loading {file_path}: {str(e)}")
+                return None
+    
+    return None
+
+
+@router.get("/api/tickers")
+async def get_tickers():
+    """Get list of all available tickers."""
+    try:
+        tickers = get_available_tickers()
+        return JSONResponse({"tickers": tickers})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/api/financials/{ticker}")
 async def get_financial_data(ticker: str):
-    # File paths for balance sheet and income statement
-    balance_sheet_file = os.path.join(BASE_DIR, f"{ticker}_balance_sheet.csv")
-    income_statement_file = os.path.join(BASE_DIR, f"{ticker}_income_statement.csv")
+    """Get all financial statements for a ticker."""
+    ticker_upper = ticker.upper()
+    
+    # Check if ticker exists
+    available_tickers = get_available_tickers()
+    if ticker_upper not in available_tickers:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker_upper} not found.")
+    
+    # Load each statement type
+    response_data = {
+        "ticker": ticker_upper,
+        "statements": {}
+    }
+    
+    for statement_type in STATEMENT_TYPES:
+        statement_data = load_statement(ticker_upper, statement_type)
+        if statement_data:
+            response_data["statements"][statement_type] = statement_data
+        else:
+            response_data["statements"][statement_type] = {
+                "available": False,
+                "columns": [],
+                "row_names": [],
+                "data": []
+            }
+    
+    # Check if at least one statement is available
+    has_data = any(stmt["available"] for stmt in response_data["statements"].values())
+    if not has_data:
+        raise HTTPException(status_code=404, detail=f"No financial data found for {ticker_upper}.")
+    
+    return JSONResponse(response_data)
 
-    # Check if files exist and load them
-    if not os.path.exists(balance_sheet_file):
-        raise HTTPException(status_code=404, detail=f"Balance sheet for {ticker} not found.")
-    if not os.path.exists(income_statement_file):
-        raise HTTPException(status_code=404, detail=f"Income statement for {ticker} not found.")
 
-    # Load the balance sheet
-    balance_sheet_df = pd.read_csv(balance_sheet_file)
-    balance_sheet_years = balance_sheet_df.columns[1:].tolist()  # Exclude the first column (index)
-    balance_sheet_items = balance_sheet_df.iloc[:, 0].tolist()  # First column as index
-    balance_sheet_data = balance_sheet_df.iloc[:, 1:].values.tolist()
-
-    # Load the income statement
-    income_statement_df = pd.read_csv(income_statement_file)
-    income_statement_years = income_statement_df.columns[1:].tolist()  # Exclude the first column (index)
-    income_statement_items = income_statement_df.iloc[:, 0].tolist()  # First column as index
-    income_statement_data = income_statement_df.iloc[:, 1:].values.tolist()
-
+@router.get("/api/financials/{ticker}/{statement_type}")
+async def get_specific_statement(ticker: str, statement_type: str):
+    """Get a specific financial statement for a ticker."""
+    ticker_upper = ticker.upper()
+    
+    if statement_type not in STATEMENT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid statement type. Must be one of: {', '.join(STATEMENT_TYPES)}")
+    
+    statement_data = load_statement(ticker_upper, statement_type)
+    if not statement_data:
+        raise HTTPException(status_code=404, detail=f"{statement_type} for {ticker_upper} not found.")
+    
     return JSONResponse({
-        "balance_sheet": {
-            "columns": balance_sheet_years,
-            "index": balance_sheet_items,
-            "data": balance_sheet_data
-        },
-        "income_statement": {
-            "columns": income_statement_years,
-            "index": income_statement_items,
-            "data": income_statement_data
-        }
+        "ticker": ticker_upper,
+        "statement_type": statement_type,
+        **statement_data
     })
