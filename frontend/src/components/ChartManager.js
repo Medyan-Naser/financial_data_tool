@@ -199,67 +199,58 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
     return num.toFixed(2);
   };
 
-  return (
-    <div className="chart-manager">
-      <h3>📊 Charts</h3>
-      {charts.length === 0 ? (
+  if (charts.length === 0) {
+    return (
+      <div className="chart-manager">
         <div className="no-charts">
           <p>No charts created yet. Use the Chart Builder to create visualizations.</p>
         </div>
-      ) : (
-        <div className="charts-grid">
-          {charts.map((chart) => (
-            <ResizablePanel 
-              key={chart.id} 
-              minWidth={300} 
-              minHeight={250}
-              defaultWidth={600}
-              defaultHeight={400}
-            >
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h4>
-                    {chart.title}
-                    {chart.comparisonTicker && (
-                      <span className="comparison-badge">
-                        vs {chart.comparisonTicker}
-                      </span>
-                    )}
-                  </h4>
-                  <button
-                    className="btn-remove"
-                    onClick={() => onRemoveChart(chart.id)}
-                    title="Remove chart"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="chart-content">
-                  {loadingComparison[chart.id] ? (
-                    <div className="chart-loading">Loading comparison data...</div>
-                  ) : chart.comparisonTicker && comparisonData[chart.id] === null ? (
-                    <div className="chart-error">
-                      <p>⚠️ Could not load data for {chart.comparisonTicker}</p>
-                      {renderChart(chart)}
-                    </div>
-                  ) : (
-                    renderChart(chart)
-                  )}
-                </div>
-                <div className="chart-info">
-                  <small>
-                    Type: {chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} | 
-                    Metrics: {chart.data.length}
-                    {chart.comparisonTicker && comparisonData[chart.id] && (
-                      <span> | Comparing with {chart.comparisonTicker}</span>
-                    )}
-                  </small>
-                </div>
-              </div>
-            </ResizablePanel>
-          ))}
-        </div>
-      )}
+      </div>
+    );
+  }
+
+  const chart = charts[0]; // Render only the first chart (single chart mode)
+
+  return (
+    <div className="chart-card">
+      <div className="chart-header">
+        <h4>
+          {chart.title}
+          {chart.comparisonTicker && (
+            <span className="comparison-badge">
+              vs {chart.comparisonTicker}
+            </span>
+          )}
+        </h4>
+        <button
+          className="btn-remove"
+          onClick={() => onRemoveChart(chart.id)}
+          title="Remove chart"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="chart-content">
+        {loadingComparison[chart.id] ? (
+          <div className="chart-loading">Loading comparison data...</div>
+        ) : chart.comparisonTicker && comparisonData[chart.id] === null ? (
+          <div className="chart-error">
+            <p>⚠️ Could not load data for {chart.comparisonTicker}</p>
+            {renderChart(chart)}
+          </div>
+        ) : (
+          renderChart(chart)
+        )}
+      </div>
+      <div className="chart-info">
+        <small>
+          Type: {chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} | 
+          Metrics: {chart.data.length}
+          {chart.comparisonTicker && comparisonData[chart.id] && (
+            <span> | Comparing with {chart.comparisonTicker}</span>
+          )}
+        </small>
+      </div>
     </div>
   );
 }

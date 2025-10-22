@@ -4,7 +4,8 @@ import './App.css';
 import FinancialTable from './components/FinancialTable';
 import ChartManager from './components/ChartManager';
 import TickerSearch from './components/TickerSearch';
-import ResizablePanel from './components/ResizablePanel';
+import DraggableResizablePanel from './components/DraggableResizablePanel';
+import AlignmentGuides from './components/AlignmentGuides';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -16,6 +17,13 @@ function App() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('income_statement');
   const [charts, setCharts] = useState([]);
+  const [tablePanel, setTablePanel] = useState({
+    position: { x: 30, y: 30 },
+    size: { width: 800, height: 600 }
+  });
+  const [chartPanels, setChartPanels] = useState({});
+  const [draggingPanel, setDraggingPanel] = useState(null);
+  const [alignmentGuides, setAlignmentGuides] = useState([]);
 
   // Fetch available tickers on mount
   useEffect(() => {
@@ -56,11 +64,37 @@ function App() {
   };
 
   const handleAddChart = (chartConfig) => {
-    setCharts([...charts, { ...chartConfig, id: Date.now() }]);
+    const newChartId = Date.now();
+    const newChart = { ...chartConfig, id: newChartId };
+    
+    // Position new chart to the right of the last chart or table
+    const allPanels = Object.values(chartPanels);
+    let xPos = tablePanel.position.x + tablePanel.size.width + 20;
+    let yPos = tablePanel.position.y;
+    
+    if (allPanels.length > 0) {
+      const lastPanel = allPanels[allPanels.length - 1];
+      xPos = lastPanel.position.x;
+      yPos = lastPanel.position.y + lastPanel.size.height + 20;
+    }
+    
+    setCharts([...charts, newChart]);
+    setChartPanels(prev => ({
+      ...prev,
+      [newChartId]: {
+        position: { x: xPos, y: yPos },
+        size: { width: 600, height: 400 }
+      }
+    }));
   };
 
   const handleRemoveChart = (chartId) => {
     setCharts(charts.filter(chart => chart.id !== chartId));
+    setChartPanels(prev => {
+      const newPanels = { ...prev };
+      delete newPanels[chartId];
+      return newPanels;
+    });
   };
 
   const handleUpdateChart = (chartId, updatedConfig) => {
@@ -70,6 +104,66 @@ function App() {
   };
 
   const currentStatement = financialData?.statements?.[activeTab];
+
+  // Calculate alignment guides when dragging
+  const calculateAlignmentGuides = (excludePanelId) => {
+    const guides = [];
+    const allPanels = [
+      { id: 'table', ...tablePanel },
+      ...Object.entries(chartPanels).map(([id, panel]) => ({ id, ...panel }))
+    ].filter(p => p.id !== excludePanelId);
+
+    allPanels.forEach(panel => {
+      // Vertical guides (left, center, right edges)
+      guides.push({ type: 'vertical', position: panel.position.x });
+      guides.push({ type: 'vertical', position: panel.position.x + panel.size.width / 2 });
+      guides.push({ type: 'vertical', position: panel.position.x + panel.size.width });
+      
+      // Horizontal guides (top, center, bottom edges)
+      guides.push({ type: 'horizontal', position: panel.position.y });
+      guides.push({ type: 'horizontal', position: panel.position.y + panel.size.height / 2 });
+      guides.push({ type: 'horizontal', position: panel.position.y + panel.size.height });
+    });
+
+    return guides;
+  };
+
+  const handleTablePositionChange = (newPosition) => {
+    setTablePanel(prev => ({ ...prev, position: newPosition }));
+    setDraggingPanel('table');
+    setAlignmentGuides(calculateAlignmentGuides('table'));
+  };
+
+  const handleTableSizeChange = (newSize) => {
+    setTablePanel(prev => ({ ...prev, size: newSize }));
+  };
+
+  const handleChartPositionChange = (chartId, newPosition) => {
+    setChartPanels(prev => ({
+      ...prev,
+      [chartId]: { ...prev[chartId], position: newPosition }
+    }));
+    setDraggingPanel(chartId);
+    setAlignmentGuides(calculateAlignmentGuides(chartId));
+  };
+
+  const handleChartSizeChange = (chartId, newSize) => {
+    setChartPanels(prev => ({
+      ...prev,
+      [chartId]: { ...prev[chartId], size: newSize }
+    }));
+  };
+
+  // Clear guides when drag ends
+  useEffect(() => {
+    const handleMouseUp = () => {
+      setDraggingPanel(null);
+      setAlignmentGuides([]);
+    };
+    
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => document.removeEventListener('mouseup', handleMouseUp);
+  }, []);
 
   return (
     <div className="App">
@@ -87,12 +181,23 @@ function App() {
         {error && <div className="error">{error}</div>}
 
         {financialData && (
-          <div className="content-wrapper">
-            <ResizablePanel
+          <div className="canvas-container">
+            <AlignmentGuides 
+              guides={alignmentGuides} 
+              show={draggingPanel !== null} 
+            />
+            
+            {/* Table Panel */}
+            <DraggableResizablePanel
+              id="table"
+              position={tablePanel.position}
+              size={tablePanel.size}
+              onPositionChange={handleTablePositionChange}
+              onSizeChange={handleTableSizeChange}
               minWidth={400}
               minHeight={400}
-              defaultWidth={800}
-              defaultHeight={600}
+              alignmentGuides={alignmentGuides}
+              showAlignmentGuides={draggingPanel === 'table'}
             >
               <div className="data-section">
                 <h2>{financialData.ticker} Financial Statements</h2>
@@ -124,20 +229,36 @@ function App() {
                   <div className="no-data">No data available for this statement</div>
                 )}
               </div>
-            </ResizablePanel>
+            </DraggableResizablePanel>
 
-            {/* Chart Section */}
-            {charts.length > 0 && (
-              <div className="charts-section">
-                <ChartManager
-                  charts={charts}
-                  onRemoveChart={handleRemoveChart}
-                  onUpdateChart={handleUpdateChart}
-                  financialData={currentStatement}
-                  ticker={financialData.ticker}
-                />
-              </div>
-            )}
+            {/* Chart Panels */}
+            {charts.map((chart) => {
+              const panel = chartPanels[chart.id];
+              if (!panel) return null;
+              
+              return (
+                <DraggableResizablePanel
+                  key={chart.id}
+                  id={chart.id}
+                  position={panel.position}
+                  size={panel.size}
+                  onPositionChange={(pos) => handleChartPositionChange(chart.id, pos)}
+                  onSizeChange={(size) => handleChartSizeChange(chart.id, size)}
+                  minWidth={300}
+                  minHeight={250}
+                  alignmentGuides={alignmentGuides}
+                  showAlignmentGuides={draggingPanel === chart.id}
+                >
+                  <ChartManager
+                    charts={[chart]}
+                    onRemoveChart={handleRemoveChart}
+                    onUpdateChart={handleUpdateChart}
+                    financialData={currentStatement}
+                    ticker={financialData.ticker}
+                  />
+                </DraggableResizablePanel>
+              );
+            })}
           </div>
         )}
 
