@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
+import MultiSelectDropdown from './MultiSelectDropdown';
 
 function FinancialTable({ data, statementType, ticker, onAddChart }) {
   const [selectedRows, setSelectedRows] = useState([]);
   const [chartType, setChartType] = useState('line');
   const [showChartBuilder, setShowChartBuilder] = useState(false);
+  const [comparisonTicker, setComparisonTicker] = useState('');
 
   const { columns, row_names, data: tableData } = data;
-
-  const toggleRowSelection = (rowIndex) => {
-    setSelectedRows(prev =>
-      prev.includes(rowIndex)
-        ? prev.filter(i => i !== rowIndex)
-        : [...prev, rowIndex]
-    );
-  };
 
   const handleCreateChart = () => {
     if (selectedRows.length === 0) {
@@ -30,12 +24,14 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
       type: chartType,
       data: chartData,
       columns: columns,
-      title: `${ticker} - ${statementType.replace('_', ' ').toUpperCase()}`
+      title: `${ticker} - ${statementType.replace('_', ' ').toUpperCase()}`,
+      ticker: ticker,
+      statementType: statementType,
+      selectedRowNames: selectedRows.map(idx => row_names[idx]),
+      comparisonTicker: comparisonTicker || null
     });
 
-    // Reset selections
-    setSelectedRows([]);
-    setShowChartBuilder(false);
+    // Don't reset selections to allow creating multiple charts
   };
 
   const formatValue = (value) => {
@@ -69,8 +65,18 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
         <div className="chart-builder">
           <h3>Chart Builder</h3>
           <div className="chart-options">
-            <label>
-              Chart Type:
+            <div className="option-group">
+              <label>Select Metrics:</label>
+              <MultiSelectDropdown
+                options={row_names}
+                selected={selectedRows}
+                onChange={setSelectedRows}
+                placeholder="Select metrics to chart..."
+              />
+            </div>
+            
+            <div className="option-group">
+              <label>Chart Type:</label>
               <select 
                 value={chartType} 
                 onChange={(e) => setChartType(e.target.value)}
@@ -80,16 +86,28 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
                 <option value="bar">Bar Chart</option>
                 <option value="area">Area Chart</option>
               </select>
-            </label>
+            </div>
+
+            <div className="option-group">
+              <label>Compare with Ticker (optional):</label>
+              <input
+                type="text"
+                placeholder="e.g., AMZN"
+                value={comparisonTicker}
+                onChange={(e) => setComparisonTicker(e.target.value.toUpperCase())}
+                className="comparison-ticker-input"
+              />
+              <p className="hint">Leave blank for single ticker</p>
+            </div>
+            
             <button 
               className="btn-add-chart"
               onClick={handleCreateChart}
               disabled={selectedRows.length === 0}
             >
-              Add Chart ({selectedRows.length} rows selected)
+              Add Chart ({selectedRows.length} selected)
             </button>
           </div>
-          <p className="hint">Select rows from the table below to include in your chart</p>
         </div>
       )}
 
@@ -97,7 +115,6 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
         <table className="financial-table">
           <thead>
             <tr>
-              {showChartBuilder && <th className="checkbox-col">Select</th>}
               <th className="row-name-col">Metric</th>
               {columns.map((col, idx) => (
                 <th key={idx}>{col}</th>
@@ -106,16 +123,10 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
           </thead>
           <tbody>
             {row_names.map((rowName, rowIndex) => (
-              <tr key={rowIndex}>
-                {showChartBuilder && (
-                  <td className="checkbox-col">
-                    <input
-                      type="checkbox"
-                      checked={selectedRows.includes(rowIndex)}
-                      onChange={() => toggleRowSelection(rowIndex)}
-                    />
-                  </td>
-                )}
+              <tr 
+                key={rowIndex}
+                className={selectedRows.includes(rowIndex) ? 'row-selected' : ''}
+              >
                 <td className="row-name-col" title={rowName}>
                   {rowName}
                 </td>

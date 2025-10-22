@@ -4,6 +4,7 @@ import './App.css';
 import FinancialTable from './components/FinancialTable';
 import ChartManager from './components/ChartManager';
 import TickerSearch from './components/TickerSearch';
+import ResizablePanel from './components/ResizablePanel';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -15,7 +16,6 @@ function App() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('income_statement');
   const [charts, setCharts] = useState([]);
-  const [tableWidth, setTableWidth] = useState(100);
 
   // Fetch available tickers on mount
   useEffect(() => {
@@ -87,62 +87,54 @@ function App() {
         {error && <div className="error">{error}</div>}
 
         {financialData && (
-          <div className="content-container">
-            <div className="data-section" style={{ width: `${tableWidth}%` }}>
-              <h2>{financialData.ticker} Financial Statements</h2>
-              
-              {/* Statement Tabs */}
-              <div className="tabs">
-                {Object.entries(financialData.statements).map(([key, stmt]) => (
-                  stmt.available && (
-                    <button
-                      key={key}
-                      className={`tab ${activeTab === key ? 'active' : ''}`}
-                      onClick={() => setActiveTab(key)}
-                    >
-                      {key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </button>
-                  )
-                ))}
-              </div>
+          <div className="content-wrapper">
+            <ResizablePanel
+              minWidth={400}
+              minHeight={400}
+              defaultWidth={800}
+              defaultHeight={600}
+            >
+              <div className="data-section">
+                <h2>{financialData.ticker} Financial Statements</h2>
+                
+                {/* Statement Tabs */}
+                <div className="tabs">
+                  {Object.entries(financialData.statements).map(([key, stmt]) => (
+                    stmt.available && (
+                      <button
+                        key={key}
+                        className={`tab ${activeTab === key ? 'active' : ''}`}
+                        onClick={() => setActiveTab(key)}
+                      >
+                        {key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </button>
+                    )
+                  ))}
+                </div>
 
-              {/* Financial Table */}
-              {currentStatement?.available ? (
-                <FinancialTable
-                  data={currentStatement}
-                  statementType={activeTab}
-                  ticker={financialData.ticker}
-                  onAddChart={handleAddChart}
-                />
-              ) : (
-                <div className="no-data">No data available for this statement</div>
-              )}
-            </div>
+                {/* Financial Table */}
+                {currentStatement?.available ? (
+                  <FinancialTable
+                    data={currentStatement}
+                    statementType={activeTab}
+                    ticker={financialData.ticker}
+                    onAddChart={handleAddChart}
+                  />
+                ) : (
+                  <div className="no-data">No data available for this statement</div>
+                )}
+              </div>
+            </ResizablePanel>
 
             {/* Chart Section */}
             {charts.length > 0 && (
-              <div className="charts-section" style={{ width: `${100 - tableWidth}%` }}>
+              <div className="charts-section">
                 <ChartManager
                   charts={charts}
                   onRemoveChart={handleRemoveChart}
                   onUpdateChart={handleUpdateChart}
                   financialData={currentStatement}
                   ticker={financialData.ticker}
-                />
-              </div>
-            )}
-
-            {/* Resize Handle */}
-            {charts.length > 0 && (
-              <div className="resize-controls">
-                <label>Table Width: {tableWidth}%</label>
-                <input
-                  type="range"
-                  min="30"
-                  max="100"
-                  value={tableWidth}
-                  onChange={(e) => setTableWidth(Number(e.target.value))}
-                  className="width-slider"
                 />
               </div>
             )}
