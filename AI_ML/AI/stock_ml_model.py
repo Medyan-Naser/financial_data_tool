@@ -42,8 +42,9 @@ def predict(close_data, num_prediction, model,look_back):
             xhat = x_list.reshape((1, look_back, 1))
             out = model.predict(xhat)[0][0]
             prediction_list = np.append(prediction_list, out)
-            
-        prediction_list = prediction_list[:look_back]
+        
+        # Return only the predictions (last num_prediction values), not the input data
+        prediction_list = prediction_list[-num_prediction:]
         
     return prediction_list
 
@@ -53,12 +54,14 @@ def predict_dates(close_data, num_prediction):
     # Suppress all stdout/stderr output from yfinance
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         last_date = close_data.index[-1]
-        prediction_dates = pd.date_range(last_date, periods=num_prediction+5).tolist()
+        prediction_dates = pd.date_range(last_date, periods=num_prediction+10).tolist()
         weekdays = []
         for days in prediction_dates:
-            if days.weekday() <5:
+            if days.weekday() < 5:
                 weekdays.append(days)
-    return weekdays
+            if len(weekdays) == num_prediction:
+                break
+    return weekdays[:num_prediction]  # Ensure exact count
 
 
 def train_test_split_70(X,y):
@@ -89,11 +92,22 @@ def scale_X_y_data(X, y, X_train, X_test, y_train, y_test):
 def get_ml_model(ticker):
     # Suppress all stdout/stderr output from yfinance
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        # Get data and validate
+        ticker_df = get_60d_df(ticker)
+        
+        # Validate we have enough data
+        if len(ticker_df) < 30:
+            raise ValueError(f"Insufficient data for {ticker}. Need at least 30 days, got {len(ticker_df)}")
+        
         # Window data
         window_size = 11
         feature_column = 0
         target_column = 0
-        X, y = window_data(get_60d_df(ticker), window_size, feature_column, target_column)
+        X, y = window_data(ticker_df, window_size, feature_column, target_column)
+        
+        # Validate windowed data
+        if len(X) == 0 or len(y) == 0:
+            raise ValueError(f"Insufficient data after windowing for {ticker}. Need more historical data.")
         
         #Split Train test data by 70%
         X_train, X_test, y_train, y_test = train_test_split_70(X,y)
@@ -171,19 +185,39 @@ def get_ml_model(ticker):
         
         forecast = predict(forecast_ticker_df, num_prediction, model, look_back)
         forecast_dates = predict_dates(get_60d_df(ticker), num_prediction)
+        
+        # Handle NaN values - replace with last valid value
+        forecast = np.array(forecast)
+        if np.isnan(forecast).any():
+            # Replace NaN with forward fill
+            forecast_series = pd.Series(forecast)
+            forecast_series = forecast_series.ffill()
+            # If still has NaN at beginning, use backward fill
+            forecast_series = forecast_series.bfill()
+            forecast = forecast_series.values
+        
+        # Ensure same length
+        min_len = min(len(forecast), len(forecast_dates))
+        forecast = forecast[:min_len]
+        forecast_dates = forecast_dates[:min_len]
+        
         forecast_series = pd.Series(forecast)
         forecast_dates_series = pd.Series(forecast_dates)
-        forecast_df = pd.concat([forecast_series, forecast_dates_series],axis = 1)
+        forecast_df = pd.concat([forecast_series, forecast_dates_series], axis=1)
         forecast_df = forecast_df.rename(columns = {0: "Price", 1:"Date"})
         forecast_df.set_index("Date",inplace=True)
         forecast_df.index = pd.to_datetime(forecast_df.index.date)
         forecast_plot = px.line(
             forecast_df,
             x = forecast_df.index,
-            y=forecast_df["Price"],
+            y=[float(val) for val in forecast_df["Price"]],
             title =f'Forecast of {ticker}'
         )
-    
+    print("===========")
+    print(forecast_df["Price"].values)
+    print(type(forecast_df["Price"].values))
+
+
     return model_evaluation, ml_plot, forecast_plot, loss_plot, forecast_df
 
 

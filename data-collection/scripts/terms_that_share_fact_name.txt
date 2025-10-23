@@ -1,0 +1,4 @@
+Shares used in computing earnings per share::us-gaap_RevenueFromContractWithCustomerExcludingAssessedTax
+Shares used in computing earnings per share::us-gaap_CostOfGoodsAndServicesSold
+D1:Shares used in computing earnings per share::us-gaap_RevenueFromContractWithCustomerExcludingAssessedTax
+D1:Shares used in computing earnings per share::us-gaap_CostOfGoodsAndServicesSold

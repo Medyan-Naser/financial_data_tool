@@ -31,14 +31,16 @@ ticker_widget = pn.widgets.TextInput(name="Enter Ticker Symbol", value="AAPL")
 # Function to update the dashboard based on the ticker input
 @pn.depends(ticker_widget, watch=True)
 def update_dashboard(ticker):
-    ticker_60 = get_60d_df(ticker)
+    print("search entered")
+    # ticker_60 = get_60d_df(ticker)
+    ticker="AAPL"
+    # # Fetch ML model results
+    model_evaluation, ml_plot, forecast_plot, loss_plot, forecast_df = get_ml_model(ticker)
+    print(forecast_plot)
 
-    # Fetch ML model results
-    model_evaluation, ml_plot, forecast_plot, loss_plot = get_ml_model(ticker)
-
-    # Generate index charts
-    spy_index = go_generate_index_chart("SPY")
-    djia_index = go_generate_index_chart("DJIA")
+    # # Generate index charts
+    # spy_index = go_generate_index_chart("SPY")
+    # djia_index = go_generate_index_chart("DJIA")
     ndaq_index = go_generate_index_chart("NDAQ")
     iwm_index = go_generate_index_chart("IWM")
 
@@ -49,8 +51,10 @@ def update_dashboard(ticker):
     returns_plot_IWM, model_summary_IWM, rolling_volatility_plot_IWM, forecast_plot_IWM = predict_volatility("IWM")
 
     # Create rows for the dashboard
-    ai_row1 = pn.Row(spy_index, forecast_plot_SPY)
-    ai_row2 = pn.Row(djia_index, forecast_plot_DJIA)
+    # ai_row1 = pn.Row(spy_index, forecast_plot_SPY)
+    # ai_row2 = pn.Row(djia_index, forecast_plot_DJIA)
+    ai_row1 = pn.Row(returns_plot_SPY, model_summary_SPY)
+    ai_row2 = pn.Row(rolling_volatility_plot_SPY, forecast_plot_SPY)
     ai_row3 = pn.Row(ndaq_index, forecast_plot_NDAQ)
     ai_row4 = pn.Row(iwm_index, forecast_plot_IWM)
     ai_row5 = pn.Row(max_linechart_ticker(ticker), forecast_plot)

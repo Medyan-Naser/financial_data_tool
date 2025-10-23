@@ -15,7 +15,13 @@ def go_generate_index_chart(ticker):
     return bar_chart
 
 def predict_volatility(ticker):
+    # Fetch 2 years of daily data
     df = interval_to_df(ticker, "2y", "1d")
+    
+    # Validate we have enough data
+    if len(df) < 100:
+        raise ValueError(f"Insufficient data for {ticker}. Need at least 100 days, got {len(df)}")
+    
     returns = 100 * df["Close"].pct_change().dropna()
     returns_plot = px.line(returns,
                            title = f"{ticker} Returns over 2 Years",

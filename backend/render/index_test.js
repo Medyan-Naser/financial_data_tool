@@ -148,10 +148,13 @@ app.get("/AI/:ticker", async (req, res) => {
   const { ticker } = req.params;
 
   try {
-    const [company_plot, spy_index] = await runPythonScript("../../AI_ML/AI/get_ai_prices.py");
+    const [company_plot, spy_index, returns_plot_SPY, rolling_volatility_plot_SPY, forecast_plot_SPY] = await runPythonScript("../../AI_ML/AI/get_ai_prices.py");
     return res.status(200).json({
       company_plot : company_plot, 
       spy_index : spy_index,
+      plot_SPY: returns_plot_SPY, 
+      rolling_volatility_plot_SPY: rolling_volatility_plot_SPY, 
+      forecast_plot_SPY : forecast_plot_SPY,
     });
   } catch (error) {
     console.error("Error fetching AI data:", error);
