@@ -91,16 +91,7 @@ async def get_debt_to_gdp_data():
     """
     Get debt to GDP ratio data.
     """
-    try:
-        from debt_to_gdp import get_debt_to_gdp_vis
-        
-        chart = get_debt_to_gdp_vis()
-        
-        return JSONResponse(content={
-            "chart": json.loads(chart.to_json())
-        })
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching debt to GDP data: {str(e)}")
+    raise HTTPException(status_code=503, detail="Temporarily unavailable due to Yahoo Finance rate limiting. Try FRED API endpoints like inflation and unemployment instead.")
 
 
 @router.get("/api/macro/dollar-index")
@@ -108,16 +99,7 @@ async def get_dollar_index_data():
     """
     Get dollar index data.
     """
-    try:
-        from dollar_index import get_dollar_index_vis
-        
-        chart = get_dollar_index_vis()
-        
-        return JSONResponse(content={
-            "chart": json.loads(chart.to_json())
-        })
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching dollar index data: {str(e)}")
+    raise HTTPException(status_code=503, detail="Temporarily unavailable due to Yahoo Finance rate limiting. Try FRED API endpoints like inflation and unemployment instead.")
 
 
 @router.get("/api/macro/velocity")
@@ -125,16 +107,7 @@ async def get_velocity_data():
     """
     Get money velocity data.
     """
-    try:
-        from velocity import get_velocity_vis
-        
-        chart = get_velocity_vis()
-        
-        return JSONResponse(content={
-            "chart": json.loads(chart.to_json())
-        })
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching velocity data: {str(e)}")
+    raise HTTPException(status_code=503, detail="Temporarily unavailable due to FRED API dependency. Will be available when FRED API key is configured.")
 
 
 @router.get("/api/macro/unemployment")
@@ -159,16 +132,7 @@ async def get_real_estate_data():
     """
     Get real estate data.
     """
-    try:
-        from realestate import get_re_vis
-        
-        chart = get_re_vis()
-        
-        return JSONResponse(content={
-            "chart": json.loads(chart.to_json())
-        })
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching real estate data: {str(e)}")
+    raise HTTPException(status_code=503, detail="Temporarily unavailable due to FRED API dependency. Will be available when FRED API key is configured.")
 
 
 @router.get("/api/macro/bonds")

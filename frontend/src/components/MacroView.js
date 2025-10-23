@@ -88,7 +88,11 @@ function MacroView() {
       const response = await axios.get(`${API_BASE_URL}/api/macro/debt-to-gdp`);
       setDebtToGdpData(response.data);
     } catch (err) {
-      setError('Error loading debt to GDP data');
+      if (err.response?.status === 503) {
+        setError(err.response.data.detail);
+      } else {
+        setError('Error loading debt to GDP data');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -101,7 +105,11 @@ function MacroView() {
       const response = await axios.get(`${API_BASE_URL}/api/macro/dollar-index`);
       setDollarIndexData(response.data);
     } catch (err) {
-      setError('Error loading dollar index data');
+      if (err.response?.status === 503) {
+        setError(err.response.data.detail);
+      } else {
+        setError('Error loading dollar index data');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -114,7 +122,11 @@ function MacroView() {
       const response = await axios.get(`${API_BASE_URL}/api/macro/velocity`);
       setVelocityData(response.data);
     } catch (err) {
-      setError('Error loading velocity data');
+      if (err.response?.status === 503) {
+        setError(err.response.data.detail);
+      } else {
+        setError('Error loading velocity data');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -140,7 +152,11 @@ function MacroView() {
       const response = await axios.get(`${API_BASE_URL}/api/macro/real-estate`);
       setRealEstateData(response.data);
     } catch (err) {
-      setError('Error loading real estate data');
+      if (err.response?.status === 503) {
+        setError(err.response.data.detail);
+      } else {
+        setError('Error loading real estate data');
+      }
       console.error(err);
     } finally {
       setLoading(false);

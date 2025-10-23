@@ -22,7 +22,12 @@ function AIView() {
       const response = await axios.get(`${API_BASE_URL}/api/ai/stock-forecast/${ticker}`);
       setForecastData(response.data);
     } catch (err) {
-      setError(`Error running forecast: ${err.response?.data?.detail || err.message}`);
+      const errorMsg = err.response?.data?.detail || err.message;
+      if (errorMsg.includes('rate limit') || errorMsg.includes('Too Many Requests')) {
+        setError(`⚠️ Yahoo Finance rate limit exceeded. Please wait 2-3 minutes and try again. Tip: Try a different ticker or wait before retrying.`);
+      } else {
+        setError(`Error running forecast: ${errorMsg}`);
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -36,7 +41,12 @@ function AIView() {
       const response = await axios.get(`${API_BASE_URL}/api/ai/volatility/${ticker}`);
       setVolatilityData(response.data);
     } catch (err) {
-      setError(`Error running volatility forecast: ${err.response?.data?.detail || err.message}`);
+      const errorMsg = err.response?.data?.detail || err.message;
+      if (errorMsg.includes('rate limit') || errorMsg.includes('Too Many Requests')) {
+        setError(`⚠️ Yahoo Finance rate limit exceeded. Please wait 2-3 minutes and try again. Tip: Try a different ticker or wait before retrying.`);
+      } else {
+        setError(`Error running volatility forecast: ${errorMsg}`);
+      }
       console.error(err);
     } finally {
       setLoading(false);
