@@ -35,34 +35,32 @@ class DataCollectionService:
         self.cache_dir = CACHE_DIR
         self.collection_script = DATA_COLLECTION_SCRIPT
         
-    def get_cache_path(self, ticker: str) -> Path:
+    def get_cache_path(self, ticker: str, quarterly: bool = False) -> Path:
         """Get the cache file path for a ticker."""
-        return self.cache_dir / f"{ticker.upper()}_statements.json"
+        suffix = "_quarterly" if quarterly else ""
+        return self.cache_dir / f"{ticker.upper()}{suffix}_statements.json"
     
-    def is_cached(self, ticker: str) -> bool:
+    def is_cached(self, ticker: str, quarterly: bool = False) -> bool:
         """Check if ticker data is cached."""
-        cache_path = self.get_cache_path(ticker)
+        cache_path = self.get_cache_path(ticker, quarterly)
         return cache_path.exists()
     
-    def load_cached_data(self, ticker: str) -> Optional[Dict]:
+    def load_from_cache(self, ticker: str, quarterly: bool = False) -> Optional[Dict]:
         """Load cached data for a ticker."""
-        cache_path = self.get_cache_path(ticker)
-        
+        cache_path = self.get_cache_path(ticker, quarterly)
         if not cache_path.exists():
             return None
-            
+        
         try:
             with open(cache_path, 'r') as f:
-                data = json.load(f)
-            logger.info(f"Loaded cached data for {ticker}")
-            return data
+                return json.load(f)
         except Exception as e:
-            logger.error(f"Error loading cached data for {ticker}: {e}")
+            logger.error(f"Error loading cache for {ticker}: {e}")
             return None
     
-    def save_to_cache(self, ticker: str, data: Dict) -> bool:
+    def save_to_cache(self, ticker: str, data: Dict, quarterly: bool = False) -> bool:
         """Save data to cache."""
-        cache_path = self.get_cache_path(ticker)
+        cache_path = self.get_cache_path(ticker, quarterly)
         
         try:
             # Add metadata
@@ -72,7 +70,8 @@ class DataCollectionService:
             with open(cache_path, 'w') as f:
                 json.dump(data, f, indent=2)
             
-            logger.info(f"Saved data to cache for {ticker}")
+            period_label = "quarterly" if quarterly else "annual"
+            logger.info(f"Saved {period_label} data to cache for {ticker}")
             return True
         except Exception as e:
             logger.error(f"Error saving to cache for {ticker}: {e}")
@@ -97,7 +96,8 @@ class DataCollectionService:
         ticker: str, 
         years: int = 15,
         force_refresh: bool = False,
-        cleanup_csv: bool = True
+        cleanup_csv: bool = True,
+        quarterly: bool = False
     ) -> AsyncGenerator[str, None]:
         """
         Collect financial data with progress updates.
@@ -107,9 +107,9 @@ class DataCollectionService:
         ticker = ticker.upper()
         
         # Check cache first
-        if not force_refresh and self.is_cached(ticker):
+        if not force_refresh and self.is_cached(ticker, quarterly):
             yield f"data: {json.dumps({'status': 'cached', 'message': 'Loading from cache...', 'progress': 100})}\n\n"
-            cached_data = self.load_cached_data(ticker)
+            cached_data = self.load_from_cache(ticker, quarterly)
             if cached_data:
                 yield f"data: {json.dumps({'status': 'complete', 'data': cached_data})}\n\n"
                 return
@@ -141,6 +141,9 @@ class DataCollectionService:
                 "--years", str(years),
                 "--output", str(output_dir)
             ]
+            
+            if quarterly:
+                cmd.append("--quarterly")
             
             # Run subprocess and capture output
             process = await asyncio.create_subprocess_exec(
@@ -204,7 +207,7 @@ class DataCollectionService:
             
             # Load the collected data from the old financials directory
             # and convert it to our cache format
-            financial_data = await self._load_collected_data(ticker)
+            financial_data = await self._load_collected_data(ticker, quarterly)
             
             if not financial_data:
                 yield f"data: {json.dumps({'status': 'error', 'message': 'No data was collected. Ticker may not exist.'})}\n\n"
@@ -214,7 +217,7 @@ class DataCollectionService:
             await asyncio.sleep(0.2)
             
             # Save to cache
-            self.save_to_cache(ticker, financial_data)
+            self.save_to_cache(ticker, financial_data, quarterly)
             
             # Optionally clean up CSV files after successful caching
             if cleanup_csv:
@@ -234,16 +237,17 @@ class DataCollectionService:
             logger.error(error_msg)
             yield f"data: {json.dumps({'status': 'error', 'message': error_msg})}\n\n"
     
-    async def _load_collected_data(self, ticker: str) -> Optional[Dict]:
+    async def _load_collected_data(self, ticker: str, quarterly: bool = False) -> Optional[Dict]:
         """Load data from the data collection output directory and format it."""
-        # The output structure is: output/{TICKER}/{statement}_annual.csv
+        # The output structure is: output/{TICKER}/{statement}_{annual|quarterly}.csv
         ticker_output_dir = BASE_DIR.parent / "data-collection" / "scripts" / "output" / ticker.upper()
         
         if not ticker_output_dir.exists():
             logger.warning(f"No output directory found for {ticker} at: {ticker_output_dir}")
             return None
         
-        logger.info(f"Loading collected data for {ticker} from: {ticker_output_dir}")
+        period_suffix = "quarterly" if quarterly else "annual"
+        logger.info(f"Loading {period_suffix} collected data for {ticker} from: {ticker_output_dir}")
         
         statements_data = {
             "income_statement": None,
@@ -260,10 +264,10 @@ class DataCollectionService:
         has_data = False
         
         for stmt_key, file_base in statement_types:
-            # Look for files matching the pattern: {statement}_*_annual.csv
-            # e.g., income_statement_2024-12-31_annual.csv
+            # Look for files matching the pattern: {statement}_*_{annual|quarterly}.csv
+            # e.g., income_statement_2024-12-31_annual.csv or income_statement_2024-09-30_quarterly.csv
             import glob
-            pattern = str(ticker_output_dir / f"{file_base}_*_annual.csv")
+            pattern = str(ticker_output_dir / f"{file_base}_*_{period_suffix}.csv")
             matching_files = glob.glob(pattern)
             
             if matching_files:
@@ -348,9 +352,13 @@ class DataCollectionService:
         if not has_data:
             return None
         
+        # Detect period coverage by checking column headers
+        period_type = "quarterly" if quarterly else "annual"
+        
         return {
             "ticker": ticker.upper(),
             "currency": "USD",  # Default to USD for US companies (SEC EDGAR)
+            "period_type": period_type,
             "statements": statements_data,
             "collection_date": datetime.now().isoformat()
         }
