@@ -17,16 +17,20 @@ router = APIRouter()
 
 
 @router.get("/api/financials/cached/{ticker}")
-async def get_cached_financial_data(ticker: str):
+async def get_cached_financial_data(ticker: str, quarterly: bool = False):
     """
     Get financial data for a ticker from cache.
+    
+    Parameters:
+    - ticker: Stock ticker symbol
+    - quarterly: Get quarterly data (10-Q) instead of annual (10-K)
     
     Returns cached data if available, otherwise returns a 404 with cache status.
     """
     ticker = ticker.upper()
     
     # Check if cached
-    if not data_collection_service.is_cached(ticker):
+    if not data_collection_service.is_cached(ticker, quarterly):
         return JSONResponse(
             status_code=404,
             content={
@@ -37,7 +41,7 @@ async def get_cached_financial_data(ticker: str):
         )
     
     # Load from cache
-    cached_data = data_collection_service.load_cached_data(ticker)
+    cached_data = data_collection_service.load_from_cache(ticker, quarterly)
     
     if not cached_data:
         return JSONResponse(
@@ -59,7 +63,8 @@ async def get_cached_financial_data(ticker: str):
 async def collect_financial_data(
     ticker: str,
     years: int = 15,
-    force_refresh: bool = False
+    force_refresh: bool = False,
+    quarterly: bool = False
 ):
     """
     Collect financial data for a ticker with real-time progress updates.
@@ -68,8 +73,9 @@ async def collect_financial_data(
     
     Parameters:
     - ticker: Stock ticker symbol
-    - years: Number of years to collect (default: 15)
+    - years: Number of years/quarters to collect (default: 15)
     - force_refresh: Force re-collection even if cached (default: False)
+    - quarterly: Collect quarterly data (10-Q) instead of annual (10-K)
     
     Returns: SSE stream with progress updates
     """
@@ -82,7 +88,8 @@ async def collect_financial_data(
         data_collection_service.collect_data_with_progress(
             ticker=ticker,
             years=years,
-            force_refresh=force_refresh
+            force_refresh=force_refresh,
+            quarterly=quarterly
         ),
         media_type="text/event-stream",
         headers={
@@ -94,9 +101,14 @@ async def collect_financial_data(
 
 
 @router.post("/api/financials/refresh/{ticker}")
-async def refresh_financial_data(ticker: str, years: int = 15):
+async def refresh_financial_data(ticker: str, years: int = 15, quarterly: bool = False):
     """
     Force refresh financial data for a ticker.
+    
+    Parameters:
+    - ticker: Stock ticker symbol
+    - years: Number of years/quarters to collect
+    - quarterly: Collect quarterly data instead of annual
     
     This is equivalent to collect with force_refresh=True.
     Returns SSE stream with progress updates.
@@ -110,7 +122,8 @@ async def refresh_financial_data(ticker: str, years: int = 15):
         data_collection_service.collect_data_with_progress(
             ticker=ticker,
             years=years,
-            force_refresh=True
+            force_refresh=True,
+            quarterly=quarterly
         ),
         media_type="text/event-stream",
         headers={
@@ -140,11 +153,11 @@ async def delete_cached_data(ticker: str):
 
 
 @router.get("/api/financials/cache/status/{ticker}")
-async def get_cache_status(ticker: str):
-    """Check if a ticker has cached data."""
+async def get_cache_status(ticker: str, quarterly: bool = False):
+    """Check if a ticker has cached data (annual or quarterly)."""
     ticker = ticker.upper()
     
-    is_cached = data_collection_service.is_cached(ticker)
+    is_cached = data_collection_service.is_cached(ticker, quarterly)
     
     response = {
         "ticker": ticker,
@@ -152,9 +165,10 @@ async def get_cache_status(ticker: str):
     }
     
     if is_cached:
-        cached_data = data_collection_service.load_cached_data(ticker)
+        cached_data = data_collection_service.load_from_cache(ticker, quarterly)
         if cached_data:
             response["cached_at"] = cached_data.get("cached_at")
             response["collection_date"] = cached_data.get("collection_date")
+            response["period_type"] = cached_data.get("period_type", "annual")
     
     return JSONResponse(response)
