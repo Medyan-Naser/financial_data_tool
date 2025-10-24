@@ -107,7 +107,8 @@ class PatternLogger:
         fiscal_year: str,
         original_df: pd.DataFrame,
         mapped_df: Optional[pd.DataFrame],
-        taxonomy: str = "us-gaap"
+        taxonomy: str = "us-gaap",
+        statement_object: Optional[object] = None
     ) -> bool:
         """
         Log a financial statement for pattern analysis.
@@ -130,26 +131,35 @@ class PatternLogger:
             logger.debug(f"Skipping {ticker} {statement_type} {fiscal_year} - already logged")
             return False
         
-        # Calculate match statistics
-        total_rows = len(original_df)
-        matched_rows = len(mapped_df) if mapped_df is not None else 0
-        match_percentage = (matched_rows / total_rows * 100) if total_rows > 0 else 0
+        # Extract matched row information from statement object's mapped_facts
+        # mapped_facts contains tuples of (original_idx, fact_row, pattern_type, pattern)
+        matched_original_rows = set()
         
-        # Get matched row names
-        matched_row_names = set(mapped_df.index) if mapped_df is not None else set()
+        if statement_object is not None and hasattr(statement_object, 'mapped_facts'):
+            # Extract the original indices that were successfully mapped
+            for mapped_fact_tuple in statement_object.mapped_facts:
+                if len(mapped_fact_tuple) >= 1:
+                    original_idx = mapped_fact_tuple[0]  # First element is original row name
+                    matched_original_rows.add(str(original_idx))
+            logger.debug(f"Found {len(matched_original_rows)} matched rows from statement object")
+        else:
+            logger.debug("No statement object or mapped_facts available")
         
-        # Extract row information
+        # Extract row information with match status
         row_info = []
         for idx, row_name in enumerate(original_df.index):
-            is_matched = any(str(row_name) in str(matched_name) or str(matched_name) in str(row_name)
-                           for matched_name in matched_row_names)
-            
+            is_matched = str(row_name) in matched_original_rows
             row_info.append({
                 'row_number': idx + 1,
                 'raw_label': str(row_name),
                 'is_us_gaap': 'us-gaap' in str(row_name) or ':' in str(row_name),
                 'matched': is_matched
             })
+        
+        # Calculate match statistics
+        total_rows = len(original_df)
+        matched_rows = len(matched_original_rows)
+        match_percentage = (matched_rows / total_rows * 100) if total_rows > 0 else 0
         
         # Create log entry
         log_entry = {

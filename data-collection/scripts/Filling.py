@@ -561,12 +561,15 @@ class Filling():
                         # Get fiscal year from dates (use first date column)
                         fiscal_year = str(df.columns[0]) if len(df.columns) > 0 else "unknown"
                         
-                        # Get mapped DataFrame if available
+                        # Trigger mapping to populate mapped_facts BEFORE logging
+                        # This is necessary because map_facts() is only called when get_mapped_df() is invoked
                         mapped_df = None
-                        if hasattr(statement_obj, 'mapped_df') and statement_obj.mapped_df is not None:
-                            mapped_df = statement_obj.mapped_df
+                        try:
+                            mapped_df = statement_obj.get_mapped_df()
+                        except Exception as map_error:
+                            logging.debug(f"Could not get mapped df for logging: {map_error}")
                         
-                        # Log the statement
+                        # Log the statement with the statement object to track matched rows
                         pattern_logger.log_statement(
                             ticker=self.ticker,
                             cik=self.cik,
@@ -574,7 +577,8 @@ class Filling():
                             fiscal_year=fiscal_year,
                             original_df=df,
                             mapped_df=mapped_df,
-                            taxonomy=self.taxonomy
+                            taxonomy=self.taxonomy,
+                            statement_object=statement_obj  # Pass the statement object with populated mapped_facts
                         )
                     except Exception as log_error:
                         logging.warning(f"Pattern logging failed: {log_error}")
