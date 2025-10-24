@@ -8,6 +8,8 @@ import DraggableResizablePanel from './components/DraggableResizablePanel';
 import AlignmentGuides from './components/AlignmentGuides';
 import MacroView from './components/MacroView';
 import AIView from './components/AIView';
+import DataCollectionProgress from './components/DataCollectionProgress';
+import { checkCacheStatus, getCachedFinancialData, collectFinancialData, refreshFinancialData } from './api';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -27,6 +29,11 @@ function App() {
   const [chartPanels, setChartPanels] = useState({});
   const [draggingPanel, setDraggingPanel] = useState(null);
   const [alignmentGuides, setAlignmentGuides] = useState([]);
+  
+  // New state for caching and progress
+  const [isCollecting, setIsCollecting] = useState(false);
+  const [collectionProgress, setCollectionProgress] = useState({ status: '', message: '', progress: 0 });
+  const [isCached, setIsCached] = useState(false);
 
   // Fetch available tickers on mount
   useEffect(() => {
@@ -47,22 +54,97 @@ function App() {
     setLoading(true);
     setError(null);
     setCharts([]); // Reset charts when changing ticker
+    setIsCollecting(false);
+    setCollectionProgress({ status: '', message: '', progress: 0 });
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/financials/${ticker}`);
-      setFinancialData(response.data);
+      // First, check cache status
+      const cacheStatus = await checkCacheStatus(ticker);
+      setIsCached(cacheStatus.cached);
+      
+      if (cacheStatus.cached) {
+        // Load from cache (fast)
+        const cachedData = await getCachedFinancialData(ticker);
+        if (cachedData) {
+          setFinancialData(cachedData);
+          
+          // Set active tab to first available statement
+          const statements = cachedData.statements;
+          const firstAvailable = Object.keys(statements).find(key => statements[key].available);
+          if (firstAvailable) {
+            setActiveTab(firstAvailable);
+          }
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Not cached - need to collect data
+      setLoading(false);
+      setIsCollecting(true);
+      
+      const data = await collectFinancialData(
+        ticker,
+        15, // 15 years
+        false,
+        (progressData) => {
+          setCollectionProgress(progressData);
+        }
+      );
+      
+      setFinancialData(data);
+      setIsCollecting(false);
+      setIsCached(true);
       
       // Set active tab to first available statement
-      const statements = response.data.statements;
+      const statements = data.statements;
       const firstAvailable = Object.keys(statements).find(key => statements[key].available);
       if (firstAvailable) {
         setActiveTab(firstAvailable);
       }
+      
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error fetching financial data');
+      setError(err.message || 'Error fetching financial data');
       setFinancialData(null);
+      setIsCollecting(false);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Handle refresh request
+  const handleRefresh = async () => {
+    if (!selectedTicker || isCollecting) return;
+    
+    setIsCollecting(true);
+    setError(null);
+    setCollectionProgress({ status: 'starting', message: 'Refreshing data...', progress: 0 });
+    
+    try {
+      const data = await refreshFinancialData(
+        selectedTicker,
+        15,
+        (progressData) => {
+          setCollectionProgress(progressData);
+        }
+      );
+      
+      setFinancialData(data);
+      setIsCollecting(false);
+      setIsCached(true);
+      
+      // Keep current active tab if available
+      const statements = data.statements;
+      if (!statements[activeTab]?.available) {
+        const firstAvailable = Object.keys(statements).find(key => statements[key].available);
+        if (firstAvailable) {
+          setActiveTab(firstAvailable);
+        }
+      }
+      
+    } catch (err) {
+      setError(err.message || 'Error refreshing financial data');
+      setIsCollecting(false);
     }
   };
 
@@ -208,10 +290,37 @@ function App() {
         {/* Individual Stocks Tab */}
         {activeMainTab === 'stocks' && (
           <>
-            {loading && <div className="loading">Loading financial data...</div>}
-            {error && <div className="error">{error}</div>}
+            {loading && <div className="loading">⏳ Loading financial data...</div>}
+            {error && <div className="error">❌ {error}</div>}
+            
+            {/* Progress Indicator during data collection */}
+            {isCollecting && (
+              <DataCollectionProgress
+                status={collectionProgress.status}
+                message={collectionProgress.message}
+                progress={collectionProgress.progress}
+              />
+            )}
+            
+            {/* Refresh Button */}
+            {selectedTicker && financialData && !isCollecting && (
+              <div className="refresh-container">
+                <button 
+                  className="refresh-button"
+                  onClick={handleRefresh}
+                  disabled={isCollecting}
+                >
+                  🔄 Refresh Data
+                </button>
+                {isCached && (
+                  <span className="cache-indicator">
+                    💾 Loaded from cache
+                  </span>
+                )}
+              </div>
+            )}
 
-            {financialData && (
+            {financialData && !isCollecting && (
           <div className="canvas-container">
             <AlignmentGuides 
               guides={alignmentGuides} 

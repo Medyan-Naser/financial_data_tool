@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from . import data
 from . import ai_endpoints
 from . import macro_endpoints
+from . import financials_cached
 from starlette.middleware.cors import CORSMiddleware
 
 
@@ -17,6 +18,8 @@ app.add_middleware(
 )
 
 # Include the API routes
-app.include_router(data.router)
+# NOTE: Order matters! More specific routes must come first
+app.include_router(financials_cached.router)  # New cached financials with progress tracking (more specific)
+app.include_router(data.router)  # Legacy data endpoints (less specific)
 app.include_router(ai_endpoints.router)
 app.include_router(macro_endpoints.router)
