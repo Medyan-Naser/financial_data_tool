@@ -30,6 +30,18 @@ function MacroView() {
     velocity: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
     unemployment: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
     realestate: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    commodityEnergy: { position: { x: 20, y: 20 }, size: { width: 600, height: 450 } },
+    commodityMetals: { position: { x: 640, y: 20 }, size: { width: 600, height: 450 } },
+    commodityAgricultural: { position: { x: 20, y: 490 }, size: { width: 600, height: 450 } },
+    commodityLivestock: { position: { x: 640, y: 490 }, size: { width: 600, height: 450 } },
+    commodityIndustrial: { position: { x: 20, y: 960 }, size: { width: 600, height: 450 } },
+    commodityIndex: { position: { x: 640, y: 960 }, size: { width: 600, height: 450 } },
+    bondMajor10y: { position: { x: 20, y: 20 }, size: { width: 600, height: 450 } },
+    bondEurope: { position: { x: 640, y: 20 }, size: { width: 600, height: 450 } },
+    bondAmerica: { position: { x: 20, y: 490 }, size: { width: 600, height: 450 } },
+    bondAsia: { position: { x: 640, y: 490 }, size: { width: 600, height: 450 } },
+    bondAustralia: { position: { x: 20, y: 960 }, size: { width: 600, height: 450 } },
+    bondAfrica: { position: { x: 640, y: 960 }, size: { width: 600, height: 450 } },
   });
   
   const updatePanelPosition = (panelId, position) => {
@@ -281,39 +293,39 @@ function MacroView() {
             <h3>Economic Data Dashboard</h3>
             <p>Select a category above to view detailed economic indicators and trends.</p>
             <div className="overview-grid">
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('commodities')} style={{ cursor: 'pointer' }}>
                 <h4>📊 Commodities</h4>
                 <p>Energy, Metals, Agricultural, Livestock, Industrial</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('currencies')} style={{ cursor: 'pointer' }}>
                 <h4>💱 Currencies</h4>
                 <p>Major global currency exchange rates</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('inflation')} style={{ cursor: 'pointer' }}>
                 <h4>📈 Inflation</h4>
                 <p>CPI and inflation trends</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('debt')} style={{ cursor: 'pointer' }}>
                 <h4>💰 Debt/GDP</h4>
                 <p>National debt to GDP ratio</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('dollar')} style={{ cursor: 'pointer' }}>
                 <h4>💵 Dollar Index</h4>
                 <p>US Dollar strength indicator</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('velocity')} style={{ cursor: 'pointer' }}>
                 <h4>⚡ Money Velocity</h4>
                 <p>Money circulation rate</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('unemployment')} style={{ cursor: 'pointer' }}>
                 <h4>👥 Unemployment</h4>
                 <p>Employment statistics</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('realestate')} style={{ cursor: 'pointer' }}>
                 <h4>🏠 Real Estate</h4>
                 <p>Housing market trends</p>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveSection('bonds')} style={{ cursor: 'pointer' }}>
                 <h4>🌐 Bonds</h4>
                 <p>Global bond yields</p>
               </div>
@@ -323,34 +335,127 @@ function MacroView() {
 
         {/* Commodities */}
         {activeSection === 'commodities' && commoditiesData && (
-          <div className="commodities-section">
+          <div className="commodities-section" style={{ position: 'relative', minHeight: '1450px' }}>
             <h3>Commodities Data</h3>
-            <div className="charts-grid-macro">
-              <div className="macro-chart">
+            <DraggableResizablePanel
+              id="commodityEnergy"
+              position={chartPanels.commodityEnergy.position}
+              size={chartPanels.commodityEnergy.size}
+              onPositionChange={(pos) => updatePanelPosition('commodityEnergy', pos)}
+              onSizeChange={(size) => updatePanelSize('commodityEnergy', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Energy</h4>
-                <Plot data={commoditiesData.energy.chart.data} layout={commoditiesData.energy.chart.layout} />
+                <Plot 
+                  data={commoditiesData.energy.chart.data} 
+                  layout={commoditiesData.energy.chart.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="commodityMetals"
+              position={chartPanels.commodityMetals.position}
+              size={chartPanels.commodityMetals.size}
+              onPositionChange={(pos) => updatePanelPosition('commodityMetals', pos)}
+              onSizeChange={(size) => updatePanelSize('commodityMetals', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Metals</h4>
-                <Plot data={commoditiesData.metals.chart.data} layout={commoditiesData.metals.chart.layout} />
+                <Plot 
+                  data={commoditiesData.metals.chart.data} 
+                  layout={commoditiesData.metals.chart.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="commodityAgricultural"
+              position={chartPanels.commodityAgricultural.position}
+              size={chartPanels.commodityAgricultural.size}
+              onPositionChange={(pos) => updatePanelPosition('commodityAgricultural', pos)}
+              onSizeChange={(size) => updatePanelSize('commodityAgricultural', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Agricultural</h4>
-                <Plot data={commoditiesData.agricultural.chart.data} layout={commoditiesData.agricultural.chart.layout} />
+                <Plot 
+                  data={commoditiesData.agricultural.chart.data} 
+                  layout={commoditiesData.agricultural.chart.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="commodityLivestock"
+              position={chartPanels.commodityLivestock.position}
+              size={chartPanels.commodityLivestock.size}
+              onPositionChange={(pos) => updatePanelPosition('commodityLivestock', pos)}
+              onSizeChange={(size) => updatePanelSize('commodityLivestock', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Livestock</h4>
-                <Plot data={commoditiesData.livestock.chart.data} layout={commoditiesData.livestock.chart.layout} />
+                <Plot 
+                  data={commoditiesData.livestock.chart.data} 
+                  layout={commoditiesData.livestock.chart.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="commodityIndustrial"
+              position={chartPanels.commodityIndustrial.position}
+              size={chartPanels.commodityIndustrial.size}
+              onPositionChange={(pos) => updatePanelPosition('commodityIndustrial', pos)}
+              onSizeChange={(size) => updatePanelSize('commodityIndustrial', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Industrial</h4>
-                <Plot data={commoditiesData.industrial.chart.data} layout={commoditiesData.industrial.chart.layout} />
+                <Plot 
+                  data={commoditiesData.industrial.chart.data} 
+                  layout={commoditiesData.industrial.chart.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="commodityIndex"
+              position={chartPanels.commodityIndex.position}
+              size={chartPanels.commodityIndex.size}
+              onPositionChange={(pos) => updatePanelPosition('commodityIndex', pos)}
+              onSizeChange={(size) => updatePanelSize('commodityIndex', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Index</h4>
-                <Plot data={commoditiesData.index.chart.data} layout={commoditiesData.index.chart.layout} />
+                <Plot 
+                  data={commoditiesData.index.chart.data} 
+                  layout={commoditiesData.index.chart.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-            </div>
+            </DraggableResizablePanel>
           </div>
         )}
 
@@ -517,34 +622,127 @@ function MacroView() {
 
         {/* Bonds */}
         {activeSection === 'bonds' && bondsData && (
-          <div className="bonds-section">
+          <div className="bonds-section" style={{ position: 'relative', minHeight: '1450px' }}>
             <h3>Global Bonds</h3>
-            <div className="charts-grid-macro">
-              <div className="macro-chart">
+            <DraggableResizablePanel
+              id="bondMajor10y"
+              position={chartPanels.bondMajor10y.position}
+              size={chartPanels.bondMajor10y.size}
+              onPositionChange={(pos) => updatePanelPosition('bondMajor10y', pos)}
+              onSizeChange={(size) => updatePanelSize('bondMajor10y', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Major 10Y Bonds</h4>
-                <Plot data={bondsData.major_10y.data} layout={bondsData.major_10y.layout} />
+                <Plot 
+                  data={bondsData.major_10y.data} 
+                  layout={bondsData.major_10y.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="bondEurope"
+              position={chartPanels.bondEurope.position}
+              size={chartPanels.bondEurope.size}
+              onPositionChange={(pos) => updatePanelPosition('bondEurope', pos)}
+              onSizeChange={(size) => updatePanelSize('bondEurope', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Europe Bonds</h4>
-                <Plot data={bondsData.europe.data} layout={bondsData.europe.layout} />
+                <Plot 
+                  data={bondsData.europe.data} 
+                  layout={bondsData.europe.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="bondAmerica"
+              position={chartPanels.bondAmerica.position}
+              size={chartPanels.bondAmerica.size}
+              onPositionChange={(pos) => updatePanelPosition('bondAmerica', pos)}
+              onSizeChange={(size) => updatePanelSize('bondAmerica', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>America Bonds</h4>
-                <Plot data={bondsData.america.data} layout={bondsData.america.layout} />
+                <Plot 
+                  data={bondsData.america.data} 
+                  layout={bondsData.america.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="bondAsia"
+              position={chartPanels.bondAsia.position}
+              size={chartPanels.bondAsia.size}
+              onPositionChange={(pos) => updatePanelPosition('bondAsia', pos)}
+              onSizeChange={(size) => updatePanelSize('bondAsia', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Asia Bonds</h4>
-                <Plot data={bondsData.asia.data} layout={bondsData.asia.layout} />
+                <Plot 
+                  data={bondsData.asia.data} 
+                  layout={bondsData.asia.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="bondAustralia"
+              position={chartPanels.bondAustralia.position}
+              size={chartPanels.bondAustralia.size}
+              onPositionChange={(pos) => updatePanelPosition('bondAustralia', pos)}
+              onSizeChange={(size) => updatePanelSize('bondAustralia', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Australia Bonds</h4>
-                <Plot data={bondsData.australia.data} layout={bondsData.australia.layout} />
+                <Plot 
+                  data={bondsData.australia.data} 
+                  layout={bondsData.australia.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-              <div className="macro-chart">
+            </DraggableResizablePanel>
+            
+            <DraggableResizablePanel
+              id="bondAfrica"
+              position={chartPanels.bondAfrica.position}
+              size={chartPanels.bondAfrica.size}
+              onPositionChange={(pos) => updatePanelPosition('bondAfrica', pos)}
+              onSizeChange={(size) => updatePanelSize('bondAfrica', size)}
+              minWidth={400}
+              minHeight={300}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
                 <h4>Africa Bonds</h4>
-                <Plot data={bondsData.africa.data} layout={bondsData.africa.layout} />
+                <Plot 
+                  data={bondsData.africa.data} 
+                  layout={bondsData.africa.layout} 
+                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                  useResizeHandler={true}
+                />
               </div>
-            </div>
+            </DraggableResizablePanel>
           </div>
         )}
       </div>
