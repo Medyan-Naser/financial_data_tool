@@ -129,12 +129,16 @@ class DataCollectionService:
         await asyncio.sleep(0.1)
         
         try:
-            # Build command
+            # Build command with output directory
+            output_dir = self.collection_script.parent / "output"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
             cmd = [
                 sys.executable,
                 str(self.collection_script),
                 "--ticker", ticker,
-                "--years", str(years)
+                "--years", str(years),
+                "--output", str(output_dir)
             ]
             
             # Run subprocess and capture output
@@ -147,7 +151,10 @@ class DataCollectionService:
             
             # Track progress
             current_progress = 15
-            progress_per_year = 70 / years  # 70% of progress bar for data collection
+            years_processed = 0
+            import re
+            # Match "Processing filing X/Y: date" pattern
+            filing_pattern = re.compile(r'Processing filing (\d+)/(\d+): (.+)')
             
             # Read output line by line
             line_count = 0
@@ -155,14 +162,30 @@ class DataCollectionService:
                 line_text = line.decode().strip()
                 line_count += 1
                 
-                # Update progress based on output
-                if "Processing filing" in line_text or "Processing Income Statement" in line_text:
-                    current_progress = min(80, current_progress + progress_per_year / 3)
-                    yield f"data: {json.dumps({'status': 'collecting', 'message': line_text, 'progress': int(current_progress)})}\n\n"
+                # Update progress based on "Processing filing" messages
+                filing_match = filing_pattern.search(line_text)
+                if filing_match:
+                    current_filing = int(filing_match.group(1))
+                    total_filings = int(filing_match.group(2))
+                    filing_date = filing_match.group(3)
+                    
+                    # Calculate progress: 15% to 80% based on filing number
+                    current_progress = 15 + int((current_filing / total_filings) * 65)
+                    
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing filing {current_filing}/{total_filings}: {filing_date}', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.05)
+                elif "Processing Income Statement" in line_text:
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Income Statement...', 'progress': current_progress})}\n\n"
+                    await asyncio.sleep(0.02)
+                elif "Processing Balance Sheet" in line_text:
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Balance Sheet...', 'progress': current_progress})}\n\n"
+                    await asyncio.sleep(0.02)
+                elif "Processing Cash Flow" in line_text:
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Cash Flow...', 'progress': current_progress})}\n\n"
+                    await asyncio.sleep(0.02)
                 
-                # Log every 10th line
-                if line_count % 10 == 0:
+                # Log important lines
+                if line_count % 5 == 0 or any(kw in line_text.lower() for kw in ['error', 'warning', 'saved', 'complete']):
                     logger.info(f"[{ticker}] {line_text}")
             
             # Wait for process to complete
@@ -200,8 +223,15 @@ class DataCollectionService:
             yield f"data: {json.dumps({'status': 'error', 'message': error_msg})}\n\n"
     
     async def _load_collected_data(self, ticker: str) -> Optional[Dict]:
-        """Load data from the old financials directory and format it."""
-        old_financials_dir = BASE_DIR / "api" / "financials"
+        """Load data from the data collection output directory and format it."""
+        # The output structure is: output/{TICKER}/{statement}_annual.csv
+        ticker_output_dir = BASE_DIR.parent / "data-collection" / "scripts" / "output" / ticker.upper()
+        
+        if not ticker_output_dir.exists():
+            logger.warning(f"No output directory found for {ticker} at: {ticker_output_dir}")
+            return None
+        
+        logger.info(f"Loading collected data for {ticker} from: {ticker_output_dir}")
         
         statements_data = {
             "income_statement": None,
@@ -212,22 +242,62 @@ class DataCollectionService:
         statement_types = [
             ("income_statement", "income_statement"),
             ("balance_sheet", "balance_sheet"),
-            ("cash_flow", "cash_flow_statement")  # Note: file might be cash_flow_statement
+            ("cash_flow", "cash_flow")
         ]
         
         has_data = False
         
-        for stmt_key, file_pattern in statement_types:
-            # Try multiple file patterns
-            patterns = [
-                f"{ticker}_{file_pattern}.csv",
-                f"{ticker}_{stmt_key}.csv",
-                f"{ticker}_{file_pattern}_custom.csv",
-                f"{ticker}_{stmt_key}_custom.csv"
-            ]
+        for stmt_key, file_base in statement_types:
+            # Look for files matching the pattern: {statement}_*_annual.csv
+            # e.g., income_statement_2024-12-31_annual.csv
+            import glob
+            pattern = str(ticker_output_dir / f"{file_base}_*_annual.csv")
+            matching_files = glob.glob(pattern)
             
-            for pattern in patterns:
-                file_path = old_financials_dir / pattern
+            if matching_files:
+                # We have multiple files (one per year), merge them
+                all_dfs = []
+                for file_path in sorted(matching_files):
+                    try:
+                        import pandas as pd
+                        df = pd.read_csv(file_path, index_col=0)
+                        all_dfs.append(df)
+                    except Exception as e:
+                        logger.error(f"Error loading {file_path}: {e}")
+                
+                if all_dfs:
+                    # Merge all DataFrames horizontally (combine columns/years)
+                    merged_df = pd.concat(all_dfs, axis=1)
+                    
+                    # Remove duplicate columns (keep first occurrence of each date)
+                    # This happens because each filing contains multiple comparative years
+                    merged_df = merged_df.loc[:, ~merged_df.columns.duplicated(keep='first')]
+                    
+                    # Sort columns by date (most recent first)
+                    try:
+                        sorted_cols = sorted(merged_df.columns, key=lambda x: pd.to_datetime(x), reverse=True)
+                        merged_df = merged_df[sorted_cols]
+                    except:
+                        pass  # If dates can't be parsed, keep original order
+                    
+                    # Format data
+                    columns = merged_df.columns.tolist()
+                    row_names = merged_df.index.tolist()
+                    data = merged_df.values.tolist()
+                    
+                    statements_data[stmt_key] = {
+                        "available": True,
+                        "columns": columns,
+                        "row_names": row_names,
+                        "data": data,
+                        "file_source": f"{len(matching_files)} files merged"
+                    }
+                    
+                    has_data = True
+                    logger.info(f"Loaded {stmt_key} for {ticker} from {len(matching_files)} files")
+            else:
+                # Try old single-file pattern
+                file_path = ticker_output_dir / f"{file_base}_annual.csv"
                 
                 if file_path.exists():
                     try:
@@ -244,12 +314,11 @@ class DataCollectionService:
                             "columns": columns,
                             "row_names": row_names,
                             "data": data,
-                            "file_source": pattern
+                            "file_source": str(file_path)
                         }
                         
                         has_data = True
-                        logger.info(f"Loaded {stmt_key} for {ticker} from {pattern}")
-                        break
+                        logger.info(f"Loaded {stmt_key} for {ticker} from {file_path}")
                         
                     except Exception as e:
                         logger.error(f"Error loading {file_path}: {e}")
