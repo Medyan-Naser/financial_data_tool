@@ -20,6 +20,8 @@ function MacroView() {
   const [unemploymentData, setUnemploymentData] = useState(null);
   const [realEstateData, setRealEstateData] = useState(null);
   const [bondsData, setBondsData] = useState(null);
+  const [yieldCurveData, setYieldCurveData] = useState(null);
+  const [overviewData, setOverviewData] = useState(null);
   
   // Panel state for draggable/resizable charts
   const [chartPanels, setChartPanels] = useState({
@@ -42,6 +44,7 @@ function MacroView() {
     bondAsia: { position: { x: 640, y: 490 }, size: { width: 600, height: 450 } },
     bondAustralia: { position: { x: 20, y: 960 }, size: { width: 600, height: 450 } },
     bondAfrica: { position: { x: 640, y: 960 }, size: { width: 600, height: 450 } },
+    yieldCurve: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
   });
   
   const updatePanelPosition = (panelId, position) => {
@@ -60,7 +63,9 @@ function MacroView() {
 
   // Fetch data only when section is active
   useEffect(() => {
-    if (activeSection === 'commodities' && !commoditiesData) {
+    if (activeSection === 'overview' && !overviewData) {
+      fetchOverview();
+    } else if (activeSection === 'commodities' && !commoditiesData) {
       fetchCommodities();
     } else if (activeSection === 'currencies' && !currenciesData) {
       fetchCurrencies();
@@ -78,6 +83,8 @@ function MacroView() {
       fetchRealEstate();
     } else if (activeSection === 'bonds' && !bondsData) {
       fetchBonds();
+    } else if (activeSection === 'yield-curve' && !yieldCurveData) {
+      fetchYieldCurve();
     }
   }, [activeSection]);
 
@@ -214,6 +221,32 @@ function MacroView() {
     }
   };
 
+  const fetchYieldCurve = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/macro/yield-curve`);
+      setYieldCurveData(response.data);
+    } catch (err) {
+      setError('Error loading yield curve data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOverview = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/macro/overview`);
+      setOverviewData(response.data);
+    } catch (err) {
+      setError('Error loading overview data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="macro-view">
       <h2>🌍 Economic Indicators</h2>
@@ -280,6 +313,12 @@ function MacroView() {
         >
           Bonds
         </button>
+        <button
+          className={`section-btn ${activeSection === 'yield-curve' ? 'active' : ''}`}
+          onClick={() => setActiveSection('yield-curve')}
+        >
+          📊 Interest Rates
+        </button>
       </div>
 
       {/* Content Area */}
@@ -310,7 +349,7 @@ function MacroView() {
                 <p>National debt to GDP ratio</p>
               </div>
               <div className="overview-card" onClick={() => setActiveSection('dollar')} style={{ cursor: 'pointer' }}>
-                <h4>💵 Dollar Index</h4>
+                <h4>� Dollar Index</h4>
                 <p>US Dollar strength indicator</p>
               </div>
               <div className="overview-card" onClick={() => setActiveSection('velocity')} style={{ cursor: 'pointer' }}>
@@ -353,6 +392,7 @@ function MacroView() {
                   layout={commoditiesData.energy.chart.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -373,6 +413,7 @@ function MacroView() {
                   layout={commoditiesData.metals.chart.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -393,6 +434,7 @@ function MacroView() {
                   layout={commoditiesData.agricultural.chart.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -413,6 +455,7 @@ function MacroView() {
                   layout={commoditiesData.livestock.chart.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -433,6 +476,7 @@ function MacroView() {
                   layout={commoditiesData.industrial.chart.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -453,6 +497,7 @@ function MacroView() {
                   layout={commoditiesData.index.chart.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -477,6 +522,7 @@ function MacroView() {
                 layout={currenciesData.chart.layout} 
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler={true}
+                  config={{ responsive: true }}
               />
             </DraggableResizablePanel>
           </div>
@@ -500,6 +546,7 @@ function MacroView() {
                 layout={inflationData.chart.layout} 
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler={true}
+                  config={{ responsive: true }}
               />
             </DraggableResizablePanel>
           </div>
@@ -523,6 +570,7 @@ function MacroView() {
                 layout={debtToGdpData.chart.layout} 
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler={true}
+                  config={{ responsive: true }}
               />
             </DraggableResizablePanel>
           </div>
@@ -546,6 +594,7 @@ function MacroView() {
                 layout={dollarIndexData.chart.layout} 
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler={true}
+                  config={{ responsive: true }}
               />
             </DraggableResizablePanel>
           </div>
@@ -569,6 +618,7 @@ function MacroView() {
                 layout={velocityData.chart.layout} 
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler={true}
+                  config={{ responsive: true }}
               />
             </DraggableResizablePanel>
           </div>
@@ -592,6 +642,7 @@ function MacroView() {
                 layout={unemploymentData.chart.layout} 
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler={true}
+                  config={{ responsive: true }}
               />
             </DraggableResizablePanel>
           </div>
@@ -615,6 +666,7 @@ function MacroView() {
                 layout={realEstateData.chart.layout} 
                 style={{ width: '100%', height: '100%' }}
                 useResizeHandler={true}
+                  config={{ responsive: true }}
               />
             </DraggableResizablePanel>
           </div>
@@ -640,6 +692,7 @@ function MacroView() {
                   layout={bondsData.major_10y.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -660,6 +713,7 @@ function MacroView() {
                   layout={bondsData.europe.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -680,6 +734,7 @@ function MacroView() {
                   layout={bondsData.america.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -700,6 +755,7 @@ function MacroView() {
                   layout={bondsData.asia.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -720,6 +776,7 @@ function MacroView() {
                   layout={bondsData.australia.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
@@ -740,6 +797,37 @@ function MacroView() {
                   layout={bondsData.africa.layout} 
                   style={{ width: '100%', height: 'calc(100% - 40px)' }}
                   useResizeHandler={true}
+                  config={{ responsive: true }}
+                />
+              </div>
+            </DraggableResizablePanel>
+          </div>
+        )}
+
+        {/* Yield Curve / Interest Rates */}
+        {activeSection === 'yield-curve' && yieldCurveData && (
+          <div className="yield-curve-section" style={{ position: 'relative', minHeight: '600px' }}>
+            <h3>📊 US Treasury Yield Curve</h3>
+            <p className="section-description">
+              The yield curve shows the relationship between interest rates and different maturity periods for US Treasury securities.
+              An inverted yield curve (short-term rates higher than long-term) often signals economic uncertainty.
+            </p>
+            <DraggableResizablePanel
+              id="yieldCurve"
+              position={chartPanels.yieldCurve.position}
+              size={chartPanels.yieldCurve.size}
+              onPositionChange={(pos) => updatePanelPosition('yieldCurve', pos)}
+              onSizeChange={(size) => updatePanelSize('yieldCurve', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <div className="macro-chart" style={{ height: '100%' }}>
+                <Plot 
+                  data={yieldCurveData.chart.data} 
+                  layout={yieldCurveData.chart.layout} 
+                  style={{ width: '100%', height: '100%' }}
+                  useResizeHandler={true}
+                  config={{ responsive: true }}
                 />
               </div>
             </DraggableResizablePanel>
