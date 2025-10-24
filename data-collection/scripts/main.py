@@ -97,7 +97,17 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                     results['balance_sheets'].append({
                         'date': report_date,
                         'original': filing.balance_sheet.og_df,
-                        'mapped': filing.balance_sheet.get_mapped_df() if hasattr(filing.balance_sheet, 'get_mapped_df') else None
+                        'mapped': filing.balance_sheet.get_mapped_df()
+                    })
+                
+                # Process cash flow
+                logger.info("Processing Cash Flow...")
+                filing.process_one_statement("cash_flow_statement")
+                if filing.cash_flow:
+                    results['cash_flows'].append({
+                        'date': report_date,
+                        'original': filing.cash_flow.og_df,
+                        'mapped': filing.cash_flow.get_mapped_df()
                     })
                 
                 # Store metadata
@@ -148,6 +158,17 @@ def save_results(results: dict, output_dir: str = "data"):
                 output_dir,
                 ticker,
                 f"balance_sheet_{item['date']}",
+                "annual"
+            )
+    
+    # Save cash flows
+    for item in results['cash_flows']:
+        if item['mapped'] is not None:
+            save_dataframe_to_csv(
+                item['mapped'],
+                output_dir,
+                ticker,
+                f"cash_flow_{item['date']}",
                 "annual"
             )
     
@@ -240,6 +261,26 @@ def main():
                     print_statement(
                         item['original'],
                         f"{args.ticker} - Income Statement (Original) - {item['date']}"
+                    )
+            
+            # Print balance sheets
+            for item in results['balance_sheets']:
+                if item['mapped'] is not None:
+                    # Only show non-zero rows
+                    non_zero = item['mapped'][(item['mapped'] != 0).any(axis=1)]
+                    print_statement(
+                        non_zero,
+                        f"{args.ticker} - Balance Sheet - {item['date']}"
+                    )
+            
+            # Print cash flows
+            for item in results['cash_flows']:
+                if item['mapped'] is not None:
+                    # Only show non-zero rows
+                    non_zero = item['mapped'][(item['mapped'] != 0).any(axis=1)]
+                    print_statement(
+                        non_zero,
+                        f"{args.ticker} - Cash Flow - {item['date']}"
                     )
         
         logger.info("Processing complete!")
