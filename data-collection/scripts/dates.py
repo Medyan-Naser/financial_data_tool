@@ -93,5 +93,5 @@ def get_datetime_index_dates_from_statement(soup: BeautifulSoup, quarterly=False
     else:
         date_indexes =  range(len(dates))
     dates = pd.to_datetime(dates)
-    print(dates, date_indexes)
+    # print(dates, date_indexes)
     return dates, date_indexes

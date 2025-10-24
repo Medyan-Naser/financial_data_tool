@@ -21,6 +21,7 @@ from Company import Company
 from Filling import Filling
 from FinancialStatement import IncomeStatement, BalanceSheet, CashFlow
 from healpers import save_dataframe_to_csv
+from merge_utils import merge_all_statements, format_merged_output
 
 # Configure logging
 logging.basicConfig(
@@ -250,38 +251,53 @@ def main():
         if args.output:
             save_results(results, args.output)
         else:
-            # Print to console
-            for item in results['income_statements']:
-                if item['mapped'] is not None:
-                    print_statement(
-                        item['mapped'],
-                        f"{args.ticker} - Income Statement - {item['date']}"
-                    )
-                else:
-                    print_statement(
-                        item['original'],
-                        f"{args.ticker} - Income Statement (Original) - {item['date']}"
-                    )
-            
-            # Print balance sheets
-            for item in results['balance_sheets']:
-                if item['mapped'] is not None:
-                    # Only show non-zero rows
-                    non_zero = item['mapped'][(item['mapped'] != 0).any(axis=1)]
-                    print_statement(
-                        non_zero,
-                        f"{args.ticker} - Balance Sheet - {item['date']}"
-                    )
-            
-            # Print cash flows
-            for item in results['cash_flows']:
-                if item['mapped'] is not None:
-                    # Only show non-zero rows
-                    non_zero = item['mapped'][(item['mapped'] != 0).any(axis=1)]
-                    print_statement(
-                        non_zero,
-                        f"{args.ticker} - Cash Flow - {item['date']}"
-                    )
+            # Merge multiple years into single tables
+            if args.years > 1:
+                logger.info(f"\nMerging {args.years} years of data into unified statements...")
+                merged = merge_all_statements(results)
+                
+                # Print merged statements
+                if merged['income_merged'] is not None:
+                    print(format_merged_output(merged['income_merged'], args.ticker, 'Income'))
+                
+                if merged['balance_merged'] is not None:
+                    print(format_merged_output(merged['balance_merged'], args.ticker, 'Balance Sheet'))
+                
+                if merged['cashflow_merged'] is not None:
+                    print(format_merged_output(merged['cashflow_merged'], args.ticker, 'Cash Flow'))
+            else:
+                # Single year - print as before
+                for item in results['income_statements']:
+                    if item['mapped'] is not None:
+                        print_statement(
+                            item['mapped'],
+                            f"{args.ticker} - Income Statement - {item['date']}"
+                        )
+                    else:
+                        print_statement(
+                            item['original'],
+                            f"{args.ticker} - Income Statement (Original) - {item['date']}"
+                        )
+                
+                # Print balance sheets
+                for item in results['balance_sheets']:
+                    if item['mapped'] is not None:
+                        # Only show non-zero rows
+                        non_zero = item['mapped'][(item['mapped'] != 0).any(axis=1)]
+                        print_statement(
+                            non_zero,
+                            f"{args.ticker} - Balance Sheet - {item['date']}"
+                        )
+                
+                # Print cash flows
+                for item in results['cash_flows']:
+                    if item['mapped'] is not None:
+                        # Only show non-zero rows
+                        non_zero = item['mapped'][(item['mapped'] != 0).any(axis=1)]
+                        print_statement(
+                            non_zero,
+                            f"{args.ticker} - Cash Flow - {item['date']}"
+                        )
         
         logger.info("Processing complete!")
         
