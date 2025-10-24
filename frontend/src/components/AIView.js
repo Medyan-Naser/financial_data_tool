@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
 import DraggableResizablePanel from './DraggableResizablePanel';
+import AIModels from './AIModels';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -158,6 +159,12 @@ function AIView() {
         >
           Market Indices
         </button>
+        <button
+          className={`section-btn ${activeModel === 'ai-models' ? 'active' : ''}`}
+          onClick={() => setActiveModel('ai-models')}
+        >
+          🤖 AI Analysis
+        </button>
       </div>
 
       {/* Content Area */}
@@ -205,6 +212,16 @@ function AIView() {
                   <li>IWM - Russell 2000</li>
                 </ul>
               </div>
+              <div className="overview-card" onClick={() => setActiveModel('ai-models')} style={{ cursor: 'pointer' }}>
+                <h4>🤖 AI Financial Analysis</h4>
+                <p>Advanced ML models for comprehensive financial analysis</p>
+                <ul>
+                  <li>Financial Health Score (0-100)</li>
+                  <li>Bankruptcy Risk Analysis</li>
+                  <li>Trend Detection & Forecasting</li>
+                  <li>Anomaly Detection</li>
+                </ul>
+              </div>
             </div>
             <div className="ai-instructions">
               <p>⚠️ <strong>Note:</strong> AI models can take 30-60 seconds to run. Please be patient.</p>
@@ -245,6 +262,7 @@ function AIView() {
                         layout={forecastData.actual_vs_predicted.layout} 
                         style={{ width: '100%', height: 'calc(100% - 40px)' }}
                         useResizeHandler={true}
+                      config={{ responsive: true }}
                       />
                     </div>
                   </DraggableResizablePanel>
@@ -265,6 +283,7 @@ function AIView() {
                         layout={forecastData.forecast.layout} 
                         style={{ width: '100%', height: 'calc(100% - 40px)' }}
                         useResizeHandler={true}
+                      config={{ responsive: true }}
                       />
                     </div>
                   </DraggableResizablePanel>
@@ -285,6 +304,7 @@ function AIView() {
                         layout={forecastData.training_loss.layout} 
                         style={{ width: '100%', height: 'calc(100% - 40px)' }}
                         useResizeHandler={true}
+                      config={{ responsive: true }}
                       />
                     </div>
                   </DraggableResizablePanel>
@@ -301,22 +321,24 @@ function AIView() {
                 >
                   <div className="forecast-table" style={{ height: '100%', overflow: 'auto' }}>
                     <h4>Forecast Data</h4>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Predicted Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {forecastData.forecast_data.map((row, idx) => (
-                          <tr key={idx}>
-                            <td>{Object.keys(row)[0]}</td>
-                            <td>${Object.values(row)[0].toFixed(2)}</td>
+                    <div className="table-wrapper">
+                      <table className="financial-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Predicted Price</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {forecastData.forecast_data.map((row, idx) => (
+                            <tr key={idx}>
+                              <td>{Object.keys(row)[0]}</td>
+                              <td>${Object.values(row)[0].toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </DraggableResizablePanel>
               </div>
@@ -351,6 +373,7 @@ function AIView() {
                         layout={volatilityData.returns.layout} 
                         style={{ width: '100%', height: 'calc(100% - 40px)' }}
                         useResizeHandler={true}
+                      config={{ responsive: true }}
                       />
                     </div>
                   </DraggableResizablePanel>
@@ -371,6 +394,7 @@ function AIView() {
                         layout={volatilityData.rolling_volatility.layout} 
                         style={{ width: '100%', height: 'calc(100% - 40px)' }}
                         useResizeHandler={true}
+                      config={{ responsive: true }}
                       />
                     </div>
                   </DraggableResizablePanel>
@@ -391,6 +415,7 @@ function AIView() {
                         layout={volatilityData.forecast.layout} 
                         style={{ width: '100%', height: 'calc(100% - 40px)' }}
                         useResizeHandler={true}
+                      config={{ responsive: true }}
                       />
                     </div>
                   </DraggableResizablePanel>
@@ -438,6 +463,7 @@ function AIView() {
                       layout={indexData[index].chart.layout} 
                       style={{ width: '100%', height: 'calc(100% - 40px)' }}
                       useResizeHandler={true}
+                    config={{ responsive: true }}
                     />
                   ) : (
                     <div className="loading-small">Loading...</div>
@@ -446,6 +472,11 @@ function AIView() {
               </DraggableResizablePanel>
             ))}
           </div>
+        )}
+
+        {/* AI Models */}
+        {activeModel === 'ai-models' && (
+          <AIModels ticker={ticker} />
         )}
       </div>
     </div>
