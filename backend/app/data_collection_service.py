@@ -96,7 +96,8 @@ class DataCollectionService:
         self, 
         ticker: str, 
         years: int = 15,
-        force_refresh: bool = False
+        force_refresh: bool = False,
+        cleanup_csv: bool = True
     ) -> AsyncGenerator[str, None]:
         """
         Collect financial data with progress updates.
@@ -214,6 +215,17 @@ class DataCollectionService:
             
             # Save to cache
             self.save_to_cache(ticker, financial_data)
+            
+            # Optionally clean up CSV files after successful caching
+            if cleanup_csv:
+                ticker_output_dir = BASE_DIR.parent / "data-collection" / "scripts" / "output" / ticker.upper()
+                if ticker_output_dir.exists():
+                    try:
+                        import shutil
+                        shutil.rmtree(ticker_output_dir)
+                        logger.info(f"Cleaned up CSV files for {ticker} at {ticker_output_dir}")
+                    except Exception as e:
+                        logger.warning(f"Could not clean up CSV files for {ticker}: {e}")
             
             yield f"data: {json.dumps({'status': 'complete', 'message': 'Data collection complete!', 'progress': 100, 'data': financial_data})}\n\n"
             
