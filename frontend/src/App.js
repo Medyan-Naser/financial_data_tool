@@ -309,14 +309,11 @@ function App() {
                   className="refresh-button"
                   onClick={handleRefresh}
                   disabled={isCollecting}
+                  title="Refresh financial data from SEC EDGAR"
                 >
                   🔄 Refresh Data
                 </button>
-                {isCached && (
-                  <span className="cache-indicator">
-                    💾 Loaded from cache
-                  </span>
-                )}
+                <p className="refresh-hint">Click to fetch the latest data from SEC EDGAR</p>
               </div>
             )}
 
@@ -340,7 +337,12 @@ function App() {
               showAlignmentGuides={draggingPanel === 'table'}
             >
               <div className="data-section">
-                <h2>{financialData.ticker} Financial Statements</h2>
+                <div className="financial-header">
+                  <h2>{financialData.ticker} Financial Statements</h2>
+                  {financialData.currency && (
+                    <span className="currency-badge">{financialData.currency}</span>
+                  )}
+                </div>
                 
                 {/* Statement Tabs */}
                 <div className="tabs">
