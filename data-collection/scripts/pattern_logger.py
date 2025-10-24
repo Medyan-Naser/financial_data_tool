@@ -134,27 +134,41 @@ class PatternLogger:
         # Extract matched row information from statement object's mapped_facts
         # mapped_facts contains tuples of (original_idx, fact_row, pattern_type, pattern)
         matched_original_rows = set()
+        row_to_human_label = {}  # Map from raw_label to human-readable label
         
         if statement_object is not None and hasattr(statement_object, 'mapped_facts'):
             # Extract the original indices that were successfully mapped
+            # mapped_facts format: (original_idx, mapped_fact_name, pattern_type, pattern)
             for mapped_fact_tuple in statement_object.mapped_facts:
-                if len(mapped_fact_tuple) >= 1:
+                if len(mapped_fact_tuple) >= 2:
                     original_idx = mapped_fact_tuple[0]  # First element is original row name
+                    human_label = mapped_fact_tuple[1]   # Second element is the mapped human-readable name
                     matched_original_rows.add(str(original_idx))
+                    row_to_human_label[str(original_idx)] = str(human_label)
             logger.debug(f"Found {len(matched_original_rows)} matched rows from statement object")
         else:
             logger.debug("No statement object or mapped_facts available")
         
-        # Extract row information with match status
+        # Extract row information with match status and human labels
         row_info = []
         for idx, row_name in enumerate(original_df.index):
-            is_matched = str(row_name) in matched_original_rows
-            row_info.append({
+            row_name_str = str(row_name)
+            is_matched = row_name_str in matched_original_rows
+            
+            row_entry = {
                 'row_number': idx + 1,
-                'raw_label': str(row_name),
-                'is_us_gaap': 'us-gaap' in str(row_name) or ':' in str(row_name),
+                'raw_label': row_name_str,
+                'is_us_gaap': 'us-gaap' in row_name_str or ':' in row_name_str,
                 'matched': is_matched
-            })
+            }
+            
+            # Add human-readable label if matched
+            if is_matched and row_name_str in row_to_human_label:
+                row_entry['human_label'] = row_to_human_label[row_name_str]
+            else:
+                row_entry['human_label'] = None
+            
+            row_info.append(row_entry)
         
         # Calculate match statistics
         total_rows = len(original_df)
