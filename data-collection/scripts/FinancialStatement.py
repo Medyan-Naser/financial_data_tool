@@ -71,16 +71,145 @@ class FinancialStatement():
     def create_zeroed_df_from_map(self):
         """
         Create a zeroed DataFrame based on the statement map.
-        Must be implemented by subclasses.
+        Can be overridden by subclasses if needed.
         """
-        raise NotImplementedError("Subclasses must implement create_zeroed_df_from_map")
+        if not hasattr(self, 'statement_map') or self.statement_map is None:
+            logger.error("statement_map not initialized")
+            return
+        
+        map_facts = vars(self.statement_map)
+        row_labels = [
+            getattr(fact, 'fact') 
+            for fact in map_facts.values() 
+            if isinstance(fact, MapFact)
+        ]
+        
+        logger.debug(f"Creating mapped DataFrame with {len(row_labels)} standard rows")
+        column_labels = self.og_df.columns
+        self.mapped_df = pd.DataFrame(0, index=row_labels, columns=column_labels)
+        logger.debug(f"Mapped DataFrame shape: {self.mapped_df.shape}")
     
     def map_facts(self):
         """
         Map facts from original DataFrame to standardized format.
-        Must be implemented by subclasses.
+        
+        Multi-pass strategy:
+        1. Priority-based matching (high-confidence items first)
+        2. GAAP taxonomy matching
+        3. IFRS taxonomy matching (for international companies)
+        4. Human-readable label matching
+        5. Report results and unmapped items
+        
+        Can be overridden by subclasses if needed.
         """
-        raise NotImplementedError("Subclasses must implement map_facts")
+        if not hasattr(self, 'statement_map') or self.statement_map is None:
+            logger.error("statement_map not initialized")
+            return
+        
+        if self.mapped_df is None:
+            self.create_zeroed_df_from_map()
+        
+        # Get all MapFact objects sorted by priority (highest first)
+        map_facts = vars(self.statement_map)
+        map_fact_items = [(name, mf) for name, mf in map_facts.items() 
+                         if isinstance(mf, MapFact)]
+        map_fact_items.sort(key=lambda x: x[1].priority, reverse=True)
+        
+        mapped_count = 0
+        unmapped_rows = []
+        
+        # PASS 1: Priority-based matching
+        logger.debug("Starting priority-based matching...")
+        for idx, row in self.og_df.iterrows():
+            if self._is_row_mapped(idx):
+                continue
+                
+            found_match = False
+            human_string = self.rows_text.get(idx, "")
+            
+            for fact_name, map_fact in map_fact_items:
+                if found_match:
+                    break
+                
+                # Try GAAP patterns first
+                if self._try_pattern_match(idx, row, map_fact, map_fact.gaap_pattern,
+                                          human_string, 'GAAP'):
+                    mapped_count += 1
+                    found_match = True
+                    break
+                
+                # Try IFRS patterns
+                if self._try_pattern_match(idx, row, map_fact, map_fact.ifrs_pattern,
+                                          human_string, 'IFRS'):
+                    mapped_count += 1
+                    found_match = True
+                    break
+                
+                # Try human patterns
+                if self._try_pattern_match(idx, row, map_fact, map_fact.human_pattern,
+                                          human_string, 'Human'):
+                    mapped_count += 1
+                    found_match = True
+                    break
+            
+            if not found_match:
+                unmapped_rows.append((idx, human_string))
+        
+        logger.info(f"Successfully mapped {mapped_count} out of {len(self.og_df)} rows")
+        logger.info(f"Unmapped rows: {len(unmapped_rows)}")
+        
+        # Log some unmapped rows for debugging
+        if unmapped_rows and logger.isEnabledFor(logging.DEBUG):
+            logger.debug("First 10 unmapped rows:")
+            for idx, human_text in unmapped_rows[:10]:
+                logger.debug(f"  - {idx}: {human_text}")
+    
+    def _is_row_mapped(self, idx):
+        """Check if a row has already been mapped."""
+        return any(m[0] == idx for m in self.mapped_facts)
+    
+    def _try_pattern_match(self, idx, row, map_fact, patterns, human_string, pattern_type):
+        """
+        Try to match a row against a list of patterns.
+        
+        Args:
+            idx: Row index (GAAP taxonomy name)
+            row: Row data
+            map_fact: MapFact object
+            patterns: List of regex patterns
+            human_string: Human-readable label
+            pattern_type: 'GAAP', 'IFRS', or 'Human'
+        
+        Returns:
+            True if matched, False otherwise
+        """
+        if not patterns:
+            return False
+        
+        search_string = human_string if pattern_type == 'Human' else idx
+        
+        for pattern in patterns:
+            try:
+                if not pattern:  # Skip empty patterns
+                    continue
+                    
+                if re.search(pattern, search_string, re.IGNORECASE):
+                    fact_row = map_fact.fact
+                    
+                    # Check if this fact is already mapped
+                    if (self.mapped_df.loc[fact_row] != 0).any():
+                        logger.debug(f"Fact '{fact_row}' already mapped, skipping '{idx}'")
+                        return False
+                    
+                    # Map the row
+                    self.mapped_df.loc[fact_row] = row
+                    self.mapped_facts.append((idx, fact_row, pattern_type, pattern))
+                    logger.debug(f"Mapped '{idx}' -> '{fact_row}' ({pattern_type}: {pattern})")
+                    return True
+            except Exception as e:
+                logger.error(f"Error matching {pattern_type} pattern '{pattern}' for '{idx}': {e}")
+        
+        return False
     
     def validate_mapped_df(self) -> Dict[str, any]:
         """
@@ -126,103 +255,13 @@ class IncomeStatement(FinancialStatement):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.statement_map = IncomeStatementMap()
-    
-    def create_zeroed_df_from_map(self):
-        """
-        Create a DataFrame with standardized row labels, initialized to zero.
-        """
-        # Extract row labels from the MapFact attributes
-        map_facts = vars(self.statement_map)
-        row_labels = [
-            getattr(fact, 'fact') 
-            for fact in map_facts.values() 
-            if isinstance(fact, MapFact)
-        ]
-        
-        logger.debug(f"Creating mapped DataFrame with {len(row_labels)} standard rows")
-        
-        # Get column headers (dates) from original DataFrame
-        column_labels = self.og_df.columns
-        
-        # Create zeroed DataFrame
-        self.mapped_df = pd.DataFrame(0, index=row_labels, columns=column_labels)
-        logger.debug(f"Mapped DataFrame shape: {self.mapped_df.shape}")
 
     def map_facts(self):
         """
-        Map facts from original DataFrame to standardized format.
-        
-        Uses regex patterns to match:
-        1. GAAP taxonomy names (e.g., us-gaap_Revenue)
-        2. Human-readable labels from the filing
+        Map income statement facts. Uses parent class implementation and adds validation.
         """
-        if self.mapped_df is None:
-            self.create_zeroed_df_from_map()
-        
-        map_facts = vars(self.statement_map)
-        mapped_count = 0
-        
-        # Iterate through each row in the original dataframe
-        for idx, row in self.og_df.iterrows():
-            found_match = False
-            
-            # Extract the human-readable text for this row
-            human_string = self.rows_text.get(idx, "")
-            
-            # Try to match against each MapFact
-            for fact_name, map_fact in map_facts.items():
-                if found_match:
-                    break
-                    
-                if not isinstance(map_fact, MapFact):
-                    continue
-                
-                # Try GAAP pattern matching first (more reliable)
-                for pattern in map_fact.gaap_pattern:
-                    try:
-                        if re.search(pattern, idx, re.IGNORECASE):
-                            fact_row = map_fact.fact
-                            
-                            # Check if this fact is already mapped
-                            if (self.mapped_df.loc[fact_row] != 0).any():
-                                logger.debug(f"Fact '{fact_row}' already mapped, skipping '{idx}'")
-                                continue
-                            
-                            self.mapped_df.loc[fact_row] = row
-                            self.mapped_facts.append((idx, fact_row, 'gaap', pattern))
-                            logger.debug(f"Mapped '{idx}' -> '{fact_row}' (GAAP: {pattern})")
-                            mapped_count += 1
-                            found_match = True
-                            break
-                    except Exception as e:
-                        logger.error(f"Error matching GAAP pattern '{pattern}' for '{idx}': {e}")
-                
-                if found_match:
-                    continue
-                
-                # Try human pattern matching
-                for pattern in map_fact.human_pattern:
-                    try:
-                        if re.search(pattern, human_string, re.IGNORECASE):
-                            fact_row = map_fact.fact
-                            
-                            # Check if this fact is already mapped
-                            if (self.mapped_df.loc[fact_row] != 0).any():
-                                logger.debug(f"Fact '{fact_row}' already mapped, skipping '{idx}'")
-                                continue
-                            
-                            self.mapped_df.loc[fact_row] = row
-                            self.mapped_facts.append((idx, fact_row, 'human', pattern))
-                            logger.debug(f"Mapped '{idx}' -> '{fact_row}' (Human: {pattern})")
-                            mapped_count += 1
-                            found_match = True
-                            break
-                    except Exception as e:
-                        logger.error(f"Error matching human pattern '{pattern}' for '{idx}': {e}")
-        
-        logger.info(f"Successfully mapped {mapped_count} out of {len(self.og_df)} rows")
-        
-        # Validate key facts are present
+        super().map_facts()
+        # Validate key facts after mapping
         self._validate_key_facts()
     
     def _validate_key_facts(self):
@@ -256,25 +295,48 @@ class BalanceSheet(FinancialStatement):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO: Create BalanceSheetMap similar to IncomeStatementMap
-        self.statement_map = None
+        from statement_maps import BalanceSheetMap
+        self.statement_map = BalanceSheetMap()
     
     def create_zeroed_df_from_map(self):
         """
         Create a DataFrame with standardized balance sheet row labels.
         """
-        # For now, just copy the original DataFrame
-        # TODO: Implement proper mapping when BalanceSheetMap is created
-        logger.warning("Balance sheet mapping not yet implemented")
-        self.mapped_df = self.og_df.copy()
+        map_facts = vars(self.statement_map)
+        row_labels = [
+            getattr(fact, 'fact') 
+            for fact in map_facts.values() 
+            if isinstance(fact, MapFact)
+        ]
+        
+        logger.debug(f"Creating mapped DataFrame with {len(row_labels)} standard rows")
+        column_labels = self.og_df.columns
+        self.mapped_df = pd.DataFrame(0, index=row_labels, columns=column_labels)
+        logger.debug(f"Mapped DataFrame shape: {self.mapped_df.shape}")
     
     def map_facts(self):
         """
-        Map balance sheet facts.
+        Map balance sheet facts using the same multi-pass strategy as income statement.
         """
-        # TODO: Implement balance sheet mapping
-        logger.warning("Balance sheet mapping not yet implemented")
-        pass
+        # Use the parent class mapping logic
+        super().map_facts()
+    
+    def _validate_key_facts(self):
+        """
+        Validate that key balance sheet facts are present.
+        """
+        key_facts = [TotalAssets, TotalLiabilities, StockholdersEquity]
+        missing = []
+        
+        for fact in key_facts:
+            if fact in self.mapped_df.index:
+                if (self.mapped_df.loc[fact] == 0).all():
+                    missing.append(fact)
+            else:
+                missing.append(fact)
+        
+        if missing:
+            logger.warning(f"Missing key balance sheet facts: {missing}")
 
 
 class CashFlow(FinancialStatement):
@@ -289,22 +351,46 @@ class CashFlow(FinancialStatement):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO: Create CashFlowMap similar to IncomeStatementMap
-        self.statement_map = None
+        from statement_maps import CashFlowMap
+        self.statement_map = CashFlowMap()
     
     def create_zeroed_df_from_map(self):
         """
         Create a DataFrame with standardized cash flow row labels.
         """
-        # For now, just copy the original DataFrame
-        # TODO: Implement proper mapping when CashFlowMap is created
-        logger.warning("Cash flow mapping not yet implemented")
-        self.mapped_df = self.og_df.copy()
+        map_facts = vars(self.statement_map)
+        row_labels = [
+            getattr(fact, 'fact') 
+            for fact in map_facts.values() 
+            if isinstance(fact, MapFact)
+        ]
+        
+        logger.debug(f"Creating mapped DataFrame with {len(row_labels)} standard rows")
+        column_labels = self.og_df.columns
+        self.mapped_df = pd.DataFrame(0, index=row_labels, columns=column_labels)
+        logger.debug(f"Mapped DataFrame shape: {self.mapped_df.shape}")
     
     def map_facts(self):
         """
-        Map cash flow facts.
+        Map cash flow facts using the same multi-pass strategy.
         """
-        # TODO: Implement cash flow mapping
-        logger.warning("Cash flow mapping not yet implemented")
-        pass
+        # Use the parent class mapping logic
+        super().map_facts()
+    
+    def _validate_key_facts(self):
+        """
+        Validate that key cash flow facts are present.
+        """
+        key_facts = ["Net cash from operating activities", "Net cash from investing activities", 
+                    "Net cash from financing activities"]
+        missing = []
+        
+        for fact in key_facts:
+            if fact in self.mapped_df.index:
+                if (self.mapped_df.loc[fact] == 0).all():
+                    missing.append(fact)
+            else:
+                missing.append(fact)
+        
+        if missing:
+            logger.warning(f"Missing key cash flow facts: {missing}")
