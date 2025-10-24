@@ -89,15 +89,15 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
             </div>
 
             <div className="option-group">
-              <label>Compare with Ticker (optional):</label>
+              <label>Compare with Ticker(s) (optional):</label>
               <input
                 type="text"
-                placeholder="e.g., AMZN"
+                placeholder="e.g., AMZN or AMZN,GOOGL,MSFT"
                 value={comparisonTicker}
                 onChange={(e) => setComparisonTicker(e.target.value.toUpperCase())}
                 className="comparison-ticker-input"
               />
-              <p className="hint">Leave blank for single ticker</p>
+              <p className="hint">Comma-separated for multiple tickers, or leave blank</p>
             </div>
             
             <button 

@@ -14,6 +14,14 @@ function TickerSearch({ tickers, onSelect, selectedTicker }) {
     setShowDropdown(false);
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && searchTerm) {
+      // If Enter is pressed, trigger search for the typed ticker
+      // This allows searching for tickers not in the autocomplete list
+      handleSelect(searchTerm.toUpperCase());
+    }
+  };
+
   return (
     <div className="ticker-search">
       <input
@@ -25,6 +33,7 @@ function TickerSearch({ tickers, onSelect, selectedTicker }) {
           setShowDropdown(true);
         }}
         onFocus={() => setShowDropdown(true)}
+        onKeyPress={handleKeyPress}
         className="search-input"
       />
       {showDropdown && searchTerm && filteredTickers.length > 0 && (

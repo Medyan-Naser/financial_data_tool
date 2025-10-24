@@ -161,10 +161,12 @@ NetIncome_with_unusal_items_4 = 'Net income including unusal items 4'
 # Fact const
 # Assets
 CashAndCashEquivalent = "Cash And Cash Equivalen"
+CashAndCashEquivalents = "Cash And Cash Equivalen"  # Alias
 RestrictedCash = "Restricted Cash"
 Goodwill = "Goodwill"
 AccountsReceivable = "Accounts Receivable"
 IntangibleAssets = "Intangible Assets"
+Inventory = "Inventory"
 OtherAssetsCurrent = "Other Assets Current"
 CurrentAssets = "Current Assets"
 OtherAssetsNoncurrent = "Other Assets Noncurrent"
@@ -175,12 +177,14 @@ TotalAssets = "Total Assets"
 #Liabilities
 AccountsPayable = "Accounts Payable"
 PropertyPlantAndEquipment = "Property Plant And Equipment"
+PropertyPlantEquipment = "Property Plant And Equipment"  # Alias
 ShortTermDebtCurrent = "Current portion of Short Term Debt"
 LongTermDebtCurrent = "Current portion of Long Term Debt"
 ShortTermDebt = "Short Term Debt"
 LongTermDebt = "Long Term Debt"
 DeferredTaxLiabilityNonCurrent = "Deferred Tax Liability Non Current"
 LiabilitiesCurrent = "Current Liabilities"
+CurrentLiabilities = "Current Liabilities"  # Alias
 OtherLiabilitiesNoncurrent = "Other Liabilities Non current"
 NonLiabilitiesCurrent = "Non Current Liabilities"
 OtherLiabilities = "Other Liabilities"

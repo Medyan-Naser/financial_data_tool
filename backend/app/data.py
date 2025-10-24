@@ -10,33 +10,67 @@ router = APIRouter()
 
 # Get the absolute path to the current directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../api/financials"))
+OLD_FINANCIALS_DIR = os.path.abspath(os.path.join(BASE_DIR, "../api/financials"))
+CACHED_STATEMENTS_DIR = os.path.abspath(os.path.join(BASE_DIR, "../api/cached_statements"))
 
 STATEMENT_TYPES = ["income_statement", "balance_sheet", "cash_flow"]
 
 
 def get_available_tickers() -> List[str]:
-    """Get all unique tickers from the financials directory."""
+    """Get all unique tickers from both cached_statements and old financials directory."""
     tickers = set()
-    for file in glob.glob(os.path.join(BASE_DIR, "*.csv")):
-        filename = os.path.basename(file)
-        # Extract ticker from filename (e.g., AAPL_income_statement.csv -> AAPL)
-        match = re.match(r"^(.+?)_(income_statement|balance_sheet|cash_flow)", filename)
-        if match:
-            tickers.add(match.group(1))
+    
+    # Check cached statements directory (new system)
+    if os.path.exists(CACHED_STATEMENTS_DIR):
+        for file in glob.glob(os.path.join(CACHED_STATEMENTS_DIR, "*_statements.json")):
+            filename = os.path.basename(file)
+            # Extract ticker from filename (e.g., AAPL_statements.json -> AAPL)
+            match = re.match(r"^(.+?)_statements\.json$", filename)
+            if match:
+                tickers.add(match.group(1))
+    
+    # Also check old financials directory for backward compatibility
+    if os.path.exists(OLD_FINANCIALS_DIR):
+        for file in glob.glob(os.path.join(OLD_FINANCIALS_DIR, "*.csv")):
+            filename = os.path.basename(file)
+            # Extract ticker from filename (e.g., AAPL_income_statement.csv -> AAPL)
+            match = re.match(r"^(.+?)_(income_statement|balance_sheet|cash_flow)", filename)
+            if match:
+                tickers.add(match.group(1))
+    
     return sorted(list(tickers))
 
 
 def load_statement(ticker: str, statement_type: str) -> Optional[Dict]:
-    """Load a specific financial statement for a ticker."""
-    # Try different file patterns (with and without _custom suffix)
+    """Load a specific financial statement for a ticker from cached statements or old directory."""
+    import json
+    
+    # First, try loading from cached_statements (new system)
+    cached_file = os.path.join(CACHED_STATEMENTS_DIR, f"{ticker}_statements.json")
+    if os.path.exists(cached_file):
+        try:
+            with open(cached_file, 'r') as f:
+                cached_data = json.load(f)
+                statements = cached_data.get('statements', {})
+                
+                if statement_type in statements and statements[statement_type].get('available'):
+                    return {
+                        "columns": statements[statement_type]['columns'],
+                        "row_names": statements[statement_type]['row_names'],
+                        "data": statements[statement_type]['data'],
+                        "available": True
+                    }
+        except Exception as e:
+            print(f"Error loading from cache {cached_file}: {str(e)}")
+    
+    # Fall back to old CSV files
     patterns = [
         f"{ticker}_{statement_type}.csv",
         f"{ticker}_{statement_type}_custom.csv"
     ]
     
     for pattern in patterns:
-        file_path = os.path.join(BASE_DIR, pattern)
+        file_path = os.path.join(OLD_FINANCIALS_DIR, pattern)
         if os.path.exists(file_path):
             try:
                 df = pd.read_csv(file_path)

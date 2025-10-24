@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
+import DraggableResizablePanel from './DraggableResizablePanel';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -14,6 +15,36 @@ function AIView() {
   const [forecastData, setForecastData] = useState(null);
   const [volatilityData, setVolatilityData] = useState(null);
   const [indexData, setIndexData] = useState({});
+  
+  // Panel state for draggable/resizable charts
+  const [chartPanels, setChartPanels] = useState({
+    actualVsPredicted: { position: { x: 20, y: 20 }, size: { width: 800, height: 450 } },
+    forecast: { position: { x: 20, y: 490 }, size: { width: 800, height: 450 } },
+    trainingLoss: { position: { x: 20, y: 960 }, size: { width: 800, height: 350 } },
+    forecastTable: { position: { x: 840, y: 20 }, size: { width: 400, height: 500 } },
+    returns: { position: { x: 20, y: 20 }, size: { width: 800, height: 450 } },
+    rollingVolatility: { position: { x: 20, y: 490 }, size: { width: 800, height: 450 } },
+    volatilityForecast: { position: { x: 20, y: 960 }, size: { width: 800, height: 450 } },
+    garchSummary: { position: { x: 840, y: 20 }, size: { width: 500, height: 600 } },
+    indexSPY: { position: { x: 20, y: 20 }, size: { width: 600, height: 400 } },
+    indexDJIA: { position: { x: 640, y: 20 }, size: { width: 600, height: 400 } },
+    indexNDAQ: { position: { x: 20, y: 440 }, size: { width: 600, height: 400 } },
+    indexIWM: { position: { x: 640, y: 440 }, size: { width: 600, height: 400 } },
+  });
+  
+  const updatePanelPosition = (panelId, position) => {
+    setChartPanels(prev => ({
+      ...prev,
+      [panelId]: { ...prev[panelId], position }
+    }));
+  };
+  
+  const updatePanelSize = (panelId, size) => {
+    setChartPanels(prev => ({
+      ...prev,
+      [panelId]: { ...prev[panelId], size }
+    }));
+  };
 
   const runStockForecast = async () => {
     setLoading(true);
@@ -144,7 +175,7 @@ function AIView() {
           <div className="ai-overview">
             <h3>AI Models Available</h3>
             <div className="overview-grid">
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveModel('price-forecast')} style={{ cursor: 'pointer' }}>
                 <h4>📈 Price Forecast</h4>
                 <p>LSTM Neural Network predicts next 11 days of stock prices</p>
                 <ul>
@@ -154,7 +185,7 @@ function AIView() {
                   <li>Forecasts 11 business days ahead</li>
                 </ul>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => setActiveModel('volatility')} style={{ cursor: 'pointer' }}>
                 <h4>📊 Volatility Forecast</h4>
                 <p>GARCH model predicts price volatility</p>
                 <ul>
@@ -164,7 +195,7 @@ function AIView() {
                   <li>7-day volatility forecast</li>
                 </ul>
               </div>
-              <div className="overview-card">
+              <div className="overview-card" onClick={() => { setActiveModel('indices'); loadAllIndices(); }} style={{ cursor: 'pointer' }}>
                 <h4>📉 Market Indices</h4>
                 <p>30-day charts for major indices</p>
                 <ul>
@@ -197,54 +228,97 @@ function AIView() {
                   <p><strong>Test Set Loss (MSE):</strong> {forecastData.model_evaluation.toFixed(6)}</p>
                 </div>
                 
-                <div className="forecast-charts">
-                  <div className="chart-container">
-                    <h4>Actual vs Predicted Prices</h4>
-                    <Plot 
-                      data={forecastData.actual_vs_predicted.data} 
-                      layout={forecastData.actual_vs_predicted.layout} 
-                      style={{ width: '100%', height: '400px' }}
-                    />
-                  </div>
+                <div className="forecast-charts" style={{ position: 'relative', minHeight: '1400px' }}>
+                  <DraggableResizablePanel
+                    id="actualVsPredicted"
+                    position={chartPanels.actualVsPredicted.position}
+                    size={chartPanels.actualVsPredicted.size}
+                    onPositionChange={(pos) => updatePanelPosition('actualVsPredicted', pos)}
+                    onSizeChange={(size) => updatePanelSize('actualVsPredicted', size)}
+                    minWidth={400}
+                    minHeight={300}
+                  >
+                    <div className="chart-container">
+                      <h4>Actual vs Predicted Prices</h4>
+                      <Plot 
+                        data={forecastData.actual_vs_predicted.data} 
+                        layout={forecastData.actual_vs_predicted.layout} 
+                        style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                        useResizeHandler={true}
+                      />
+                    </div>
+                  </DraggableResizablePanel>
                   
-                  <div className="chart-container">
-                    <h4>11-Day Price Forecast</h4>
-                    <Plot 
-                      data={forecastData.forecast.data} 
-                      layout={forecastData.forecast.layout} 
-                      style={{ width: '100%', height: '400px' }}
-                    />
-                  </div>
+                  <DraggableResizablePanel
+                    id="forecast"
+                    position={chartPanels.forecast.position}
+                    size={chartPanels.forecast.size}
+                    onPositionChange={(pos) => updatePanelPosition('forecast', pos)}
+                    onSizeChange={(size) => updatePanelSize('forecast', size)}
+                    minWidth={400}
+                    minHeight={300}
+                  >
+                    <div className="chart-container">
+                      <h4>11-Day Price Forecast</h4>
+                      <Plot 
+                        data={forecastData.forecast.data} 
+                        layout={forecastData.forecast.layout} 
+                        style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                        useResizeHandler={true}
+                      />
+                    </div>
+                  </DraggableResizablePanel>
                   
-                  <div className="chart-container">
-                    <h4>Training Loss Over Time</h4>
-                    <Plot 
-                      data={forecastData.training_loss.data} 
-                      layout={forecastData.training_loss.layout} 
-                      style={{ width: '100%', height: '300px' }}
-                    />
-                  </div>
+                  <DraggableResizablePanel
+                    id="trainingLoss"
+                    position={chartPanels.trainingLoss.position}
+                    size={chartPanels.trainingLoss.size}
+                    onPositionChange={(pos) => updatePanelPosition('trainingLoss', pos)}
+                    onSizeChange={(size) => updatePanelSize('trainingLoss', size)}
+                    minWidth={400}
+                    minHeight={250}
+                  >
+                    <div className="chart-container">
+                      <h4>Training Loss Over Time</h4>
+                      <Plot 
+                        data={forecastData.training_loss.data} 
+                        layout={forecastData.training_loss.layout} 
+                        style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                        useResizeHandler={true}
+                      />
+                    </div>
+                  </DraggableResizablePanel>
                 </div>
 
-                <div className="forecast-table">
-                  <h4>Forecast Data</h4>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Predicted Price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {forecastData.forecast_data.map((row, idx) => (
-                        <tr key={idx}>
-                          <td>{Object.keys(row)[0]}</td>
-                          <td>${Object.values(row)[0].toFixed(2)}</td>
+                <DraggableResizablePanel
+                  id="forecastTable"
+                  position={chartPanels.forecastTable.position}
+                  size={chartPanels.forecastTable.size}
+                  onPositionChange={(pos) => updatePanelPosition('forecastTable', pos)}
+                  onSizeChange={(size) => updatePanelSize('forecastTable', size)}
+                  minWidth={350}
+                  minHeight={300}
+                >
+                  <div className="forecast-table" style={{ height: '100%', overflow: 'auto' }}>
+                    <h4>Forecast Data</h4>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Predicted Price</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {forecastData.forecast_data.map((row, idx) => (
+                          <tr key={idx}>
+                            <td>{Object.keys(row)[0]}</td>
+                            <td>${Object.values(row)[0].toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </DraggableResizablePanel>
               </div>
             )}
           </div>
@@ -260,39 +334,82 @@ function AIView() {
             
             {volatilityData && (
               <div className="volatility-results">
-                <div className="volatility-charts">
-                  <div className="chart-container">
-                    <h4>Returns Over 2 Years</h4>
-                    <Plot 
-                      data={volatilityData.returns.data} 
-                      layout={volatilityData.returns.layout} 
-                      style={{ width: '100%', height: '400px' }}
-                    />
-                  </div>
+                <div className="volatility-charts" style={{ position: 'relative', minHeight: '1400px' }}>
+                  <DraggableResizablePanel
+                    id="returns"
+                    position={chartPanels.returns.position}
+                    size={chartPanels.returns.size}
+                    onPositionChange={(pos) => updatePanelPosition('returns', pos)}
+                    onSizeChange={(size) => updatePanelSize('returns', size)}
+                    minWidth={400}
+                    minHeight={300}
+                  >
+                    <div className="chart-container">
+                      <h4>Returns Over 2 Years</h4>
+                      <Plot 
+                        data={volatilityData.returns.data} 
+                        layout={volatilityData.returns.layout} 
+                        style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                        useResizeHandler={true}
+                      />
+                    </div>
+                  </DraggableResizablePanel>
                   
-                  <div className="chart-container">
-                    <h4>Rolling Volatility Predictions (Last 365 Days)</h4>
-                    <Plot 
-                      data={volatilityData.rolling_volatility.data} 
-                      layout={volatilityData.rolling_volatility.layout} 
-                      style={{ width: '100%', height: '400px' }}
-                    />
-                  </div>
+                  <DraggableResizablePanel
+                    id="rollingVolatility"
+                    position={chartPanels.rollingVolatility.position}
+                    size={chartPanels.rollingVolatility.size}
+                    onPositionChange={(pos) => updatePanelPosition('rollingVolatility', pos)}
+                    onSizeChange={(size) => updatePanelSize('rollingVolatility', size)}
+                    minWidth={400}
+                    minHeight={300}
+                  >
+                    <div className="chart-container">
+                      <h4>Rolling Volatility Predictions (Last 365 Days)</h4>
+                      <Plot 
+                        data={volatilityData.rolling_volatility.data} 
+                        layout={volatilityData.rolling_volatility.layout} 
+                        style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                        useResizeHandler={true}
+                      />
+                    </div>
+                  </DraggableResizablePanel>
                   
-                  <div className="chart-container">
-                    <h4>7-Day Volatility Forecast</h4>
-                    <Plot 
-                      data={volatilityData.forecast.data} 
-                      layout={volatilityData.forecast.layout} 
-                      style={{ width: '100%', height: '400px' }}
-                    />
-                  </div>
+                  <DraggableResizablePanel
+                    id="volatilityForecast"
+                    position={chartPanels.volatilityForecast.position}
+                    size={chartPanels.volatilityForecast.size}
+                    onPositionChange={(pos) => updatePanelPosition('volatilityForecast', pos)}
+                    onSizeChange={(size) => updatePanelSize('volatilityForecast', size)}
+                    minWidth={400}
+                    minHeight={300}
+                  >
+                    <div className="chart-container">
+                      <h4>7-Day Volatility Forecast</h4>
+                      <Plot 
+                        data={volatilityData.forecast.data} 
+                        layout={volatilityData.forecast.layout} 
+                        style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                        useResizeHandler={true}
+                      />
+                    </div>
+                  </DraggableResizablePanel>
                 </div>
 
-                <div className="model-summary">
-                  <h4>GARCH Model Summary</h4>
-                  <pre>{volatilityData.model_summary}</pre>
-                </div>
+                <DraggableResizablePanel
+                  id="garchSummary"
+                  position={chartPanels.garchSummary.position}
+                  size={chartPanels.garchSummary.size}
+                  onPositionChange={(pos) => updatePanelPosition('garchSummary', pos)}
+                  onSizeChange={(size) => updatePanelSize('garchSummary', size)}
+                  minWidth={400}
+                  minHeight={300}
+                >
+                  <div className="model-summary" style={{ height: '100%', overflow: 'auto' }}>
+                    <h4>GARCH Model Summary</h4>
+                    <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{volatilityData.model_summary}</pre>
+                  </div>
+                </DraggableResizablePanel>
               </div>
             )}
           </div>
@@ -300,24 +417,34 @@ function AIView() {
 
         {/* Market Indices */}
         {activeModel === 'indices' && (
-          <div className="indices-section">
+          <div className="indices-section" style={{ position: 'relative', minHeight: '900px' }}>
             <h3>Major Market Indices (30 Days)</h3>
-            <div className="indices-grid">
-              {['SPY', 'DJIA', 'NDAQ', 'IWM'].map(index => (
-                <div key={index} className="index-chart">
+            {['SPY', 'DJIA', 'NDAQ', 'IWM'].map(index => (
+              <DraggableResizablePanel
+                key={index}
+                id={`index${index}`}
+                position={chartPanels[`index${index}`].position}
+                size={chartPanels[`index${index}`].size}
+                onPositionChange={(pos) => updatePanelPosition(`index${index}`, pos)}
+                onSizeChange={(size) => updatePanelSize(`index${index}`, size)}
+                minWidth={400}
+                minHeight={300}
+              >
+                <div className="index-chart" style={{ height: '100%' }}>
                   <h4>{index}</h4>
                   {indexData[index] ? (
                     <Plot 
                       data={indexData[index].chart.data} 
                       layout={indexData[index].chart.layout} 
-                      style={{ width: '100%', height: '300px' }}
+                      style={{ width: '100%', height: 'calc(100% - 40px)' }}
+                      useResizeHandler={true}
                     />
                   ) : (
                     <div className="loading-small">Loading...</div>
                   )}
                 </div>
-              ))}
-            </div>
+              </DraggableResizablePanel>
+            ))}
           </div>
         )}
       </div>
