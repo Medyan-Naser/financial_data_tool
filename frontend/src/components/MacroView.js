@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
+import DraggableResizablePanel from './DraggableResizablePanel';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -19,6 +20,31 @@ function MacroView() {
   const [unemploymentData, setUnemploymentData] = useState(null);
   const [realEstateData, setRealEstateData] = useState(null);
   const [bondsData, setBondsData] = useState(null);
+  
+  // Panel state for draggable/resizable charts
+  const [chartPanels, setChartPanels] = useState({
+    currencies: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    inflation: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    debt: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    dollar: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    velocity: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    unemployment: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    realestate: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+  });
+  
+  const updatePanelPosition = (panelId, position) => {
+    setChartPanels(prev => ({
+      ...prev,
+      [panelId]: { ...prev[panelId], position }
+    }));
+  };
+  
+  const updatePanelSize = (panelId, size) => {
+    setChartPanels(prev => ({
+      ...prev,
+      [panelId]: { ...prev[panelId], size }
+    }));
+  };
 
   // Fetch data only when section is active
   useEffect(() => {
@@ -330,57 +356,162 @@ function MacroView() {
 
         {/* Currencies */}
         {activeSection === 'currencies' && currenciesData && (
-          <div className="currencies-section">
+          <div className="currencies-section" style={{ position: 'relative', minHeight: '600px' }}>
             <h3>Major Currencies</h3>
-            <Plot data={currenciesData.chart.data} layout={currenciesData.chart.layout} />
+            <DraggableResizablePanel
+              id="currencies"
+              position={chartPanels.currencies.position}
+              size={chartPanels.currencies.size}
+              onPositionChange={(pos) => updatePanelPosition('currencies', pos)}
+              onSizeChange={(size) => updatePanelSize('currencies', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <Plot 
+                data={currenciesData.chart.data} 
+                layout={currenciesData.chart.layout} 
+                style={{ width: '100%', height: '100%' }}
+                useResizeHandler={true}
+              />
+            </DraggableResizablePanel>
           </div>
         )}
 
         {/* Inflation */}
         {activeSection === 'inflation' && inflationData && (
-          <div className="inflation-section">
+          <div className="inflation-section" style={{ position: 'relative', minHeight: '600px' }}>
             <h3>CPI Inflation</h3>
-            <Plot data={inflationData.chart.data} layout={inflationData.chart.layout} />
+            <DraggableResizablePanel
+              id="inflation"
+              position={chartPanels.inflation.position}
+              size={chartPanels.inflation.size}
+              onPositionChange={(pos) => updatePanelPosition('inflation', pos)}
+              onSizeChange={(size) => updatePanelSize('inflation', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <Plot 
+                data={inflationData.chart.data} 
+                layout={inflationData.chart.layout} 
+                style={{ width: '100%', height: '100%' }}
+                useResizeHandler={true}
+              />
+            </DraggableResizablePanel>
           </div>
         )}
 
         {/* Debt to GDP */}
         {activeSection === 'debt' && debtToGdpData && (
-          <div className="debt-section">
+          <div className="debt-section" style={{ position: 'relative', minHeight: '600px' }}>
             <h3>Debt to GDP Ratio</h3>
-            <Plot data={debtToGdpData.chart.data} layout={debtToGdpData.chart.layout} />
+            <DraggableResizablePanel
+              id="debt"
+              position={chartPanels.debt.position}
+              size={chartPanels.debt.size}
+              onPositionChange={(pos) => updatePanelPosition('debt', pos)}
+              onSizeChange={(size) => updatePanelSize('debt', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <Plot 
+                data={debtToGdpData.chart.data} 
+                layout={debtToGdpData.chart.layout} 
+                style={{ width: '100%', height: '100%' }}
+                useResizeHandler={true}
+              />
+            </DraggableResizablePanel>
           </div>
         )}
 
         {/* Dollar Index */}
         {activeSection === 'dollar' && dollarIndexData && (
-          <div className="dollar-section">
+          <div className="dollar-section" style={{ position: 'relative', minHeight: '600px' }}>
             <h3>Dollar Index</h3>
-            <Plot data={dollarIndexData.chart.data} layout={dollarIndexData.chart.layout} />
+            <DraggableResizablePanel
+              id="dollar"
+              position={chartPanels.dollar.position}
+              size={chartPanels.dollar.size}
+              onPositionChange={(pos) => updatePanelPosition('dollar', pos)}
+              onSizeChange={(size) => updatePanelSize('dollar', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <Plot 
+                data={dollarIndexData.chart.data} 
+                layout={dollarIndexData.chart.layout} 
+                style={{ width: '100%', height: '100%' }}
+                useResizeHandler={true}
+              />
+            </DraggableResizablePanel>
           </div>
         )}
 
         {/* Velocity */}
         {activeSection === 'velocity' && velocityData && (
-          <div className="velocity-section">
+          <div className="velocity-section" style={{ position: 'relative', minHeight: '600px' }}>
             <h3>Money Velocity</h3>
-            <Plot data={velocityData.chart.data} layout={velocityData.chart.layout} />
+            <DraggableResizablePanel
+              id="velocity"
+              position={chartPanels.velocity.position}
+              size={chartPanels.velocity.size}
+              onPositionChange={(pos) => updatePanelPosition('velocity', pos)}
+              onSizeChange={(size) => updatePanelSize('velocity', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <Plot 
+                data={velocityData.chart.data} 
+                layout={velocityData.chart.layout} 
+                style={{ width: '100%', height: '100%' }}
+                useResizeHandler={true}
+              />
+            </DraggableResizablePanel>
           </div>
         )}
 
         {/* Unemployment */}
         {activeSection === 'unemployment' && unemploymentData && (
-          <div className="unemployment-section">
+          <div className="unemployment-section" style={{ position: 'relative', minHeight: '600px' }}>
             <h3>Unemployment Rate</h3>
-            <Plot data={unemploymentData.chart.data} layout={unemploymentData.chart.layout} />
+            <DraggableResizablePanel
+              id="unemployment"
+              position={chartPanels.unemployment.position}
+              size={chartPanels.unemployment.size}
+              onPositionChange={(pos) => updatePanelPosition('unemployment', pos)}
+              onSizeChange={(size) => updatePanelSize('unemployment', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <Plot 
+                data={unemploymentData.chart.data} 
+                layout={unemploymentData.chart.layout} 
+                style={{ width: '100%', height: '100%' }}
+                useResizeHandler={true}
+              />
+            </DraggableResizablePanel>
           </div>
         )}
 
         {/* Real Estate */}
         {activeSection === 'realestate' && realEstateData && (
-          <div className="realestate-section">
+          <div className="realestate-section" style={{ position: 'relative', minHeight: '600px' }}>
             <h3>Real Estate Trends</h3>
-            <Plot data={realEstateData.chart.data} layout={realEstateData.chart.layout} />
+            <DraggableResizablePanel
+              id="realestate"
+              position={chartPanels.realestate.position}
+              size={chartPanels.realestate.size}
+              onPositionChange={(pos) => updatePanelPosition('realestate', pos)}
+              onSizeChange={(size) => updatePanelSize('realestate', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              <Plot 
+                data={realEstateData.chart.data} 
+                layout={realEstateData.chart.layout} 
+                style={{ width: '100%', height: '100%' }}
+                useResizeHandler={true}
+              />
+            </DraggableResizablePanel>
           </div>
         )}
 
