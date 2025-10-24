@@ -17,16 +17,36 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
     charts.forEach(async (chart) => {
       if (chart.comparisonTicker && !comparisonData[chart.id]) {
         setLoadingComparison(prev => ({ ...prev, [chart.id]: true }));
+        
+        // Parse comma-separated tickers
+        const tickers = chart.comparisonTicker.split(',').map(t => t.trim()).filter(t => t);
+        
         try {
-          const response = await axios.get(
-            `${API_BASE_URL}/api/financials/${chart.comparisonTicker}/${chart.statementType}`
+          // Fetch data for all tickers
+          const responses = await Promise.all(
+            tickers.map(ticker => 
+              axios.get(`${API_BASE_URL}/api/financials/${ticker}/${chart.statementType}`)
+                .catch(err => {
+                  console.error(`Error fetching data for ${ticker}:`, err);
+                  return null;
+                })
+            )
           );
+          
+          // Create a map of ticker -> data
+          const tickerDataMap = {};
+          responses.forEach((response, index) => {
+            if (response && response.data) {
+              tickerDataMap[tickers[index]] = response.data;
+            }
+          });
+          
           setComparisonData(prev => ({
             ...prev,
-            [chart.id]: response.data
+            [chart.id]: tickerDataMap
           }));
         } catch (error) {
-          console.error(`Error fetching comparison data for ${chart.comparisonTicker}:`, error);
+          console.error(`Error fetching comparison data:`, error);
           setComparisonData(prev => ({
             ...prev,
             [chart.id]: null // Mark as failed
@@ -50,13 +70,19 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
         point[`${chart.ticker}: ${row.name}`] = parseFloat(row.values[colIndex]) || 0;
       });
       
-      // Add comparison ticker data if available
-      if (comparison && comparison.available) {
-        selectedRowNames.forEach(rowName => {
-          const rowIndex = comparison.row_names.indexOf(rowName);
-          if (rowIndex !== -1) {
-            const compValue = comparison.data[rowIndex]?.[colIndex];
-            point[`${comparisonTicker}: ${rowName}`] = parseFloat(compValue) || 0;
+      // Add comparison ticker(s) data if available
+      if (comparison && typeof comparison === 'object') {
+        // Handle multiple tickers (comparison is now a map)
+        Object.keys(comparison).forEach(compTicker => {
+          const compData = comparison[compTicker];
+          if (compData && compData.available) {
+            selectedRowNames.forEach(rowName => {
+              const rowIndex = compData.row_names.indexOf(rowName);
+              if (rowIndex !== -1) {
+                const compValue = compData.data[rowIndex]?.[colIndex];
+                point[`${compTicker}: ${rowName}`] = parseFloat(compValue) || 0;
+              }
+            });
           }
         });
       }
@@ -218,7 +244,7 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
           {chart.title}
           {chart.comparisonTicker && (
             <span className="comparison-badge">
-              vs {chart.comparisonTicker}
+              vs {chart.comparisonTicker.split(',').map(t => t.trim()).join(', ')}
             </span>
           )}
         </h4>
@@ -247,7 +273,7 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
           Type: {chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} | 
           Metrics: {chart.data.length}
           {chart.comparisonTicker && comparisonData[chart.id] && (
-            <span> | Comparing with {chart.comparisonTicker}</span>
+            <span> | Comparing with {Object.keys(comparisonData[chart.id] || {}).join(', ')}</span>
           )}
         </small>
       </div>
