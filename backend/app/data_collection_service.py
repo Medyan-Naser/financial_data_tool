@@ -350,6 +350,7 @@ class DataCollectionService:
         
         return {
             "ticker": ticker.upper(),
+            "currency": "USD",  # Default to USD for US companies (SEC EDGAR)
             "statements": statements_data,
             "collection_date": datetime.now().isoformat()
         }
