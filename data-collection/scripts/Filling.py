@@ -14,7 +14,7 @@ def check_units(num1, num2):
     # Define the conversion factors
     num1 = float(num1)
     num2 = float(num2)
-    print( num1, num2)
+    # print( num1, num2)
     conversion_factors = {
         "dollars": 1,
         "thousands": 1000,
@@ -23,9 +23,9 @@ def check_units(num1, num2):
     }
     # Check if the second number represents the same value as the first number
     for unit, factor in conversion_factors.items():
-        print("##############")
-        print(num1)
-        print(num2 * factor)
+        # print("##############")
+        # print(num1)
+        # print(num2 * factor)
         if num1 == num2 * factor:
             return float(factor) # * 1/1000 add for thousand def
     # If the second number doesn't represent the same value in any unit
@@ -33,7 +33,7 @@ def check_units(num1, num2):
 
 
 def parse_table_header(table):
-    print("Parsing table header")
+    # print("Parsing table header")
     # Check table headers for unit multipliers and special cases
     # TODO: using the get_facts function duoble check that the unit_multiplier is correct
     # The facts will have the right units. 
@@ -61,13 +61,13 @@ def parse_table_header(table):
             start_index = header_text.lower().find("shares in") + len("shares in")
             # Extract the unit by splitting the text after "shares in" and taking the first word
             unit = header_text[start_index:].lower().strip().split()[0]
-            print(unit)
+            # print(unit)
             if "thousand" in unit:
                 shares_unit_multiplier = IN_THOUSANDS
             elif "million" in unit:
                 shares_unit_multiplier = IN_MILLIONS
-            print(shares_unit_multiplier)
-    print("End of Parsing table header")
+            # print(shares_unit_multiplier)
+    # print("End of Parsing table header")
     return unit_multiplier, shares_unit_multiplier
 
 
@@ -317,8 +317,8 @@ class Filling():
 
                 if filtered_value != 0:
                     fact_unit = check_units(abs(filtered_value), value_from_table)
-                    print("##############unit")
-                    print(fact_unit)
+                    # print("##############unit")
+                    # print(fact_unit)
                     if fact_unit:
                         unit_multiplier = fact_unit
         return unit_multiplier
@@ -342,7 +342,7 @@ class Filling():
             dates, date_indexes = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly)
         else: 
             dates, date_indexes = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly, check_date_indexes=False)
-        print(dates)
+        # print(dates)
         # TODO : this function is in company class
 
 
@@ -386,7 +386,7 @@ class Filling():
 
                                     
                 row_class = row.get('class')
-                print("row class:" , row_class)
+                # print("row class:" , row_class)
                 if row_class == ['reu'] or row_class == ['rou']:
                     rows_that_are_sum.append(row_title)
                 # TODO 'rh' is the class for row header
@@ -492,9 +492,9 @@ class Filling():
             pd.DataFrame: DataFrame constructed from the given data.
         """
         transposed_values_set = list(zip(*values_set))
-        print("testttttttt")
-        print(values_set)
-        print(transposed_values_set)
+        # print("testttttttt")
+        # print(values_set)
+        # print(transposed_values_set)
         df = pd.DataFrame(transposed_values_set, columns=columns, index=index_dates)
         # ensure that data is displayed as float
         pd.set_option('display.float_format', '{:.2f}'.format)
@@ -543,6 +543,8 @@ class Filling():
                     self.income_statement = IncomeStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
                 elif statement_name == 'balance_sheet':
                     self.balance_sheet = BalanceSheet(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                elif statement_name == 'cash_flow_statement':
+                    self.cash_flow = CashFlow(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
             except Exception as e:
                 logging.error(f"Error processing statement: {e}")
 

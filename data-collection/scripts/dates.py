@@ -65,7 +65,7 @@ def get_datetime_index_dates_from_statement(soup: BeautifulSoup, quarterly=False
                 }
 
     dates = [str(th.div.string) for th in table_headers if th.div and th.div.string]
-    print(dates)
+    # print(dates)
     if contain_two_currency:
         main_currency = get_most_frequent_currency(currencies)
         date_currencies = currencies #[extract_currency(date) for date in dates]
@@ -75,7 +75,7 @@ def get_datetime_index_dates_from_statement(soup: BeautifulSoup, quarterly=False
         dates = [date for date, currency in zip(dates, date_currencies) if currency == main_currency]
         dates = [standardize_date(date).replace(".", "") for date in dates]
         filtered_indexes = [index for index, currency in enumerate(date_currencies) if currency == main_currency]
-        print(dates, filtered_indexes)
+        # print(dates, filtered_indexes)
     
     # print(three_months_index)
     if check_date_indexes:
@@ -85,7 +85,7 @@ def get_datetime_index_dates_from_statement(soup: BeautifulSoup, quarterly=False
         else:
             # dates = dates[three_months_index + three_colspan: three_months_index + three_colspan + twelve_colspan]
             start_idx, end_idx = get_date_indexes(column_indexes, "12 Months")
-            print(start_idx, end_idx)
+            # print(start_idx, end_idx)
         date_indexes = range(start_idx, end_idx)
         dates = dates[start_idx: end_idx]
     elif contain_two_currency:
