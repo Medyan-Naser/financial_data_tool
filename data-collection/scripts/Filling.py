@@ -4,6 +4,7 @@ from healpers import *
 from FinancialStatement import *
 from dates import *
 from cal_xml import fetch_file_content, parse_calculation_arcs
+from pattern_logger import get_pattern_logger
 
 import requests
 from bs4 import BeautifulSoup
@@ -539,12 +540,45 @@ class Filling():
                 #     last_three_columns = df.iloc[:, -3:]
                 #     df = last_three_columns
                 df = df.round(2)
+                
+                # Create the statement object
+                statement_obj = None
                 if statement_name == 'income_statement':
                     self.income_statement = IncomeStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                    statement_obj = self.income_statement
                 elif statement_name == 'balance_sheet':
                     self.balance_sheet = BalanceSheet(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                    statement_obj = self.balance_sheet
                 elif statement_name == 'cash_flow_statement':
                     self.cash_flow = CashFlow(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                    statement_obj = self.cash_flow
+                
+                # Log patterns for regex improvement (deduplicates automatically)
+                if statement_obj is not None:
+                    try:
+                        pattern_logger = get_pattern_logger()
+                        
+                        # Get fiscal year from dates (use first date column)
+                        fiscal_year = str(df.columns[0]) if len(df.columns) > 0 else "unknown"
+                        
+                        # Get mapped DataFrame if available
+                        mapped_df = None
+                        if hasattr(statement_obj, 'mapped_df') and statement_obj.mapped_df is not None:
+                            mapped_df = statement_obj.mapped_df
+                        
+                        # Log the statement
+                        pattern_logger.log_statement(
+                            ticker=self.ticker,
+                            cik=self.cik,
+                            statement_type=statement_name,
+                            fiscal_year=fiscal_year,
+                            original_df=df,
+                            mapped_df=mapped_df,
+                            taxonomy=self.taxonomy
+                        )
+                    except Exception as log_error:
+                        logging.warning(f"Pattern logging failed: {log_error}")
+                        
             except Exception as e:
                 logging.error(f"Error processing statement: {e}")
 
