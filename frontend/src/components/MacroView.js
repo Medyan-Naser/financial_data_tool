@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Plot from 'react-plotly.js';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 import DraggableResizablePanel from './DraggableResizablePanel';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -92,10 +94,11 @@ function MacroView() {
     setLoading(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/api/macro/commodities`);
+      console.log('Fetched commodities data:', response.data);
       setCommoditiesData(response.data);
     } catch (err) {
       setError('Error loading commodities data');
-      console.error(err);
+      console.error('Error fetching commodities:', err);
     } finally {
       setLoading(false);
     }
@@ -247,6 +250,281 @@ function MacroView() {
     }
   };
 
+  // Decode base64 array if needed (Plotly sometimes encodes large arrays)
+  const decodeBase64Array = (data) => {
+    if (typeof data === 'string') {
+      try {
+        const binaryString = atob(data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const floatArray = new Float64Array(bytes.buffer);
+        return Array.from(floatArray);
+      } catch (e) {
+        console.error('Failed to decode base64 array:', e);
+        return [];
+      }
+    }
+    return data;
+  };
+
+  // Utility function to convert Plotly data format to Recharts format
+  const convertPlotlyToRecharts = (plotlyData) => {
+    console.log('Converting Plotly data:', plotlyData);
+    
+    if (!plotlyData) {
+      console.log('No plotly data provided');
+      return [];
+    }
+    
+    // Handle the Plotly JSON structure which has both 'data' and 'layout'
+    const traces = plotlyData.data || [];
+    
+    if (traces.length === 0) {
+      console.log('No traces found in plotly data');
+      return [];
+    }
+    
+    // Check if this is a table type (not a chart)
+    if (traces[0] && traces[0].type === 'table') {
+      console.log('This is a table, not a chart');
+      return [];
+    }
+    
+    console.log('Found traces:', traces.length);
+    
+    const result = [];
+    
+    // Find the maximum length across all traces
+    const maxLength = Math.max(...traces.map(trace => {
+      const x = trace.x || [];
+      return Array.isArray(x) ? x.length : 0;
+    }));
+    
+    console.log('Max data points:', maxLength);
+    
+    // Build recharts data format
+    for (let i = 0; i < maxLength; i++) {
+      const point = {};
+      let hasDate = false;
+      
+      traces.forEach((trace, traceIndex) => {
+        const xData = trace.x || [];
+        let yData = trace.y || [];
+        
+        // Decode base64 if needed
+        yData = decodeBase64Array(yData);
+        
+        if (xData[i] !== undefined && xData[i] !== null) {
+          // Handle date formatting
+          const dateValue = xData[i];
+          if (typeof dateValue === 'string') {
+            // Extract just the date part if it's an ISO string
+            point.date = dateValue.split('T')[0];
+          } else if (typeof dateValue === 'number') {
+            point.date = new Date(dateValue).toISOString().split('T')[0];
+          } else {
+            point.date = String(dateValue);
+          }
+          hasDate = true;
+        }
+        
+        if (yData[i] !== undefined && yData[i] !== null) {
+          const key = trace.name || `Series ${traceIndex + 1}`;
+          const value = typeof yData[i] === 'number' ? yData[i] : parseFloat(yData[i]);
+          if (!isNaN(value)) {
+            point[key] = value;
+          }
+        }
+      });
+      
+      if (hasDate && Object.keys(point).length > 1) {
+        result.push(point);
+      }
+    }
+    
+    console.log('Converted data points:', result.length);
+    if (result.length > 0) {
+      console.log('Sample data point:', result[0]);
+    }
+    
+    return result;
+  };
+
+  // Get all series keys from recharts data
+  const getSeriesKeys = (data) => {
+    if (!data || data.length === 0) return [];
+    return Object.keys(data[0]).filter(key => key !== 'date');
+  };
+
+  // Get random color for series
+  const getColor = (index) => {
+    const colors = [
+      '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#a4de6c',
+      '#d084d0', '#8dd1e1', '#ffbb28', '#ff8042', '#00C49F'
+    ];
+    return colors[index % colors.length];
+  };
+
+  // Format large numbers
+  const formatValue = (value) => {
+    if (value === null || value === undefined) return '-';
+    const num = parseFloat(value);
+    if (isNaN(num)) return value;
+    
+    if (Math.abs(num) >= 1e9) {
+      return (num / 1e9).toFixed(2) + 'B';
+    } else if (Math.abs(num) >= 1e6) {
+      return (num / 1e6).toFixed(2) + 'M';
+    } else if (Math.abs(num) >= 1e3) {
+      return (num / 1e3).toFixed(2) + 'K';
+    }
+    return num.toFixed(2);
+  };
+
+  // Render table (for commodities, currencies, etc.)
+  const renderTable = (plotlyData, title) => {
+    console.log(`Rendering table: ${title}`, plotlyData);
+    
+    if (!plotlyData || !plotlyData.data || plotlyData.data.length === 0) {
+      return (
+        <div className="chart-card" style={{ height: '100%' }}>
+          <div className="chart-header">
+            <h4>{title}</h4>
+          </div>
+          <div className="chart-content" style={{ flex: 1, overflow: 'auto' }}>
+            <div className="chart-loading">No data available</div>
+          </div>
+        </div>
+      );
+    }
+
+    const tableData = plotlyData.data[0];
+    if (tableData.type !== 'table' || !tableData.header || !tableData.cells) {
+      return <div className="chart-loading">Invalid table data</div>;
+    }
+
+    const headers = tableData.header.values || [];
+    const cells = tableData.cells.values || [];
+    const numRows = cells.length > 0 ? cells[0].length : 0;
+
+    return (
+      <div className="chart-card" style={{ height: '100%' }}>
+        <div className="chart-header">
+          <h4>{title}</h4>
+        </div>
+        <div className="chart-content" style={{ flex: 1, overflow: 'auto' }}>
+          <div className="table-wrapper">
+            <table className="financial-table">
+              <thead>
+                <tr>
+                  {headers.map((header, idx) => (
+                    <th key={idx}>{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: numRows }).map((_, rowIdx) => (
+                  <tr key={rowIdx}>
+                    {cells.map((colData, colIdx) => (
+                      <td key={colIdx} className={colIdx === 0 ? 'row-name-col' : 'data-cell'}>
+                        {colData[rowIdx] !== undefined && colData[rowIdx] !== null 
+                          ? String(colData[rowIdx]) 
+                          : '-'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render chart using Recharts (matching stock chart style)
+  const renderChart = (data, title) => {
+    console.log(`Rendering chart: ${title}`, data);
+    
+    if (!data) {
+      console.error(`No data provided for ${title}`);
+      return (
+        <div className="chart-card" style={{ height: '100%' }}>
+          <div className="chart-header">
+            <h4>{title}</h4>
+          </div>
+          <div className="chart-content" style={{ flex: 1 }}>
+            <div className="chart-loading">No data available</div>
+          </div>
+        </div>
+      );
+    }
+
+    // Check if this is a table type
+    if (data.data && data.data[0] && data.data[0].type === 'table') {
+      return renderTable(data, title);
+    }
+
+    const chartData = convertPlotlyToRecharts(data);
+    const seriesKeys = getSeriesKeys(chartData);
+    
+    if (chartData.length === 0) {
+      console.warn(`No chart data after conversion for ${title}`);
+      return (
+        <div className="chart-card" style={{ height: '100%' }}>
+          <div className="chart-header">
+            <h4>{title}</h4>
+          </div>
+          <div className="chart-content" style={{ flex: 1 }}>
+            <div className="chart-loading">Unable to load chart data</div>
+          </div>
+        </div>
+      );
+    }
+
+    console.log(`Successfully converted data for ${title}:`, chartData.length, 'points');
+
+    return (
+      <div className="chart-card" style={{ height: '100%' }}>
+        <div className="chart-header">
+          <h4>{title}</h4>
+        </div>
+        <div className="chart-content" style={{ flex: 1 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date" 
+                angle={-45} 
+                textAnchor="end" 
+                height={80}
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                tickFormatter={formatValue}
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip formatter={formatValue} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} />
+              {seriesKeys.map((key, idx) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={getColor(idx)}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="macro-view">
       <h2>🌍 Economic Indicators</h2>
@@ -385,16 +663,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Energy</h4>
-                <Plot 
-                  data={commoditiesData.energy.chart.data} 
-                  layout={commoditiesData.energy.chart.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(commoditiesData.energy.chart, 'Energy Commodities')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -406,16 +675,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Metals</h4>
-                <Plot 
-                  data={commoditiesData.metals.chart.data} 
-                  layout={commoditiesData.metals.chart.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(commoditiesData.metals.chart, 'Metals')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -427,16 +687,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Agricultural</h4>
-                <Plot 
-                  data={commoditiesData.agricultural.chart.data} 
-                  layout={commoditiesData.agricultural.chart.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(commoditiesData.agricultural.chart, 'Agricultural')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -448,16 +699,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Livestock</h4>
-                <Plot 
-                  data={commoditiesData.livestock.chart.data} 
-                  layout={commoditiesData.livestock.chart.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(commoditiesData.livestock.chart, 'Livestock')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -469,16 +711,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Industrial</h4>
-                <Plot 
-                  data={commoditiesData.industrial.chart.data} 
-                  layout={commoditiesData.industrial.chart.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(commoditiesData.industrial.chart, 'Industrial')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -490,16 +723,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Index</h4>
-                <Plot 
-                  data={commoditiesData.index.chart.data} 
-                  layout={commoditiesData.index.chart.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(commoditiesData.index.chart, 'Commodity Index')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -517,13 +741,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <Plot 
-                data={currenciesData.chart.data} 
-                layout={currenciesData.chart.layout} 
-                style={{ width: '100%', height: '100%' }}
-                useResizeHandler={true}
-                  config={{ responsive: true }}
-              />
+              {renderChart(currenciesData.chart, 'Major Currencies')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -541,13 +759,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <Plot 
-                data={inflationData.chart.data} 
-                layout={inflationData.chart.layout} 
-                style={{ width: '100%', height: '100%' }}
-                useResizeHandler={true}
-                  config={{ responsive: true }}
-              />
+              {renderChart(inflationData.chart, 'CPI Inflation')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -565,13 +777,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <Plot 
-                data={debtToGdpData.chart.data} 
-                layout={debtToGdpData.chart.layout} 
-                style={{ width: '100%', height: '100%' }}
-                useResizeHandler={true}
-                  config={{ responsive: true }}
-              />
+              {renderChart(debtToGdpData.chart, 'Debt to GDP Ratio')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -589,13 +795,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <Plot 
-                data={dollarIndexData.chart.data} 
-                layout={dollarIndexData.chart.layout} 
-                style={{ width: '100%', height: '100%' }}
-                useResizeHandler={true}
-                  config={{ responsive: true }}
-              />
+              {renderChart(dollarIndexData.chart, 'Dollar Index')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -613,13 +813,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <Plot 
-                data={velocityData.chart.data} 
-                layout={velocityData.chart.layout} 
-                style={{ width: '100%', height: '100%' }}
-                useResizeHandler={true}
-                  config={{ responsive: true }}
-              />
+              {renderChart(velocityData.chart, 'Money Velocity')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -637,13 +831,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <Plot 
-                data={unemploymentData.chart.data} 
-                layout={unemploymentData.chart.layout} 
-                style={{ width: '100%', height: '100%' }}
-                useResizeHandler={true}
-                  config={{ responsive: true }}
-              />
+              {renderChart(unemploymentData.chart, 'Unemployment Rate')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -661,13 +849,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <Plot 
-                data={realEstateData.chart.data} 
-                layout={realEstateData.chart.layout} 
-                style={{ width: '100%', height: '100%' }}
-                useResizeHandler={true}
-                  config={{ responsive: true }}
-              />
+              {renderChart(realEstateData.chart, 'Real Estate Trends')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -685,16 +867,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Major 10Y Bonds</h4>
-                <Plot 
-                  data={bondsData.major_10y.data} 
-                  layout={bondsData.major_10y.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(bondsData.major_10y, 'Major 10Y Bonds')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -706,16 +879,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Europe Bonds</h4>
-                <Plot 
-                  data={bondsData.europe.data} 
-                  layout={bondsData.europe.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(bondsData.europe, 'Europe Bonds')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -727,16 +891,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>America Bonds</h4>
-                <Plot 
-                  data={bondsData.america.data} 
-                  layout={bondsData.america.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(bondsData.america, 'America Bonds')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -748,16 +903,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Asia Bonds</h4>
-                <Plot 
-                  data={bondsData.asia.data} 
-                  layout={bondsData.asia.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(bondsData.asia, 'Asia Bonds')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -769,16 +915,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Australia Bonds</h4>
-                <Plot 
-                  data={bondsData.australia.data} 
-                  layout={bondsData.australia.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(bondsData.australia, 'Australia Bonds')}
             </DraggableResizablePanel>
             
             <DraggableResizablePanel
@@ -790,16 +927,7 @@ function MacroView() {
               minWidth={400}
               minHeight={300}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <h4>Africa Bonds</h4>
-                <Plot 
-                  data={bondsData.africa.data} 
-                  layout={bondsData.africa.layout} 
-                  style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(bondsData.africa, 'Africa Bonds')}
             </DraggableResizablePanel>
           </div>
         )}
@@ -821,15 +949,7 @@ function MacroView() {
               minWidth={500}
               minHeight={350}
             >
-              <div className="macro-chart" style={{ height: '100%' }}>
-                <Plot 
-                  data={yieldCurveData.chart.data} 
-                  layout={yieldCurveData.chart.layout} 
-                  style={{ width: '100%', height: '100%' }}
-                  useResizeHandler={true}
-                  config={{ responsive: true }}
-                />
-              </div>
+              {renderChart(yieldCurveData.chart, 'US Treasury Yield Curve')}
             </DraggableResizablePanel>
           </div>
         )}
