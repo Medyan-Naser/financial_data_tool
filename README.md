@@ -293,28 +293,9 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-## 🙏 Acknowledgments
-
-- **SEC EDGAR** for providing free access to financial data
-- **Yahoo Finance** for market data
-- **FRED** for economic indicators
-- All open-source libraries that made this project possible
-
----
-
-## 📧 Contact
-
-For questions or support, please open an issue on GitHub.
-
----
 
 ## 📸 Media Assets Checklist
 
