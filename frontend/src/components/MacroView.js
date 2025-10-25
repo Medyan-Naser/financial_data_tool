@@ -833,6 +833,7 @@ function MacroView() {
             </DraggableResizablePanel>
           </div>
         )}
+
       </div>
     </div>
   );
