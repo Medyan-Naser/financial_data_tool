@@ -25,9 +25,15 @@ def get_available_tickers() -> List[str]:
         for file in glob.glob(os.path.join(CACHED_STATEMENTS_DIR, "*_statements.json")):
             filename = os.path.basename(file)
             # Extract ticker from filename (e.g., AAPL_statements.json -> AAPL)
+            # Skip quarterly files as those are accessed via the quarterly toggle
+            if "_quarterly_statements.json" in filename:
+                continue
             match = re.match(r"^(.+?)_statements\.json$", filename)
             if match:
-                tickers.add(match.group(1))
+                ticker = match.group(1)
+                # Additional check to ensure we don't add tickers ending with _quarterly
+                if not ticker.endswith("_quarterly"):
+                    tickers.add(ticker)
     
     # Also check old financials directory for backward compatibility
     if os.path.exists(OLD_FINANCIALS_DIR):
@@ -36,7 +42,10 @@ def get_available_tickers() -> List[str]:
             # Extract ticker from filename (e.g., AAPL_income_statement.csv -> AAPL)
             match = re.match(r"^(.+?)_(income_statement|balance_sheet|cash_flow)", filename)
             if match:
-                tickers.add(match.group(1))
+                ticker = match.group(1)
+                # Skip quarterly variants
+                if not ticker.endswith("_quarterly"):
+                    tickers.add(ticker)
     
     return sorted(list(tickers))
 
