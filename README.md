@@ -7,7 +7,7 @@
   FILE TO ATTACH: GIFs/main_app_demo.gif
   DESCRIPTION: Screen recording showing the main application interface with all tabs (Financial Data, AI, Economy)
 -->
-![Main Application Demo](GIFs/main_app_load_page.png)
+![Main Application Demo](IMGs/main_app_load_page.png)
 
 ---
 
