@@ -59,8 +59,10 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
         filings = company.ten_q_fillings if quarterly else company.ten_k_fillings
         logger.info(f"Found {len(filings)} filings")
         
-        # Limit to requested number of years
-        filings = filings.iloc[:num_years]
+        # Limit to requested number of years (quarterly has 4 filings per year)
+        num_filings = num_years * 4 if quarterly else num_years
+        filings = filings.iloc[:num_filings]
+        logger.info(f"Collecting {len(filings)} filings ({num_years} years)")
         
         results = {
             'ticker': ticker,
@@ -174,15 +176,17 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
         raise
 
 
-def save_results(results: dict, output_dir: str = "data"):
+def save_results(results: dict, output_dir: str = "data", quarterly: bool = False):
     """
     Save financial statement results to CSV files.
     
     Args:
         results: Dictionary containing financial statements
         output_dir: Output directory path
+        quarterly: Whether this is quarterly data
     """
     ticker = results['ticker']
+    period_type = "quarterly" if quarterly else "annual"
     
     # Save income statements
     for item in results['income_statements']:
@@ -192,7 +196,7 @@ def save_results(results: dict, output_dir: str = "data"):
                 output_dir,
                 ticker,
                 f"income_statement_{item['date']}",
-                "annual"
+                period_type
             )
     
     # Save balance sheets
@@ -203,7 +207,7 @@ def save_results(results: dict, output_dir: str = "data"):
                 output_dir,
                 ticker,
                 f"balance_sheet_{item['date']}",
-                "annual"
+                period_type
             )
     
     # Save cash flows
@@ -214,7 +218,7 @@ def save_results(results: dict, output_dir: str = "data"):
                 output_dir,
                 ticker,
                 f"cash_flow_{item['date']}",
-                "annual"
+                period_type
             )
     
     logger.info(f"Results saved to {output_dir}/{ticker}/")
@@ -293,7 +297,7 @@ def main():
         
         # Display or save results
         if args.output:
-            save_results(results, args.output)
+            save_results(results, args.output, args.quarterly)
         else:
             # Merge multiple years into single tables
             if args.years > 1:

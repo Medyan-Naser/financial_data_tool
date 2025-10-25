@@ -19,7 +19,7 @@ class FinancialStatement():
     - Storing calculation relationships from XML
     """
 
-    def __init__(self, og_df: pd.DataFrame, rows_that_are_sum: list, rows_text: dict, cal_facts: dict, sections_dict={}):
+    def __init__(self, og_df: pd.DataFrame, rows_that_are_sum: list, rows_text: dict, cal_facts: dict, sections_dict={}, units_dict=None):
         """
         Initialize the financial statement.
         
@@ -29,6 +29,7 @@ class FinancialStatement():
             rows_text: Dict mapping row indices to human-readable text
             cal_facts: Calculation relationships from _cal.xml file
             sections_dict: Dict grouping facts by sections in the statement
+            units_dict: Dict mapping row indices to UnitInfo objects (unit information)
         """
         self.og_df = og_df
         self.mapped_df = None
@@ -38,7 +39,8 @@ class FinancialStatement():
         self.facts_name_dict = {}   # Track renamed facts
         self.special_master_dict = {}
         self.cal_facts = cal_facts
-        self.unit = None
+        self.unit = None  # Legacy - replaced by units_dict
+        self.units_dict = units_dict or {}  # NEW: Store UnitInfo for each row
         self.sections_dict = sections_dict
         self.mapped_facts = []      # List of successfully mapped facts
         self.mapping_score = {}     # Score for each mapping

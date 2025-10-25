@@ -5,6 +5,7 @@ from FinancialStatement import *
 from dates import *
 from cal_xml import fetch_file_content, parse_calculation_arcs
 from pattern_logger import get_pattern_logger
+from unit_detector import UnitDetector, UnitInfo, UnitType
 
 import requests
 from bs4 import BeautifulSoup
@@ -34,42 +35,12 @@ def check_units(num1, num2):
 
 
 def parse_table_header(table):
-    # print("Parsing table header")
-    # Check table headers for unit multipliers and special cases
-    # TODO: using the get_facts function duoble check that the unit_multiplier is correct
-    # The facts will have the right units. 
-    unit_multiplier = IN_THOUSANDS
-    shares_unit_multiplier = IN_DOLLARS
-    special_case = False
-    table_header = table.find("th")
-    
-    if table_header:
-        header_text = table_header.get_text()
-        # Determine unit multiplier based on header text
-        if "in thousand" in header_text.lower():
-            unit_multiplier = IN_THOUSANDS
-        elif "in million" in header_text.lower():
-            unit_multiplier = IN_MILLIONS
-        else:
-            unit_multiplier = IN_DOLLARS
-        # Check for special case scenario
-        if "unless otherwise specified" in header_text:
-            special_case = True
-
-        # check for shares unit
-        if "shares in" in header_text.lower():
-            # Find the position of "shares in"
-            start_index = header_text.lower().find("shares in") + len("shares in")
-            # Extract the unit by splitting the text after "shares in" and taking the first word
-            unit = header_text[start_index:].lower().strip().split()[0]
-            # print(unit)
-            if "thousand" in unit:
-                shares_unit_multiplier = IN_THOUSANDS
-            elif "million" in unit:
-                shares_unit_multiplier = IN_MILLIONS
-            # print(shares_unit_multiplier)
-    # print("End of Parsing table header")
-    return unit_multiplier, shares_unit_multiplier
+    """
+    Parse table header using new UnitDetector system.
+    Returns (currency_scale, shares_scale) for backward compatibility.
+    """
+    currency_scale, shares_scale, has_explicit_units = UnitDetector.parse_table_header(table)
+    return currency_scale, shares_scale
 
 
 class Filling():
@@ -102,6 +73,7 @@ class Filling():
     def get_company_facts_DF(self):
         """
         Converts company facts into a DataFrame.
+        IMPORTANT: Preserves unit information for each fact.
         Returns: tuple: DataFrame of facts and a dictionary of labels.
         """
         # Retrieve facts data
@@ -121,6 +93,7 @@ class Filling():
                 for item in details["units"][unit]:
                     row = item.copy()
                     row["fact"] = fact
+                    row["unit"] = unit  # PRESERVE UNIT INFORMATION
                     df_data.append(row)
 
         df = pd.DataFrame(df_data)
@@ -327,17 +300,18 @@ class Filling():
 
     def extract_columns_values_and_dates_from_statement(self, soup: BeautifulSoup, statement_name, get_duplicates=True):
         """
-        Extracts columns, values, and dates from an HTML soup object representing a financial statement.
+        Extracts columns, values, dates, and unit information from an HTML soup object representing a financial statement.
         Args:
             soup (BeautifulSoup): The BeautifulSoup object of the HTML document.
         Returns:
-            tuple: Tuple containing columns, values_set, and dates.
+            tuple: Tuple containing columns, values_set, dates, rows_that_are_sum, text_set, sections_dict, units_dict
         """
 
 
         columns = []
         values_set = []
         unit_multiplier_set = []
+        units_dict = {}  # Store UnitInfo for each row/fact
         text_set = {}
         if statement_name == "income_statement":
             dates, date_indexes = get_datetime_index_dates_from_statement(soup, quarterly=self.quarterly)
@@ -414,6 +388,7 @@ class Filling():
                 text_set[column] = row_text
                 length_dates = len(dates)
                 values = [0] * length_dates
+                raw_values = [0] * length_dates  # Store raw values for unit verification
                 column_counter = 0
                 # Process each cell in the row
                 for date_idx, cell in enumerate((row.select("td.text, td.nump, td.num"))):
@@ -425,60 +400,120 @@ class Filling():
                         continue
 
                     # Clean and parse cell value
-                    a_tag = cell.find('a')
-                    if a_tag:
-                        value = keep_numbers_and_decimals_only_in_string(
-                        a_tag.get_text().replace("$", "")
-                        .replace(",", "") .replace("(", "")
+                    value = keep_numbers_and_decimals_only_in_string(
+                        cell.text.replace("$", "")
+                        .replace(",", "").replace("(", "")
                         .replace(")", "").strip()
                     )
-                    else:
-                        value = keep_numbers_and_decimals_only_in_string(
-                            cell.text.replace("$", "")
-                            .replace(",", "").replace("(", "")
-                            .replace(")", "").strip()
-                        )
+                    
+                    # DEBUG: Log first value of first row
+                    if len(columns) == 1 and column_counter == 0 and value:
+                        logger.info(f"[DEBUG] First row extraction:")
+                        logger.info(f"  Row title: {row_title}")
+                        logger.info(f"  Raw HTML value: {cell.text.strip()}")
+                        logger.info(f"  Cleaned value: {value}")
+                        logger.info(f"  Date column index: {date_idx}")
                     if value and date_idx == date_indexes[0]:
                         value = float(value)
-                        # Adjust value based on special case and cell class
-                        # TODO can not get the unit for the stuff that have the same name.
-                        # edgar tools knows how to do it!
-                        if (row_title not in keep_value_unchanged) : #and ("in dollars" not in onclick_elements[0].get_text(strip=True).lower()) and ("in shares" not in onclick_elements[0].get_text(strip=True).lower()) and ("per share" not in onclick_elements[0].get_text(strip=True).lower()) :
-                            if ":" in row_title: # use same unit as base fact
-                                if row_title.split(":")[-1] in columns:
-                                    index = columns.index(row_title.split(":")[-1])
-                                    unit_multiplier = unit_multiplier_set[index]
-                                # else:
-                                #     unit_multiplier = self.get_unit_multiplier(row_title, date_indexes[column_counter], value)
-                            else:
-                                unit_multiplier = self.get_unit_multiplier(row_title, dates[column_counter], value)
-                            if "nump" in cell.get("class"):
-                                values[column_counter] = value * unit_multiplier
-                            else:
-                                values[column_counter] = -value * unit_multiplier
+                        # Store raw value for unit verification (BEFORE applying multiplier)
+                        is_negative = "nump" not in cell.get("class")
+                        raw_values[column_counter] = -value if is_negative else value
+                        
+                        # Determine multiplier for THIS row based on type
+                        # Use header multiplier as the authority (it's explicitly stated!)
+                        row_multiplier = unit_multiplier  # Default: header currency scale
+                        
+                        if row_title in keep_value_unchanged:
+                            # Per-share, ratios, etc. - no scaling
+                            row_multiplier = 1
+                        elif row_title in shares_facts:
+                            # Shares - use header shares scale
+                            row_multiplier = shares_unit_multiplier
+                        elif ":" in row_title:
+                            # Section-based fact - use same unit as base fact
+                            base_fact = row_title.split(":")[-1]
+                            if base_fact in columns:
+                                index = columns.index(base_fact)
+                                row_multiplier = unit_multiplier_set[index]
+                        # else: use header currency scale (already set)
+                        
+                        # Apply multiplier to get full number
+                        if "nump" in cell.get("class"):
+                            values[column_counter] = value * row_multiplier
                         else:
-                            # this will make sure the other columns of that row to not be changed
-                            if row_title in shares_facts:
-                                unit_multiplier = shares_unit_multiplier
-                            else:
-                                unit_multiplier = 1 
-                            if "nump" in cell.get("class"):
-                                values[column_counter] = value * unit_multiplier
-                            else:
-                                values[column_counter] = -value * unit_multiplier
+                            values[column_counter] = -value * row_multiplier
+                        
+                        # DEBUG: Log first row final value
+                        if len(columns) == 1 and column_counter == 0:
+                            logger.info(f"  Row multiplier: {row_multiplier:,.0f}")
+                            logger.info(f"  Final value: {values[column_counter]:,.0f}")
+                        
                         column_counter += 1
                     elif value:
                         value = float(value)
+                        is_negative = "nump" not in cell.get("class")
+                        raw_values[column_counter] = -value if is_negative else value
+                        
+                        # Use row_multiplier from previous cell in this row
                         if "nump" in cell.get("class"):
-                            values[column_counter] = value * unit_multiplier
+                            values[column_counter] = value * row_multiplier
                         else:
-                            values[column_counter] = -value * unit_multiplier
+                            values[column_counter] = -value * row_multiplier
                         column_counter += 1
                     else:
                         pass # it is a title row
                 values_set.append(values)
-                unit_multiplier_set.append(unit_multiplier)
-        return columns, values_set, dates, rows_that_are_sum, text_set, sections_dict
+                unit_multiplier_set.append(row_multiplier)
+                
+                # Extract unit information using NEW UnitDetector system
+                human_label = text_set.get(row_title, "")
+                
+                # Convert date to string for comparison
+                date_str = ""
+                if len(dates) > 0:
+                    first_date = dates[0]
+                    # Handle different date types
+                    if hasattr(first_date, 'strftime'):
+                        date_str = first_date.strftime('%Y-%m-%d')
+                    else:
+                        date_str = str(first_date)
+                
+                # Get first non-zero RAW value from this row for unit verification
+                # IMPORTANT: Use raw_values (before multiplier), not values (after multiplier)
+                table_value = None
+                for val in raw_values:
+                    if val != 0:
+                        table_value = abs(val)
+                        break
+                
+                try:
+                    # Use new UnitDetector system
+                    # Pass the scale that WAS applied (row_multiplier)
+                    unit_info = UnitDetector.detect_unit_for_row(
+                        row_name=row_title,
+                        raw_value=table_value,
+                        end_date=date_str,
+                        header_currency_scale=row_multiplier,  # Pass actual scale applied
+                        header_shares_scale=shares_unit_multiplier,
+                        company_facts_df=self.company_facts_DF,
+                        is_quarterly=self.quarterly,
+                        human_label=human_label
+                    )
+                    
+                    units_dict[row_title] = unit_info
+                    
+                except Exception as e:
+                    logger.warning(f"Error detecting unit for {row_title}: {e}")
+                    # Create fallback unit info
+                    units_dict[row_title] = UnitInfo(
+                        unit_type=UnitType.CURRENCY,
+                        base_unit='USD',
+                        scale_factor=1.0,  # Values already scaled!
+                        source='fallback',
+                        original_scale=row_multiplier  # Track scale that was applied
+                    )
+        
+        return columns, values_set, dates, rows_that_are_sum, text_set, sections_dict, units_dict
 
 
 
@@ -519,8 +554,8 @@ class Filling():
             return None
         if soup:
             try:
-                # Extract data and create DataFrame
-                columns, values, dates, rows_that_are_sum, rows_text, sections_dict = self.extract_columns_values_and_dates_from_statement(
+                # Extract data and create DataFrame (including unit information)
+                columns, values, dates, rows_that_are_sum, rows_text, sections_dict, units_dict = self.extract_columns_values_and_dates_from_statement(
                     soup, statement_name,
                 )
                 df = self.create_dataframe_of_statement_values_columns_dates(values, columns, dates)
@@ -541,16 +576,16 @@ class Filling():
                 #     df = last_three_columns
                 df = df.round(2)
                 
-                # Create the statement object
+                # Create the statement object with unit information
                 statement_obj = None
                 if statement_name == 'income_statement':
-                    self.income_statement = IncomeStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                    self.income_statement = IncomeStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict)
                     statement_obj = self.income_statement
                 elif statement_name == 'balance_sheet':
-                    self.balance_sheet = BalanceSheet(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                    self.balance_sheet = BalanceSheet(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict)
                     statement_obj = self.balance_sheet
                 elif statement_name == 'cash_flow_statement':
-                    self.cash_flow = CashFlow(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict)
+                    self.cash_flow = CashFlow(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict)
                     statement_obj = self.cash_flow
                 
                 # Log patterns for regex improvement (deduplicates automatically)
