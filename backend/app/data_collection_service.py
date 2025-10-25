@@ -35,34 +35,32 @@ class DataCollectionService:
         self.cache_dir = CACHE_DIR
         self.collection_script = DATA_COLLECTION_SCRIPT
         
-    def get_cache_path(self, ticker: str) -> Path:
+    def get_cache_path(self, ticker: str, quarterly: bool = False) -> Path:
         """Get the cache file path for a ticker."""
-        return self.cache_dir / f"{ticker.upper()}_statements.json"
+        suffix = "_quarterly" if quarterly else ""
+        return self.cache_dir / f"{ticker.upper()}{suffix}_statements.json"
     
-    def is_cached(self, ticker: str) -> bool:
+    def is_cached(self, ticker: str, quarterly: bool = False) -> bool:
         """Check if ticker data is cached."""
-        cache_path = self.get_cache_path(ticker)
+        cache_path = self.get_cache_path(ticker, quarterly)
         return cache_path.exists()
     
-    def load_cached_data(self, ticker: str) -> Optional[Dict]:
+    def load_from_cache(self, ticker: str, quarterly: bool = False) -> Optional[Dict]:
         """Load cached data for a ticker."""
-        cache_path = self.get_cache_path(ticker)
-        
+        cache_path = self.get_cache_path(ticker, quarterly)
         if not cache_path.exists():
             return None
-            
+        
         try:
             with open(cache_path, 'r') as f:
-                data = json.load(f)
-            logger.info(f"Loaded cached data for {ticker}")
-            return data
+                return json.load(f)
         except Exception as e:
-            logger.error(f"Error loading cached data for {ticker}: {e}")
+            logger.error(f"Error loading cache for {ticker}: {e}")
             return None
     
-    def save_to_cache(self, ticker: str, data: Dict) -> bool:
+    def save_to_cache(self, ticker: str, data: Dict, quarterly: bool = False) -> bool:
         """Save data to cache."""
-        cache_path = self.get_cache_path(ticker)
+        cache_path = self.get_cache_path(ticker, quarterly)
         
         try:
             # Add metadata
@@ -72,7 +70,8 @@ class DataCollectionService:
             with open(cache_path, 'w') as f:
                 json.dump(data, f, indent=2)
             
-            logger.info(f"Saved data to cache for {ticker}")
+            period_label = "quarterly" if quarterly else "annual"
+            logger.info(f"Saved {period_label} data to cache for {ticker}")
             return True
         except Exception as e:
             logger.error(f"Error saving to cache for {ticker}: {e}")
@@ -95,9 +94,10 @@ class DataCollectionService:
     async def collect_data_with_progress(
         self, 
         ticker: str, 
-        years: int = 15,
+        years: int = 10,
         force_refresh: bool = False,
-        cleanup_csv: bool = True
+        cleanup_csv: bool = True,
+        quarterly: bool = False
     ) -> AsyncGenerator[str, None]:
         """
         Collect financial data with progress updates.
@@ -107,9 +107,9 @@ class DataCollectionService:
         ticker = ticker.upper()
         
         # Check cache first
-        if not force_refresh and self.is_cached(ticker):
+        if not force_refresh and self.is_cached(ticker, quarterly):
             yield f"data: {json.dumps({'status': 'cached', 'message': 'Loading from cache...', 'progress': 100})}\n\n"
-            cached_data = self.load_cached_data(ticker)
+            cached_data = self.load_from_cache(ticker, quarterly)
             if cached_data:
                 yield f"data: {json.dumps({'status': 'complete', 'data': cached_data})}\n\n"
                 return
@@ -136,11 +136,15 @@ class DataCollectionService:
             
             cmd = [
                 sys.executable,
+                "-u",  # Unbuffered output - critical for real-time progress updates!
                 str(self.collection_script),
                 "--ticker", ticker,
                 "--years", str(years),
                 "--output", str(output_dir)
             ]
+            
+            if quarterly:
+                cmd.append("--quarterly")
             
             # Run subprocess and capture output
             process = await asyncio.create_subprocess_exec(
@@ -150,12 +154,23 @@ class DataCollectionService:
                 cwd=str(self.collection_script.parent)
             )
             
-            # Track progress
+            # Track progress - REWRITTEN for accurate updates
             current_progress = 15
-            years_processed = 0
+            current_filing = 0
+            total_filings = years  # Estimate based on years requested
+            statements_per_filing = 3  # Income, Balance, Cash Flow
+            
             import re
-            # Match "Processing filing X/Y: date" pattern
+            # Regex patterns for different log messages
             filing_pattern = re.compile(r'Processing filing (\d+)/(\d+): (.+)')
+            
+            # Calculate progress increments
+            # 15% -> 80% = 65% total range for data collection
+            # Divide by total_filings * statements_per_filing
+            total_steps = total_filings * statements_per_filing
+            progress_per_step = 65.0 / total_steps if total_steps > 0 else 0
+            
+            step_counter = 0
             
             # Read output line by line
             line_count = 0
@@ -163,30 +178,49 @@ class DataCollectionService:
                 line_text = line.decode().strip()
                 line_count += 1
                 
-                # Update progress based on "Processing filing" messages
+                # Check for filing start
                 filing_match = filing_pattern.search(line_text)
                 if filing_match:
                     current_filing = int(filing_match.group(1))
                     total_filings = int(filing_match.group(2))
                     filing_date = filing_match.group(3)
                     
-                    # Calculate progress: 15% to 80% based on filing number
-                    current_progress = 15 + int((current_filing / total_filings) * 65)
+                    # Recalculate progress_per_step with accurate total
+                    total_steps = total_filings * statements_per_filing
+                    progress_per_step = 65.0 / total_steps if total_steps > 0 else 0
+                    
+                    # Calculate current progress
+                    current_progress = 15 + int(step_counter * progress_per_step)
                     
                     yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing filing {current_filing}/{total_filings}: {filing_date}', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.05)
+                    
                 elif "Processing Income Statement" in line_text:
-                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Income Statement...', 'progress': current_progress})}\n\n"
+                    step_counter += 1
+                    current_progress = 15 + int(step_counter * progress_per_step)
+                    current_progress = min(80, current_progress)  # Cap at 80%
+                    
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing Income Statement... ({step_counter}/{total_steps})', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.02)
+                    
                 elif "Processing Balance Sheet" in line_text:
-                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Balance Sheet...', 'progress': current_progress})}\n\n"
+                    step_counter += 1
+                    current_progress = 15 + int(step_counter * progress_per_step)
+                    current_progress = min(80, current_progress)
+                    
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing Balance Sheet... ({step_counter}/{total_steps})', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.02)
+                    
                 elif "Processing Cash Flow" in line_text:
-                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Cash Flow...', 'progress': current_progress})}\n\n"
+                    step_counter += 1
+                    current_progress = 15 + int(step_counter * progress_per_step)
+                    current_progress = min(80, current_progress)
+                    
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing Cash Flow... ({step_counter}/{total_steps})', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.02)
                 
-                # Log important lines
-                if line_count % 5 == 0 or any(kw in line_text.lower() for kw in ['error', 'warning', 'saved', 'complete']):
+                # Log important lines (but less frequently to avoid spam)
+                if line_count % 10 == 0 or any(kw in line_text.lower() for kw in ['error', 'warning', 'saved', 'complete']):
                     logger.info(f"[{ticker}] {line_text}")
             
             # Wait for process to complete
@@ -204,7 +238,7 @@ class DataCollectionService:
             
             # Load the collected data from the old financials directory
             # and convert it to our cache format
-            financial_data = await self._load_collected_data(ticker)
+            financial_data = await self._load_collected_data(ticker, quarterly)
             
             if not financial_data:
                 yield f"data: {json.dumps({'status': 'error', 'message': 'No data was collected. Ticker may not exist.'})}\n\n"
@@ -214,7 +248,7 @@ class DataCollectionService:
             await asyncio.sleep(0.2)
             
             # Save to cache
-            self.save_to_cache(ticker, financial_data)
+            self.save_to_cache(ticker, financial_data, quarterly)
             
             # Optionally clean up CSV files after successful caching
             if cleanup_csv:
@@ -234,16 +268,17 @@ class DataCollectionService:
             logger.error(error_msg)
             yield f"data: {json.dumps({'status': 'error', 'message': error_msg})}\n\n"
     
-    async def _load_collected_data(self, ticker: str) -> Optional[Dict]:
+    async def _load_collected_data(self, ticker: str, quarterly: bool = False) -> Optional[Dict]:
         """Load data from the data collection output directory and format it."""
-        # The output structure is: output/{TICKER}/{statement}_annual.csv
+        # The output structure is: output/{TICKER}/{statement}_{annual|quarterly}.csv
         ticker_output_dir = BASE_DIR.parent / "data-collection" / "scripts" / "output" / ticker.upper()
         
         if not ticker_output_dir.exists():
             logger.warning(f"No output directory found for {ticker} at: {ticker_output_dir}")
             return None
         
-        logger.info(f"Loading collected data for {ticker} from: {ticker_output_dir}")
+        period_suffix = "quarterly" if quarterly else "annual"
+        logger.info(f"Loading {period_suffix} collected data for {ticker} from: {ticker_output_dir}")
         
         statements_data = {
             "income_statement": None,
@@ -260,10 +295,10 @@ class DataCollectionService:
         has_data = False
         
         for stmt_key, file_base in statement_types:
-            # Look for files matching the pattern: {statement}_*_annual.csv
-            # e.g., income_statement_2024-12-31_annual.csv
+            # Look for files matching the pattern: {statement}_*_{annual|quarterly}.csv
+            # e.g., income_statement_2024-12-31_annual.csv or income_statement_2024-09-30_quarterly.csv
             import glob
-            pattern = str(ticker_output_dir / f"{file_base}_*_annual.csv")
+            pattern = str(ticker_output_dir / f"{file_base}_*_{period_suffix}.csv")
             matching_files = glob.glob(pattern)
             
             if matching_files:
@@ -291,6 +326,9 @@ class DataCollectionService:
                         merged_df = merged_df[sorted_cols]
                     except:
                         pass  # If dates can't be parsed, keep original order
+                    
+                    # Note: Quarterly adjustments are now applied during data loading in data.py
+                    # This avoids adjusting data twice and keeps cached files in raw form
                     
                     # Format data
                     columns = merged_df.columns.tolist()
@@ -348,9 +386,13 @@ class DataCollectionService:
         if not has_data:
             return None
         
+        # Detect period coverage by checking column headers
+        period_type = "quarterly" if quarterly else "annual"
+        
         return {
             "ticker": ticker.upper(),
             "currency": "USD",  # Default to USD for US companies (SEC EDGAR)
+            "period_type": period_type,
             "statements": statements_data,
             "collection_date": datetime.now().isoformat()
         }

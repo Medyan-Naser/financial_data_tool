@@ -156,3 +156,73 @@ async def get_bonds_data():
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching bonds data: {str(e)}")
+
+
+@router.get("/api/macro/yield-curve")
+async def get_yield_curve_data():
+    """
+    Get US Treasury yield curve data.
+    """
+    try:
+        from yield_curve import get_yield_curve_vis
+        
+        chart = get_yield_curve_vis()
+        
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching yield curve data: {str(e)}")
+
+
+@router.get("/api/macro/overview")
+async def get_macro_overview():
+    """
+    Get overview summary of key economic indicators.
+    """
+    try:
+        overview_data = {
+            "indicators": [
+                {
+                    "name": "CPI Inflation",
+                    "description": "Year-over-year inflation rate based on Consumer Price Index",
+                    "available": True,
+                    "section": "inflation"
+                },
+                {
+                    "name": "Unemployment Rate",
+                    "description": "Current unemployment rate in the United States",
+                    "available": True,
+                    "section": "unemployment"
+                },
+                {
+                    "name": "Treasury Yield Curve",
+                    "description": "US Treasury yields across different maturities",
+                    "available": True,
+                    "section": "yield-curve"
+                },
+                {
+                    "name": "Major Currencies",
+                    "description": "Exchange rates of major world currencies vs USD",
+                    "available": True,
+                    "section": "currencies"
+                },
+                {
+                    "name": "Commodities",
+                    "description": "Prices of energy, metals, agricultural products, and more",
+                    "available": True,
+                    "section": "commodities"
+                },
+                {
+                    "name": "Global Bonds",
+                    "description": "10-year government bond yields across major economies",
+                    "available": True,
+                    "section": "bonds"
+                }
+            ],
+            "status": "operational"
+        }
+        
+        return JSONResponse(content=overview_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching overview: {str(e)}")

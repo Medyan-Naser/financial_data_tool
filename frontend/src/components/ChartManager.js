@@ -5,12 +5,14 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import ResizablePanel from './ResizablePanel';
+import YearRangeSlider from './YearRangeSlider';
 
 const API_BASE_URL = 'http://localhost:8000';
 
 function ChartManager({ charts, onRemoveChart, ticker }) {
   const [comparisonData, setComparisonData] = useState({});
   const [loadingComparison, setLoadingComparison] = useState({});
+  const [yearRange, setYearRange] = useState(null);
 
   // Fetch comparison data when needed
   useEffect(() => {
@@ -57,15 +59,57 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
       }
     });
   }, [charts]);
+  // Extract available years from chart columns
+  const getAvailableYears = (chart) => {
+    if (!chart || !chart.columns) return [];
+    return chart.columns.map(col => new Date(col).getFullYear())
+      .filter((year, index, self) => self.indexOf(year) === index)
+      .sort((a, b) => a - b);
+  };
+
+  // Initialize year range when chart changes
+  useEffect(() => {
+    if (charts.length > 0) {
+      const chart = charts[0];
+      const years = getAvailableYears(chart);
+      if (years.length > 0 && !yearRange) {
+        setYearRange([years[0], years[years.length - 1]]);
+      }
+    }
+  }, [charts]);
+
+  // Filter columns by year range
+  const filterColumnsByYearRange = (columns) => {
+    if (!yearRange || !columns) return { filteredColumns: columns, filteredIndices: columns.map((_, i) => i) };
+    
+    const [startYear, endYear] = yearRange;
+    const filteredIndices = [];
+    const filteredColumns = [];
+    
+    columns.forEach((col, idx) => {
+      const year = new Date(col).getFullYear();
+      if (year >= startYear && year <= endYear) {
+        filteredIndices.push(idx);
+        filteredColumns.push(col);
+      }
+    });
+    
+    return { filteredColumns, filteredIndices };
+  };
+
   const formatChartData = (chart) => {
     const { data, columns, comparisonTicker, selectedRowNames } = chart;
     const comparison = comparisonData[chart.id];
     
+    // Filter columns by year range
+    const { filteredColumns, filteredIndices } = filterColumnsByYearRange(columns);
+    
     // Transform data to format needed by recharts
-    const chartData = columns.map((col, colIndex) => {
+    const chartData = filteredColumns.map((col, filteredIndex) => {
+      const colIndex = filteredIndices[filteredIndex];
       const point = { date: col };
       
-      // Add primary ticker data
+      // Add primary ticker data (use original colIndex from unfiltered data)
       data.forEach(row => {
         point[`${chart.ticker}: ${row.name}`] = parseFloat(row.values[colIndex]) || 0;
       });
@@ -268,6 +312,17 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
           renderChart(chart)
         )}
       </div>
+      {/* Year Range Slider */}
+      {yearRange && (
+        <div style={{ padding: '0 20px 20px 20px' }}>
+          <YearRangeSlider
+            years={getAvailableYears(chart)}
+            selectedRange={yearRange}
+            onChange={setYearRange}
+          />
+        </div>
+      )}
+      
       <div className="chart-info">
         <small>
           Type: {chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} | 

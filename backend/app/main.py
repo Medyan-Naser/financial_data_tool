@@ -3,6 +3,7 @@ from . import data
 from . import ai_endpoints
 from . import macro_endpoints
 from . import financials_cached
+from . import ai_models
 from starlette.middleware.cors import CORSMiddleware
 
 
@@ -22,4 +23,5 @@ app.add_middleware(
 app.include_router(financials_cached.router)  # New cached financials with progress tracking (more specific)
 app.include_router(data.router)  # Legacy data endpoints (less specific)
 app.include_router(ai_endpoints.router)
+app.include_router(ai_models.router)  # New AI/ML models
 app.include_router(macro_endpoints.router)

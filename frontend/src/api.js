@@ -5,10 +5,12 @@ const API_BASE_URL = "http://localhost:8000";
 
 /**
  * Check if a ticker has cached data
+ * @param {string} ticker - Stock ticker symbol
+ * @param {boolean} quarterly - Check for quarterly data
  */
-export const checkCacheStatus = async (ticker) => {
+export const checkCacheStatus = async (ticker, quarterly = false) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/financials/cache/status/${ticker}`);
+    const response = await axios.get(`${API_BASE_URL}/api/financials/cache/status/${ticker}?quarterly=${quarterly}`);
     return response.data;
   } catch (error) {
     console.error("Error checking cache status", error);
@@ -18,10 +20,12 @@ export const checkCacheStatus = async (ticker) => {
 
 /**
  * Get cached financial data (fast, no collection)
+ * @param {string} ticker - Stock ticker symbol
+ * @param {boolean} quarterly - Get quarterly data
  */
-export const getCachedFinancialData = async (ticker) => {
+export const getCachedFinancialData = async (ticker, quarterly = false) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/financials/cached/${ticker}`);
+    const response = await axios.get(`${API_BASE_URL}/api/financials/cached/${ticker}?quarterly=${quarterly}`);
     return response.data;
   } catch (error) {
     if (error.response?.status === 404) {
@@ -35,14 +39,15 @@ export const getCachedFinancialData = async (ticker) => {
  * Collect financial data with progress tracking using SSE
  * 
  * @param {string} ticker - Stock ticker symbol
- * @param {number} years - Number of years to collect (default: 15)
+ * @param {number} years - Number of years to collect (default: 10)
  * @param {boolean} forceRefresh - Force refresh even if cached
  * @param {function} onProgress - Callback for progress updates
+ * @param {boolean} quarterly - Collect quarterly data (10-Q) instead of annual (10-K)
  * @returns {Promise} - Resolves with complete data
  */
-export const collectFinancialData = (ticker, years = 15, forceRefresh = false, onProgress) => {
+export const collectFinancialData = (ticker, years = 10, forceRefresh = false, onProgress, quarterly = false) => {
   return new Promise((resolve, reject) => {
-    const url = `${API_BASE_URL}/api/financials/collect/${ticker}?years=${years}&force_refresh=${forceRefresh}`;
+    const url = `${API_BASE_URL}/api/financials/collect/${ticker}?years=${years}&force_refresh=${forceRefresh}&quarterly=${quarterly}`;
     
     // Create EventSource for SSE
     const eventSource = new EventSource(url);
@@ -79,9 +84,13 @@ export const collectFinancialData = (ticker, years = 15, forceRefresh = false, o
 
 /**
  * Refresh financial data (force re-collection)
+ * @param {string} ticker - Stock ticker symbol
+ * @param {number} years - Number of years to collect
+ * @param {function} onProgress - Callback for progress updates
+ * @param {boolean} quarterly - Collect quarterly data
  */
-export const refreshFinancialData = (ticker, years = 15, onProgress) => {
-  return collectFinancialData(ticker, years, true, onProgress);
+export const refreshFinancialData = (ticker, years = 10, onProgress, quarterly = false) => {
+  return collectFinancialData(ticker, years, true, onProgress, quarterly);
 };
 
 /**

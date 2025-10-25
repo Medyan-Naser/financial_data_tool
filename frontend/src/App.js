@@ -34,6 +34,7 @@ function App() {
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectionProgress, setCollectionProgress] = useState({ status: '', message: '', progress: 0 });
   const [isCached, setIsCached] = useState(false);
+  const [quarterly, setQuarterly] = useState(false); // Toggle for quarterly vs annual data
 
   // Fetch available tickers on mount
   useEffect(() => {
@@ -48,6 +49,13 @@ function App() {
     fetchTickers();
   }, []);
 
+  // Re-fetch data when quarterly toggle changes
+  useEffect(() => {
+    if (selectedTicker) {
+      handleTickerSelect(selectedTicker);
+    }
+  }, [quarterly]);
+
   // Fetch financial data when ticker is selected
   const handleTickerSelect = async (ticker) => {
     setSelectedTicker(ticker);
@@ -59,12 +67,12 @@ function App() {
 
     try {
       // First, check cache status
-      const cacheStatus = await checkCacheStatus(ticker);
+      const cacheStatus = await checkCacheStatus(ticker, quarterly);
       setIsCached(cacheStatus.cached);
       
       if (cacheStatus.cached) {
         // Load from cache (fast)
-        const cachedData = await getCachedFinancialData(ticker);
+        const cachedData = await getCachedFinancialData(ticker, quarterly);
         if (cachedData) {
           setFinancialData(cachedData);
           
@@ -85,11 +93,12 @@ function App() {
       
       const data = await collectFinancialData(
         ticker,
-        15, // 15 years
+        10, // 10 years or quarters
         false,
         (progressData) => {
           setCollectionProgress(progressData);
-        }
+        },
+        quarterly
       );
       
       setFinancialData(data);
@@ -123,10 +132,11 @@ function App() {
     try {
       const data = await refreshFinancialData(
         selectedTicker,
-        15,
+        10,
         (progressData) => {
           setCollectionProgress(progressData);
-        }
+        },
+        quarterly
       );
       
       setFinancialData(data);
@@ -278,11 +288,13 @@ function App() {
         </div>
         
         {activeMainTab === 'stocks' && (
-          <TickerSearch
-            tickers={availableTickers}
-            onSelect={handleTickerSelect}
-            selectedTicker={selectedTicker}
-          />
+          <div className="stocks-header-controls">
+            <TickerSearch
+              tickers={availableTickers}
+              onSelect={handleTickerSelect}
+              selectedTicker={selectedTicker}
+            />
+          </div>
         )}
       </header>
 
@@ -339,9 +351,32 @@ function App() {
               <div className="data-section">
                 <div className="financial-header">
                   <h2>{financialData.ticker} Financial Statements</h2>
-                  {financialData.currency && (
-                    <span className="currency-badge">{financialData.currency}</span>
-                  )}
+                  <div className="header-badges">
+                    {financialData.currency && (
+                      <span className="currency-badge">{financialData.currency}</span>
+                    )}
+                    {financialData.period_type && (
+                      <span className="period-badge">
+                        {financialData.period_type === 'quarterly' ? '📊 Quarterly' : '📅 Annual'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Period Toggle */}
+                <div className="period-toggle">
+                  <button
+                    className={`toggle-btn ${!quarterly ? 'active' : ''}`}
+                    onClick={() => setQuarterly(false)}
+                  >
+                    📅 Annual
+                  </button>
+                  <button
+                    className={`toggle-btn ${quarterly ? 'active' : ''}`}
+                    onClick={() => setQuarterly(true)}
+                  >
+                    📊 Quarterly
+                  </button>
                 </div>
                 
                 {/* Statement Tabs */}
