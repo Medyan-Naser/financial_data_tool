@@ -32,7 +32,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = False, enable_pattern_logging: bool = True):
+def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = False, enable_pattern_logging: bool = True, statement_filter: str = 'all'):
     """
     Fetch and process financial statements for a given ticker.
     
@@ -41,6 +41,7 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
         num_years: Number of years of data to fetch
         quarterly: If True, fetch quarterly data (10-Q), otherwise annual (10-K)
         enable_pattern_logging: If True, log pattern matching statistics
+        statement_filter: Which statements to fetch ('income', 'balance', 'cashflow', or 'all')
     
     Returns:
         dict: Dictionary containing processed financial statements
@@ -88,74 +89,77 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                     quarterly=quarterly
                 )
                 
-                # Process income statement
-                logger.info("Processing Income Statement...")
-                filing.process_one_statement("income_statement")
-                if filing.income_statement:
-                    mapped_df = filing.income_statement.get_mapped_df()
-                    results['income_statements'].append({
-                        'date': report_date,
-                        'original': filing.income_statement.og_df,
-                        'mapped': mapped_df
-                    })
-                    
-                    # Log pattern matching
-                    if pattern_logger:
-                        pattern_logger.log_statement(
-                            ticker=ticker,
-                            cik=company.cik,
-                            statement_type='income_statement',
-                            fiscal_year=str(report_date),
-                            original_df=filing.income_statement.og_df,
-                            mapped_df=mapped_df,
-                            statement_object=filing.income_statement
-                        )
+                # Process income statement (if requested)
+                if statement_filter in ['income', 'all']:
+                    logger.info("Processing Income Statement...")
+                    filing.process_one_statement("income_statement")
+                    if filing.income_statement:
+                        mapped_df = filing.income_statement.get_mapped_df()
+                        results['income_statements'].append({
+                            'date': report_date,
+                            'original': filing.income_statement.og_df,
+                            'mapped': mapped_df
+                        })
+                        
+                        # Log pattern matching
+                        if pattern_logger:
+                            pattern_logger.log_statement(
+                                ticker=ticker,
+                                cik=company.cik,
+                                statement_type='income_statement',
+                                fiscal_year=str(report_date),
+                                original_df=filing.income_statement.og_df,
+                                mapped_df=mapped_df,
+                                statement_object=filing.income_statement
+                            )
                 
-                # Process balance sheet
-                logger.info("Processing Balance Sheet...")
-                filing.process_one_statement("balance_sheet")
-                if filing.balance_sheet:
-                    mapped_df = filing.balance_sheet.get_mapped_df()
-                    results['balance_sheets'].append({
-                        'date': report_date,
-                        'original': filing.balance_sheet.og_df,
-                        'mapped': mapped_df
-                    })
-                    
-                    # Log pattern matching
-                    if pattern_logger:
-                        pattern_logger.log_statement(
-                            ticker=ticker,
-                            cik=company.cik,
-                            statement_type='balance_sheet',
-                            fiscal_year=str(report_date),
-                            original_df=filing.balance_sheet.og_df,
-                            mapped_df=mapped_df,
-                            statement_object=filing.balance_sheet
-                        )
+                # Process balance sheet (if requested)
+                if statement_filter in ['balance', 'all']:
+                    logger.info("Processing Balance Sheet...")
+                    filing.process_one_statement("balance_sheet")
+                    if filing.balance_sheet:
+                        mapped_df = filing.balance_sheet.get_mapped_df()
+                        results['balance_sheets'].append({
+                            'date': report_date,
+                            'original': filing.balance_sheet.og_df,
+                            'mapped': mapped_df
+                        })
+                        
+                        # Log pattern matching
+                        if pattern_logger:
+                            pattern_logger.log_statement(
+                                ticker=ticker,
+                                cik=company.cik,
+                                statement_type='balance_sheet',
+                                fiscal_year=str(report_date),
+                                original_df=filing.balance_sheet.og_df,
+                                mapped_df=mapped_df,
+                                statement_object=filing.balance_sheet
+                            )
                 
-                # Process cash flow
-                logger.info("Processing Cash Flow...")
-                filing.process_one_statement("cash_flow_statement")
-                if filing.cash_flow:
-                    mapped_df = filing.cash_flow.get_mapped_df()
-                    results['cash_flows'].append({
-                        'date': report_date,
-                        'original': filing.cash_flow.og_df,
-                        'mapped': mapped_df
-                    })
-                    
-                    # Log pattern matching
-                    if pattern_logger:
-                        pattern_logger.log_statement(
-                            ticker=ticker,
-                            cik=company.cik,
-                            statement_type='cash_flow_statement',
-                            fiscal_year=str(report_date),
-                            original_df=filing.cash_flow.og_df,
-                            mapped_df=mapped_df,
-                            statement_object=filing.cash_flow
-                        )
+                # Process cash flow (if requested)
+                if statement_filter in ['cashflow', 'all']:
+                    logger.info("Processing Cash Flow...")
+                    filing.process_one_statement("cash_flow_statement")
+                    if filing.cash_flow:
+                        mapped_df = filing.cash_flow.get_mapped_df()
+                        results['cash_flows'].append({
+                            'date': report_date,
+                            'original': filing.cash_flow.og_df,
+                            'mapped': mapped_df
+                        })
+                        
+                        # Log pattern matching
+                        if pattern_logger:
+                            pattern_logger.log_statement(
+                                ticker=ticker,
+                                cik=company.cik,
+                                statement_type='cash_flow_statement',
+                                fiscal_year=str(report_date),
+                                original_df=filing.cash_flow.og_df,
+                                mapped_df=mapped_df,
+                                statement_object=filing.cash_flow
+                            )
                 
                 # Store metadata
                 results['metadata'].append({
@@ -292,7 +296,8 @@ def main():
         results = get_financial_statements(
             ticker=args.ticker,
             num_years=args.years,
-            quarterly=args.quarterly
+            quarterly=args.quarterly,
+            statement_filter=args.statement  # Pass the statement filter
         )
         
         # Display or save results
