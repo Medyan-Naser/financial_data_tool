@@ -136,6 +136,7 @@ class DataCollectionService:
             
             cmd = [
                 sys.executable,
+                "-u",  # Unbuffered output - critical for real-time progress updates!
                 str(self.collection_script),
                 "--ticker", ticker,
                 "--years", str(years),
@@ -153,12 +154,23 @@ class DataCollectionService:
                 cwd=str(self.collection_script.parent)
             )
             
-            # Track progress
+            # Track progress - REWRITTEN for accurate updates
             current_progress = 15
-            years_processed = 0
+            current_filing = 0
+            total_filings = years  # Estimate based on years requested
+            statements_per_filing = 3  # Income, Balance, Cash Flow
+            
             import re
-            # Match "Processing filing X/Y: date" pattern
+            # Regex patterns for different log messages
             filing_pattern = re.compile(r'Processing filing (\d+)/(\d+): (.+)')
+            
+            # Calculate progress increments
+            # 15% -> 80% = 65% total range for data collection
+            # Divide by total_filings * statements_per_filing
+            total_steps = total_filings * statements_per_filing
+            progress_per_step = 65.0 / total_steps if total_steps > 0 else 0
+            
+            step_counter = 0
             
             # Read output line by line
             line_count = 0
@@ -166,30 +178,49 @@ class DataCollectionService:
                 line_text = line.decode().strip()
                 line_count += 1
                 
-                # Update progress based on "Processing filing" messages
+                # Check for filing start
                 filing_match = filing_pattern.search(line_text)
                 if filing_match:
                     current_filing = int(filing_match.group(1))
                     total_filings = int(filing_match.group(2))
                     filing_date = filing_match.group(3)
                     
-                    # Calculate progress: 15% to 80% based on filing number
-                    current_progress = 15 + int((current_filing / total_filings) * 65)
+                    # Recalculate progress_per_step with accurate total
+                    total_steps = total_filings * statements_per_filing
+                    progress_per_step = 65.0 / total_steps if total_steps > 0 else 0
+                    
+                    # Calculate current progress
+                    current_progress = 15 + int(step_counter * progress_per_step)
                     
                     yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing filing {current_filing}/{total_filings}: {filing_date}', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.05)
+                    
                 elif "Processing Income Statement" in line_text:
-                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Income Statement...', 'progress': current_progress})}\n\n"
+                    step_counter += 1
+                    current_progress = 15 + int(step_counter * progress_per_step)
+                    current_progress = min(80, current_progress)  # Cap at 80%
+                    
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing Income Statement... ({step_counter}/{total_steps})', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.02)
+                    
                 elif "Processing Balance Sheet" in line_text:
-                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Balance Sheet...', 'progress': current_progress})}\n\n"
+                    step_counter += 1
+                    current_progress = 15 + int(step_counter * progress_per_step)
+                    current_progress = min(80, current_progress)
+                    
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing Balance Sheet... ({step_counter}/{total_steps})', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.02)
+                    
                 elif "Processing Cash Flow" in line_text:
-                    yield f"data: {json.dumps({'status': 'collecting', 'message': 'Processing Cash Flow...', 'progress': current_progress})}\n\n"
+                    step_counter += 1
+                    current_progress = 15 + int(step_counter * progress_per_step)
+                    current_progress = min(80, current_progress)
+                    
+                    yield f"data: {json.dumps({'status': 'collecting', 'message': f'Processing Cash Flow... ({step_counter}/{total_steps})', 'progress': current_progress})}\n\n"
                     await asyncio.sleep(0.02)
                 
-                # Log important lines
-                if line_count % 5 == 0 or any(kw in line_text.lower() for kw in ['error', 'warning', 'saved', 'complete']):
+                # Log important lines (but less frequently to avoid spam)
+                if line_count % 10 == 0 or any(kw in line_text.lower() for kw in ['error', 'warning', 'saved', 'complete']):
                     logger.info(f"[{ticker}] {line_text}")
             
             # Wait for process to complete
@@ -295,6 +326,9 @@ class DataCollectionService:
                         merged_df = merged_df[sorted_cols]
                     except:
                         pass  # If dates can't be parsed, keep original order
+                    
+                    # Note: Quarterly adjustments are now applied during data loading in data.py
+                    # This avoids adjusting data twice and keeps cached files in raw form
                     
                     # Format data
                     columns = merged_df.columns.tolist()
