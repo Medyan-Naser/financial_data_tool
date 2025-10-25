@@ -28,6 +28,9 @@
 -->
 ![Financial Data Demo](GIFs/BirdView_search_for_stock.gif)
 
+<video src="GIFs/BirdView_search_for_stock.mp4" controls width="800"></video>
+
+
 ### 🤖 AI-Powered Predictions
 - **LSTM Price Forecasting**: 11-day stock price predictions using neural networks
 - **GARCH Volatility Analysis**: Advanced volatility modeling and forecasting
