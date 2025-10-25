@@ -7,7 +7,7 @@
   FILE TO ATTACH: GIFs/main_app_demo.gif
   DESCRIPTION: Screen recording showing the main application interface with all tabs (Financial Data, AI, Economy)
 -->
-![Main Application Demo](GIFs/BirdView_search_for_stock.gif)
+![Main Application Demo](GIFs/main_app_load_page.png)
 
 ---
 
@@ -26,7 +26,7 @@
   FILE TO ATTACH: GIFs/financial_data_demo.gif
   DESCRIPTION: Demo showing searching for a ticker, viewing financial tables, and creating comparison charts
 -->
-![Financial Data Demo](GIFs/financial_data_demo.gif)
+![Financial Data Demo](GIFs/BirdView_search_for_stock.gif)
 
 ### 🤖 AI-Powered Predictions
 - **LSTM Price Forecasting**: 11-day stock price predictions using neural networks
