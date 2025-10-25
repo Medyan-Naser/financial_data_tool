@@ -62,7 +62,7 @@ async def get_cached_financial_data(ticker: str, quarterly: bool = False):
 @router.get("/api/financials/collect/{ticker}")
 async def collect_financial_data(
     ticker: str,
-    years: int = 15,
+    years: int = 10,
     force_refresh: bool = False,
     quarterly: bool = False
 ):
@@ -73,7 +73,7 @@ async def collect_financial_data(
     
     Parameters:
     - ticker: Stock ticker symbol
-    - years: Number of years/quarters to collect (default: 15)
+    - years: Number of years/quarters to collect (default: 10)
     - force_refresh: Force re-collection even if cached (default: False)
     - quarterly: Collect quarterly data (10-Q) instead of annual (10-K)
     
@@ -101,7 +101,7 @@ async def collect_financial_data(
 
 
 @router.post("/api/financials/refresh/{ticker}")
-async def refresh_financial_data(ticker: str, years: int = 15, quarterly: bool = False):
+async def refresh_financial_data(ticker: str, years: int = 10, quarterly: bool = False):
     """
     Force refresh financial data for a ticker.
     

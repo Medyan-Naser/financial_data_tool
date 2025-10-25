@@ -93,7 +93,7 @@ function App() {
       
       const data = await collectFinancialData(
         ticker,
-        15, // 15 years or quarters
+        10, // 10 years or quarters
         false,
         (progressData) => {
           setCollectionProgress(progressData);
@@ -132,7 +132,7 @@ function App() {
     try {
       const data = await refreshFinancialData(
         selectedTicker,
-        15,
+        10,
         (progressData) => {
           setCollectionProgress(progressData);
         },

@@ -94,7 +94,7 @@ class DataCollectionService:
     async def collect_data_with_progress(
         self, 
         ticker: str, 
-        years: int = 15,
+        years: int = 10,
         force_refresh: bool = False,
         cleanup_csv: bool = True,
         quarterly: bool = False

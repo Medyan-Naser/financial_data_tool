@@ -71,7 +71,7 @@ const DataCollectionProgress = ({ status, message, progress }) => {
       {status === 'collecting' && (
         <div className="progress-details">
           <p className="progress-hint">
-            💡 This may take 1-3 minutes for 15 years of data...
+            💡 This may take 1-3 minutes for 10 years of data...
           </p>
         </div>
       )}

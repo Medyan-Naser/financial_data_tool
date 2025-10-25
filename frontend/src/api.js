@@ -39,13 +39,13 @@ export const getCachedFinancialData = async (ticker, quarterly = false) => {
  * Collect financial data with progress tracking using SSE
  * 
  * @param {string} ticker - Stock ticker symbol
- * @param {number} years - Number of years to collect (default: 15)
+ * @param {number} years - Number of years to collect (default: 10)
  * @param {boolean} forceRefresh - Force refresh even if cached
  * @param {function} onProgress - Callback for progress updates
  * @param {boolean} quarterly - Collect quarterly data (10-Q) instead of annual (10-K)
  * @returns {Promise} - Resolves with complete data
  */
-export const collectFinancialData = (ticker, years = 15, forceRefresh = false, onProgress, quarterly = false) => {
+export const collectFinancialData = (ticker, years = 10, forceRefresh = false, onProgress, quarterly = false) => {
   return new Promise((resolve, reject) => {
     const url = `${API_BASE_URL}/api/financials/collect/${ticker}?years=${years}&force_refresh=${forceRefresh}&quarterly=${quarterly}`;
     
@@ -89,7 +89,7 @@ export const collectFinancialData = (ticker, years = 15, forceRefresh = false, o
  * @param {function} onProgress - Callback for progress updates
  * @param {boolean} quarterly - Collect quarterly data
  */
-export const refreshFinancialData = (ticker, years = 15, onProgress, quarterly = false) => {
+export const refreshFinancialData = (ticker, years = 10, onProgress, quarterly = false) => {
   return collectFinancialData(ticker, years, true, onProgress, quarterly);
 };
 
