@@ -104,9 +104,13 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
     // Filter columns by year range
     const { filteredColumns, filteredIndices } = filterColumnsByYearRange(columns);
     
+    // Reverse the order to show oldest to newest (chronological order)
+    const reversedColumns = [...filteredColumns].reverse();
+    const reversedIndices = [...filteredIndices].reverse();
+    
     // Transform data to format needed by recharts
-    const chartData = filteredColumns.map((col, filteredIndex) => {
-      const colIndex = filteredIndices[filteredIndex];
+    const chartData = reversedColumns.map((col, filteredIndex) => {
+      const colIndex = reversedIndices[filteredIndex];
       const point = { date: col };
       
       // Add primary ticker data (use original colIndex from unfiltered data)
