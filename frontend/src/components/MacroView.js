@@ -349,7 +349,7 @@ function MacroView() {
                 <p>National debt to GDP ratio</p>
               </div>
               <div className="overview-card" onClick={() => setActiveSection('dollar')} style={{ cursor: 'pointer' }}>
-                <h4>� Dollar Index</h4>
+                <h4> Dollar Index</h4>
                 <p>US Dollar strength indicator</p>
               </div>
               <div className="overview-card" onClick={() => setActiveSection('velocity')} style={{ cursor: 'pointer' }}>
