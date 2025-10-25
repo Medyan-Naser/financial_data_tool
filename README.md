@@ -26,7 +26,6 @@
   FILE TO ATTACH: GIFs/financial_data_demo.gif
   DESCRIPTION: Demo showing searching for a ticker, viewing financial tables, and creating comparison charts
 -->
-![Financial Data Demo](GIFs/BirdView_search_for_stock.gif)
 
 <video src="GIFs/BirdView_search_for_stock.mp4" controls width="800"></video>
 
