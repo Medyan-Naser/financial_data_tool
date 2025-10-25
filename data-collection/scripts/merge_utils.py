@@ -6,12 +6,15 @@ This module handles the complexities of combining financial data when:
 - Different years have different line items
 - Companies change their reporting structure
 - There are data quality issues or variations
+- Quarterly reports may contain cumulative year-to-date data
 """
 
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import logging
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +88,16 @@ def merge_statements_by_year(statements: List[Dict], statement_type: str) -> Opt
     result = result.fillna(0)
     
     # Strategy 5: Sort columns by date (most recent first)
-    result = result.sort_index(axis=1, ascending=False)
+    try:
+        # Convert column names to datetime for proper sorting
+        datetime_cols = pd.to_datetime(result.columns)
+        # Sort in descending order (newest first)
+        sorted_indices = datetime_cols.argsort()[::-1]
+        result = result.iloc[:, sorted_indices]
+        logger.info(f"Sorted columns: {result.columns[:5].tolist()} ... {result.columns[-5:].tolist()}")
+    except Exception as e:
+        logger.warning(f"Could not sort columns by date: {e}, using default sort")
+        result = result.sort_index(axis=1, ascending=False)
     
     # Strategy 6: Keep only non-zero rows (at least one year has data)
     non_zero_mask = (result != 0).any(axis=1)
@@ -257,3 +269,303 @@ def merge_all_statements(results: Dict) -> Dict:
             logger.info(f"{stmt_type} reporting changes: {changes}")
     
     return merged
+
+
+def detect_fiscal_year(date_str: str) -> int:
+    """
+    Determine the fiscal year for a given date.
+    Most companies use calendar year, but some have different fiscal year ends.
+    
+    Args:
+        date_str: Date string in format 'YYYY-MM-DD'
+    
+    Returns:
+        Fiscal year as integer
+    """
+    date = pd.to_datetime(date_str)
+    # For most companies, fiscal year = calendar year
+    # If the month is in Q1 (Jan-Mar), it might belong to previous fiscal year for some companies
+    # For now, we'll use the calendar year
+    return date.year
+
+
+def detect_quarter(date_str: str) -> Tuple[int, int]:
+    """
+    Determine the quarter for a given date.
+    
+    Args:
+        date_str: Date string in format 'YYYY-MM-DD'
+    
+    Returns:
+        Tuple of (fiscal_year, quarter_number)
+    """
+    date = pd.to_datetime(date_str)
+    fiscal_year = date.year
+    
+    # Determine quarter based on month
+    month = date.month
+    if month <= 3:
+        quarter = 1
+    elif month <= 6:
+        quarter = 2
+    elif month <= 9:
+        quarter = 3
+    else:
+        quarter = 4
+    
+    return fiscal_year, quarter
+
+
+def group_quarters_by_year(columns: List[str]) -> Dict[int, Dict[int, str]]:
+    """
+    Group quarterly column dates by fiscal year and quarter.
+    
+    Args:
+        columns: List of date strings in format 'YYYY-MM-DD'
+    
+    Returns:
+        Dictionary: {fiscal_year: {quarter: date_string}}
+    """
+    year_quarters = {}
+    
+    for col in columns:
+        fiscal_year, quarter = detect_quarter(col)
+        
+        if fiscal_year not in year_quarters:
+            year_quarters[fiscal_year] = {}
+        
+        year_quarters[fiscal_year][quarter] = col
+    
+    return year_quarters
+
+
+def needs_quarterly_adjustment(df: pd.DataFrame, year_quarters: Dict[int, Dict[int, str]]) -> Dict[str, str]:
+    """
+    Detect which quarterly columns need adjustment (contain cumulative YTD data).
+    
+    Strategy:
+    1. For each fiscal year with 4 quarters, check if Q4 appears to be cumulative
+    2. A Q4 is likely cumulative if: Q4 ≈ Q1 + Q2 + Q3 + Q4_actual
+    3. Check multiple rows to confirm the pattern
+    
+    Args:
+        df: DataFrame with quarterly data
+        year_quarters: Dictionary mapping {fiscal_year: {quarter: date_string}}
+    
+    Returns:
+        Dictionary: {date_to_adjust: 'cumulative'} mapping columns that need adjustment
+    """
+    adjustments = {}
+    
+    for fiscal_year, quarters in year_quarters.items():
+        # We need at least Q4 to check, and ideally Q1, Q2, Q3 for comparison
+        if 4 not in quarters:
+            continue
+        
+        q4_col = quarters[4]
+        
+        # Get columns for other quarters if available
+        available_quarters = [q for q in [1, 2, 3] if q in quarters]
+        
+        if len(available_quarters) < 2:
+            # Not enough data to determine if it's cumulative
+            logger.debug(f"Year {fiscal_year}: Not enough quarters to check Q4 (only have {available_quarters})")
+            continue
+        
+        # Check if Q4 looks like cumulative data
+        is_cumulative = check_if_cumulative(df, quarters, available_quarters, q4_col)
+        
+        if is_cumulative:
+            adjustments[q4_col] = 'cumulative'
+            logger.info(f"Detected cumulative Q4 data for {fiscal_year}: {q4_col}")
+    
+    return adjustments
+
+
+def check_if_cumulative(df: pd.DataFrame, quarters: Dict[int, str], 
+                        available_quarters: List[int], q4_col: str) -> bool:
+    """
+    Check if Q4 column contains cumulative year-to-date data.
+    
+    Logic:
+    - If Q4 value is approximately equal to or greater than Q1+Q2+Q3, it's likely cumulative
+    - Check multiple rows (at least 3) to confirm the pattern
+    - Use revenue, expenses, or other flow items (not balance sheet items)
+    
+    Args:
+        df: DataFrame with quarterly data
+        quarters: Dictionary of {quarter: date_string}
+        available_quarters: List of available quarter numbers (1, 2, 3)
+        q4_col: Q4 column name to check
+    
+    Returns:
+        True if Q4 appears to be cumulative
+    """
+    # Select rows that are likely to be flow items (income statement or cash flow)
+    # These typically include keywords like 'revenue', 'income', 'expense', 'cash'
+    flow_rows = []
+    
+    for idx in df.index:
+        idx_lower = str(idx).lower()
+        if any(keyword in idx_lower for keyword in ['revenue', 'income', 'expense', 'cogs', 
+                                                      'operating', 'cash', 'net', 'sales']):
+            # Exclude per-share items as they don't accumulate
+            if 'per share' not in idx_lower and 'eps' not in idx_lower and 'shares outstanding' not in idx_lower:
+                flow_rows.append(idx)
+    
+    if len(flow_rows) < 3:
+        logger.debug(f"Not enough flow items to check for cumulative pattern")
+        return False
+    
+    # Check the pattern for multiple rows
+    cumulative_votes = 0
+    total_checks = 0
+    
+    for row in flow_rows[:10]:  # Check up to 10 rows
+        try:
+            # Get Q4 value
+            q4_val = df.loc[row, q4_col]
+            
+            # Skip if Q4 is zero or NaN
+            if pd.isna(q4_val) or q4_val == 0:
+                continue
+            
+            # Sum available quarters
+            sum_qtrs = sum([df.loc[row, quarters[q]] for q in available_quarters 
+                           if quarters[q] in df.columns and not pd.isna(df.loc[row, quarters[q]])])
+            
+            # Check if Q4 is suspiciously close to or greater than the sum of other quarters
+            # Allow for some tolerance (Q4 should be roughly equal to full year if cumulative)
+            if sum_qtrs > 0:
+                ratio = q4_val / sum_qtrs
+                
+                # If Q4 is 2.5x to 8x the sum of other quarters, it's likely the full year
+                # (because Q4 = Q1 + Q2 + Q3 + Q4_actual, so ratio ≈ 4/3 = 1.33 minimum)
+                if 1.2 <= ratio <= 8.0:
+                    cumulative_votes += 1
+                    logger.debug(f"Row '{row}': Q4={q4_val:.0f}, Sum(Q1-Q3)={sum_qtrs:.0f}, Ratio={ratio:.2f} -> Cumulative")
+                else:
+                    logger.debug(f"Row '{row}': Q4={q4_val:.0f}, Sum(Q1-Q3)={sum_qtrs:.0f}, Ratio={ratio:.2f} -> Not cumulative")
+                
+                total_checks += 1
+        
+        except Exception as e:
+            logger.debug(f"Error checking row {row}: {e}")
+            continue
+    
+    # If majority of checks suggest cumulative, return True
+    if total_checks >= 3:
+        is_cumulative = cumulative_votes / total_checks >= 0.5
+        logger.info(f"Cumulative check: {cumulative_votes}/{total_checks} rows suggest cumulative = {is_cumulative}")
+        return is_cumulative
+    
+    logger.debug(f"Not enough valid checks ({total_checks}) to determine if cumulative")
+    return False
+
+
+def adjust_quarterly_data(df: pd.DataFrame, adjustments: Dict[str, str], 
+                         year_quarters: Dict[int, Dict[int, str]]) -> pd.DataFrame:
+    """
+    Adjust quarterly data by subtracting Q1+Q2+Q3 from cumulative Q4.
+    
+    Args:
+        df: DataFrame with quarterly data
+        adjustments: Dictionary of {date: 'cumulative'} for columns needing adjustment
+        year_quarters: Dictionary mapping {fiscal_year: {quarter: date_string}}
+    
+    Returns:
+        Adjusted DataFrame
+    """
+    df_adjusted = df.copy()
+    
+    for fiscal_year, quarters in year_quarters.items():
+        if 4 not in quarters:
+            continue
+        
+        q4_col = quarters[4]
+        
+        # Check if this Q4 needs adjustment
+        if q4_col not in adjustments:
+            continue
+        
+        logger.info(f"Adjusting Q4 {fiscal_year} ({q4_col}) by subtracting Q1+Q2+Q3")
+        
+        # Get available quarter columns
+        available_quarters = [q for q in [1, 2, 3] if q in quarters and quarters[q] in df.columns]
+        
+        if not available_quarters:
+            logger.warning(f"Cannot adjust Q4 {q4_col}: no other quarters available")
+            continue
+        
+        # Adjust each row
+        for row in df.index:
+            try:
+                # Get Q4 value (which is cumulative)
+                q4_cumulative = df.loc[row, q4_col]
+                
+                # Skip if NaN or zero
+                if pd.isna(q4_cumulative) or q4_cumulative == 0:
+                    continue
+                
+                # Sum Q1, Q2, Q3
+                sum_q123 = sum([df.loc[row, quarters[q]] for q in available_quarters 
+                               if not pd.isna(df.loc[row, quarters[q]])])
+                
+                # Calculate actual Q4: Q4_actual = Q4_cumulative - (Q1 + Q2 + Q3)
+                q4_actual = q4_cumulative - sum_q123
+                
+                # Update the dataframe
+                df_adjusted.loc[row, q4_col] = q4_actual
+                
+                logger.debug(f"Row '{row}': Q4 adjusted from {q4_cumulative:.0f} to {q4_actual:.0f}")
+            
+            except Exception as e:
+                logger.debug(f"Error adjusting row {row}: {e}")
+                continue
+        
+        logger.info(f"Successfully adjusted Q4 {fiscal_year} ({q4_col})")
+    
+    return df_adjusted
+
+
+def process_quarterly_adjustments(df: pd.DataFrame, columns: List[str]) -> Tuple[pd.DataFrame, Dict]:
+    """
+    Main function to detect and adjust quarterly cumulative data.
+    
+    This is called as a final step after merging all columns.
+    
+    Args:
+        df: DataFrame with merged quarterly data (columns are dates, rows are line items)
+        columns: List of column names (dates)
+    
+    Returns:
+        Tuple of (adjusted_dataframe, adjustment_info_dict)
+    """
+    logger.info("Starting quarterly adjustment process...")
+    
+    # Step 1: Group quarters by fiscal year
+    year_quarters = group_quarters_by_year(columns)
+    logger.info(f"Identified {len(year_quarters)} fiscal years in the data")
+    
+    # Step 2: Detect which quarters need adjustment
+    adjustments = needs_quarterly_adjustment(df, year_quarters)
+    
+    if not adjustments:
+        logger.info("No quarterly adjustments needed")
+        return df, {}
+    
+    logger.info(f"Found {len(adjustments)} columns requiring adjustment: {list(adjustments.keys())}")
+    
+    # Step 3: Perform adjustments
+    df_adjusted = adjust_quarterly_data(df, adjustments, year_quarters)
+    
+    # Step 4: Prepare info for logging/debugging
+    adjustment_info = {
+        'adjusted_columns': list(adjustments.keys()),
+        'fiscal_years_adjusted': [fy for fy, qs in year_quarters.items() if qs.get(4) in adjustments],
+        'adjustment_type': 'cumulative_q4_correction'
+    }
+    
+    logger.info(f"Quarterly adjustment complete. Adjusted {len(adjustments)} columns.")
+    
+    return df_adjusted, adjustment_info
