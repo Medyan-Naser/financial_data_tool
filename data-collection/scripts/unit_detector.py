@@ -202,8 +202,8 @@ class UnitDetector:
         # Calculate ratio (should be power of 10)
         ratio = abs(company_facts_value) / abs(raw_table_value)
         
-        # DEBUG: Log the comparison
-        logger.warning(f"[VERIFY] Comparing: table={raw_table_value:,.0f}, facts={company_facts_value:,.0f}, ratio={ratio:,.2f}")
+        # DEBUG: Log the comparison (use DEBUG level to reduce noise)
+        logger.debug(f"[VERIFY] Comparing: table={raw_table_value:,.0f}, facts={company_facts_value:,.0f}, ratio={ratio:,.2f}")
         
         # Test common scale factors
         common_scales = [1000000000, 1000000, 1000, 1]

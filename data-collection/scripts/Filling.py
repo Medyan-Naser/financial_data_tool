@@ -406,13 +406,9 @@ class Filling():
                         .replace(")", "").strip()
                     )
                     
-                    # DEBUG: Log first value of first row
+                    # DEBUG: Log first value of first row (use DEBUG level)
                     if len(columns) == 1 and column_counter == 0 and value:
-                        logger.info(f"[DEBUG] First row extraction:")
-                        logger.info(f"  Row title: {row_title}")
-                        logger.info(f"  Raw HTML value: {cell.text.strip()}")
-                        logger.info(f"  Cleaned value: {value}")
-                        logger.info(f"  Date column index: {date_idx}")
+                        logger.debug(f"First row: {row_title}, value: {value}")
                     if value and date_idx == date_indexes[0]:
                         value = float(value)
                         # Store raw value for unit verification (BEFORE applying multiplier)
@@ -443,10 +439,9 @@ class Filling():
                         else:
                             values[column_counter] = -value * row_multiplier
                         
-                        # DEBUG: Log first row final value
+                        # DEBUG: Log first row final value (DEBUG level)
                         if len(columns) == 1 and column_counter == 0:
-                            logger.info(f"  Row multiplier: {row_multiplier:,.0f}")
-                            logger.info(f"  Final value: {values[column_counter]:,.0f}")
+                            logger.debug(f"Multiplier: {row_multiplier:,.0f}, Final: {values[column_counter]:,.0f}")
                         
                         column_counter += 1
                     elif value:
