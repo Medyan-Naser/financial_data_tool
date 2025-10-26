@@ -23,7 +23,12 @@ function MacroView() {
   const [realEstateData, setRealEstateData] = useState(null);
   const [bondsData, setBondsData] = useState(null);
   const [yieldCurveData, setYieldCurveData] = useState(null);
+  const [marketsData, setMarketsData] = useState(null);
   const [overviewData, setOverviewData] = useState(null);
+  const [gdpGrowthData, setGdpGrowthData] = useState(null);
+  const [consumerSentimentData, setConsumerSentimentData] = useState(null);
+  const [pmiData, setPmiData] = useState(null);
+  const [retailSalesData, setRetailSalesData] = useState(null);
   
   // Panel state for draggable/resizable charts
   const [chartPanels, setChartPanels] = useState({
@@ -34,6 +39,10 @@ function MacroView() {
     velocity: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
     unemployment: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
     realestate: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    gdpGrowth: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    consumerSentiment: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    pmi: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
+    retailSales: { position: { x: 20, y: 20 }, size: { width: 900, height: 500 } },
     commodityEnergy: { position: { x: 20, y: 20 }, size: { width: 600, height: 450 } },
     commodityMetals: { position: { x: 640, y: 20 }, size: { width: 600, height: 450 } },
     commodityAgricultural: { position: { x: 20, y: 490 }, size: { width: 600, height: 450 } },
@@ -54,6 +63,19 @@ function MacroView() {
       ...prev,
       [panelId]: { ...prev[panelId], position }
     }));
+  };
+
+  const fetchMarkets = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/macro/markets`);
+      setMarketsData(response.data);
+    } catch (err) {
+      setError('Error loading markets data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
   
   const updatePanelSize = (panelId, size) => {
@@ -87,6 +109,16 @@ function MacroView() {
       fetchBonds();
     } else if (activeSection === 'yield-curve' && !yieldCurveData) {
       fetchYieldCurve();
+    } else if (activeSection === 'markets' && !marketsData) {
+      fetchMarkets();
+    } else if (activeSection === 'gdp-growth' && !gdpGrowthData) {
+      fetchGdpGrowth();
+    } else if (activeSection === 'consumer-sentiment' && !consumerSentimentData) {
+      fetchConsumerSentiment();
+    } else if (activeSection === 'pmi' && !pmiData) {
+      fetchPmi();
+    } else if (activeSection === 'retail-sales' && !retailSalesData) {
+      fetchRetailSales();
     }
   }, [activeSection]);
 
@@ -244,6 +276,58 @@ function MacroView() {
       setOverviewData(response.data);
     } catch (err) {
       setError('Error loading overview data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGdpGrowth = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/macro/gdp-growth`);
+      setGdpGrowthData(response.data);
+    } catch (err) {
+      setError('Error loading GDP growth data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchConsumerSentiment = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/macro/consumer-sentiment`);
+      setConsumerSentimentData(response.data);
+    } catch (err) {
+      setError('Error loading consumer sentiment data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPmi = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/macro/pmi`);
+      setPmiData(response.data);
+    } catch (err) {
+      setError('Error loading PMI data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRetailSales = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/macro/retail-sales`);
+      setRetailSalesData(response.data);
+    } catch (err) {
+      setError('Error loading retail sales data');
       console.error(err);
     } finally {
       setLoading(false);
@@ -597,6 +681,36 @@ function MacroView() {
         >
           📊 Interest Rates
         </button>
+        <button
+          className={`section-btn ${activeSection === 'markets' ? 'active' : ''}`}
+          onClick={() => setActiveSection('markets')}
+        >
+          Markets
+        </button>
+        <button
+          className={`section-btn ${activeSection === 'gdp-growth' ? 'active' : ''}`}
+          onClick={() => setActiveSection('gdp-growth')}
+        >
+          GDP Growth
+        </button>
+        <button
+          className={`section-btn ${activeSection === 'consumer-sentiment' ? 'active' : ''}`}
+          onClick={() => setActiveSection('consumer-sentiment')}
+        >
+          Consumer Sentiment
+        </button>
+        <button
+          className={`section-btn ${activeSection === 'pmi' ? 'active' : ''}`}
+          onClick={() => setActiveSection('pmi')}
+        >
+          Manufacturing PMI
+        </button>
+        <button
+          className={`section-btn ${activeSection === 'retail-sales' ? 'active' : ''}`}
+          onClick={() => setActiveSection('retail-sales')}
+        >
+          Retail Sales
+        </button>
       </div>
 
       {/* Content Area */}
@@ -647,6 +761,24 @@ function MacroView() {
                 <p>Global bond yields</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Markets */}
+        {activeSection === 'markets' && marketsData && (
+          <div className="markets-section" style={{ position: 'relative', minHeight: '400px' }}>
+            <h3>Key Market Indicators</h3>
+            <DraggableResizablePanel
+              id="marketsTable"
+              position={{ x: 20, y: 20 }}
+              size={{ width: 900, height: 400 }}
+              onPositionChange={() => {}}
+              onSizeChange={() => {}}
+              minWidth={500}
+              minHeight={300}
+            >
+              {renderTable(marketsData.chart, 'Markets Overview')}
+            </DraggableResizablePanel>
           </div>
         )}
 
@@ -950,6 +1082,78 @@ function MacroView() {
               minHeight={350}
             >
               {renderChart(yieldCurveData.chart, 'US Treasury Yield Curve')}
+            </DraggableResizablePanel>
+          </div>
+        )}
+
+        {/* GDP Growth */}
+        {activeSection === 'gdp-growth' && gdpGrowthData && (
+          <div className="gdp-section" style={{ position: 'relative', minHeight: '600px' }}>
+            <h3>📈 GDP Growth Rate</h3>
+            <DraggableResizablePanel
+              id="gdpGrowth"
+              position={chartPanels.gdpGrowth.position}
+              size={chartPanels.gdpGrowth.size}
+              onPositionChange={(pos) => updatePanelPosition('gdpGrowth', pos)}
+              onSizeChange={(size) => updatePanelSize('gdpGrowth', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              {renderChart(gdpGrowthData.chart, 'US Real GDP Growth')}
+            </DraggableResizablePanel>
+          </div>
+        )}
+
+        {/* Consumer Sentiment */}
+        {activeSection === 'consumer-sentiment' && consumerSentimentData && (
+          <div className="sentiment-section" style={{ position: 'relative', minHeight: '600px' }}>
+            <h3>💭 Consumer Sentiment Index</h3>
+            <DraggableResizablePanel
+              id="consumerSentiment"
+              position={chartPanels.consumerSentiment.position}
+              size={chartPanels.consumerSentiment.size}
+              onPositionChange={(pos) => updatePanelPosition('consumerSentiment', pos)}
+              onSizeChange={(size) => updatePanelSize('consumerSentiment', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              {renderChart(consumerSentimentData.chart, 'Consumer Sentiment')}
+            </DraggableResizablePanel>
+          </div>
+        )}
+
+        {/* Manufacturing PMI */}
+        {activeSection === 'pmi' && pmiData && (
+          <div className="pmi-section" style={{ position: 'relative', minHeight: '600px' }}>
+            <h3>🏭 Manufacturing PMI</h3>
+            <DraggableResizablePanel
+              id="pmi"
+              position={chartPanels.pmi.position}
+              size={chartPanels.pmi.size}
+              onPositionChange={(pos) => updatePanelPosition('pmi', pos)}
+              onSizeChange={(size) => updatePanelSize('pmi', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              {renderChart(pmiData.chart, 'Manufacturing PMI')}
+            </DraggableResizablePanel>
+          </div>
+        )}
+
+        {/* Retail Sales */}
+        {activeSection === 'retail-sales' && retailSalesData && (
+          <div className="retail-section" style={{ position: 'relative', minHeight: '600px' }}>
+            <h3>🛒 Retail Sales</h3>
+            <DraggableResizablePanel
+              id="retailSales"
+              position={chartPanels.retailSales.position}
+              size={chartPanels.retailSales.size}
+              onPositionChange={(pos) => updatePanelPosition('retailSales', pos)}
+              onSizeChange={(size) => updatePanelSize('retailSales', size)}
+              minWidth={500}
+              minHeight={350}
+            >
+              {renderChart(retailSalesData.chart, 'US Retail Sales')}
             </DraggableResizablePanel>
           </div>
         )}
