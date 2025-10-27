@@ -308,39 +308,39 @@ function AIView() {
                       />
                     </div>
                   </DraggableResizablePanel>
-                </div>
 
-                <DraggableResizablePanel
-                  id="forecastTable"
-                  position={chartPanels.forecastTable.position}
-                  size={chartPanels.forecastTable.size}
-                  onPositionChange={(pos) => updatePanelPosition('forecastTable', pos)}
-                  onSizeChange={(size) => updatePanelSize('forecastTable', size)}
-                  minWidth={350}
-                  minHeight={300}
-                >
-                  <div className="forecast-table" style={{ height: '100%', overflow: 'auto' }}>
-                    <h4>Forecast Data</h4>
-                    <div className="table-wrapper">
-                      <table className="financial-table">
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Predicted Price</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {forecastData.forecast_data.map((row, idx) => (
-                            <tr key={idx}>
-                              <td>{Object.keys(row)[0]}</td>
-                              <td>${Object.values(row)[0].toFixed(2)}</td>
+                  <DraggableResizablePanel
+                    id="forecastTable"
+                    position={chartPanels.forecastTable.position}
+                    size={chartPanels.forecastTable.size}
+                    onPositionChange={(pos) => updatePanelPosition('forecastTable', pos)}
+                    onSizeChange={(size) => updatePanelSize('forecastTable', size)}
+                    minWidth={350}
+                    minHeight={300}
+                  >
+                    <div className="forecast-table" style={{ height: '100%', overflow: 'auto' }}>
+                      <h4>Forecast Data</h4>
+                      <div className="table-wrapper">
+                        <table className="financial-table">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Predicted Price</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {forecastData.forecast_data.map((row, idx) => (
+                              <tr key={idx}>
+                                <td>{Object.keys(row)[0]}</td>
+                                <td>${Object.values(row)[0].toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                </DraggableResizablePanel>
+                  </DraggableResizablePanel>
+                </div>
               </div>
             )}
           </div>
@@ -419,22 +419,22 @@ function AIView() {
                       />
                     </div>
                   </DraggableResizablePanel>
-                </div>
 
-                <DraggableResizablePanel
-                  id="garchSummary"
-                  position={chartPanels.garchSummary.position}
-                  size={chartPanels.garchSummary.size}
-                  onPositionChange={(pos) => updatePanelPosition('garchSummary', pos)}
-                  onSizeChange={(size) => updatePanelSize('garchSummary', size)}
-                  minWidth={400}
-                  minHeight={300}
-                >
-                  <div className="model-summary" style={{ height: '100%', overflow: 'auto' }}>
-                    <h4>GARCH Model Summary</h4>
-                    <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{volatilityData.model_summary}</pre>
-                  </div>
-                </DraggableResizablePanel>
+                  <DraggableResizablePanel
+                    id="garchSummary"
+                    position={chartPanels.garchSummary.position}
+                    size={chartPanels.garchSummary.size}
+                    onPositionChange={(pos) => updatePanelPosition('garchSummary', pos)}
+                    onSizeChange={(size) => updatePanelSize('garchSummary', size)}
+                    minWidth={400}
+                    minHeight={300}
+                  >
+                    <div className="model-summary" style={{ height: '100%', overflow: 'auto' }}>
+                      <h4>GARCH Model Summary</h4>
+                      <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{volatilityData.model_summary}</pre>
+                    </div>
+                  </DraggableResizablePanel>
+                </div>
               </div>
             )}
           </div>
