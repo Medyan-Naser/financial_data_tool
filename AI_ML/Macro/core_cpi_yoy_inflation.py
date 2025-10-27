@@ -5,11 +5,22 @@ import requests
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from fredapi import Fred
+import sys
+import os
+
+# Add parent directory to path for cached fredapi
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# Use cached fredapi to avoid rate limiting
+try:
+    from cached_fredapi import Fred
+except ImportError:
+    from fredapi import Fred
+    print("Warning: Using direct FRED API - caching not available")
 
 
 #Set API keys
-fred_api_key = "69db3b36e2b3bf578e036a5f42d9b315"
+fred_api_key = os.getenv("FRED_API_KEY", "69db3b36e2b3bf578e036a5f42d9b315")
 
 
 #Initiate response
