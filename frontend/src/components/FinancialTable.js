@@ -6,6 +6,7 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
   const [chartType, setChartType] = useState('line');
   const [showChartBuilder, setShowChartBuilder] = useState(false);
   const [comparisonTicker, setComparisonTicker] = useState('');
+  const [analysisMode, setAnalysisMode] = useState('absolute'); // absolute, growth, ratio
 
   const { columns, row_names, data: tableData } = data;
 
@@ -28,7 +29,8 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
       ticker: ticker,
       statementType: statementType,
       selectedRowNames: selectedRows.map(idx => row_names[idx]),
-      comparisonTicker: comparisonTicker || null
+      comparisonTicker: comparisonTicker || null,
+      analysisMode: analysisMode
     });
 
     // Don't reset selections to allow creating multiple charts
@@ -82,9 +84,26 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
                 onChange={(e) => setChartType(e.target.value)}
                 className="chart-type-select"
               >
-                <option value="line">Line Chart</option>
-                <option value="bar">Bar Chart</option>
-                <option value="area">Area Chart</option>
+                <option value="line">📈 Line Chart</option>
+                <option value="bar">📊 Bar Chart</option>
+                <option value="area">📉 Area Chart</option>
+                <option value="stacked-bar">📚 Stacked Bar Chart</option>
+                <option value="stacked-area">🌊 Stacked Area Chart</option>
+                <option value="scatter">🔵 Scatter Plot</option>
+                <option value="composed">🎯 Composed Chart (Line + Bar)</option>
+              </select>
+            </div>
+
+            <div className="option-group">
+              <label>Analysis Mode:</label>
+              <select 
+                value={analysisMode} 
+                onChange={(e) => setAnalysisMode(e.target.value)}
+                className="analysis-mode-select"
+              >
+                <option value="absolute">Absolute Values</option>
+                <option value="growth">Year-over-Year Growth %</option>
+                <option value="ratio">As % of First Metric</option>
               </select>
             </div>
 
