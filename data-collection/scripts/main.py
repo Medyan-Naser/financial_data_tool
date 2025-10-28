@@ -98,7 +98,8 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                         results['income_statements'].append({
                             'date': report_date,
                             'original': filing.income_statement.og_df,
-                            'mapped': mapped_df
+                            'mapped': mapped_df,
+                            'raw': filing.income_statement.raw_df  # Raw unmapped data for debugging
                         })
                         
                         # Log pattern matching
@@ -122,7 +123,8 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                         results['balance_sheets'].append({
                             'date': report_date,
                             'original': filing.balance_sheet.og_df,
-                            'mapped': mapped_df
+                            'mapped': mapped_df,
+                            'raw': filing.balance_sheet.raw_df  # Raw unmapped data for debugging
                         })
                         
                         # Log pattern matching
@@ -146,7 +148,8 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                         results['cash_flows'].append({
                             'date': report_date,
                             'original': filing.cash_flow.og_df,
-                            'mapped': mapped_df
+                            'mapped': mapped_df,
+                            'raw': filing.cash_flow.raw_df  # Raw unmapped data for debugging
                         })
                         
                         # Log pattern matching
@@ -202,6 +205,15 @@ def save_results(results: dict, output_dir: str = "data", quarterly: bool = Fals
                 f"income_statement_{item['date']}",
                 period_type
             )
+        # Save raw/unmapped version for debugging
+        if item.get('raw') is not None:
+            save_dataframe_to_csv(
+                item['raw'],
+                output_dir,
+                ticker,
+                f"income_statement_raw_{item['date']}",
+                period_type
+            )
     
     # Save balance sheets
     for item in results['balance_sheets']:
@@ -213,6 +225,15 @@ def save_results(results: dict, output_dir: str = "data", quarterly: bool = Fals
                 f"balance_sheet_{item['date']}",
                 period_type
             )
+        # Save raw/unmapped version for debugging
+        if item.get('raw') is not None:
+            save_dataframe_to_csv(
+                item['raw'],
+                output_dir,
+                ticker,
+                f"balance_sheet_raw_{item['date']}",
+                period_type
+            )
     
     # Save cash flows
     for item in results['cash_flows']:
@@ -222,6 +243,15 @@ def save_results(results: dict, output_dir: str = "data", quarterly: bool = Fals
                 output_dir,
                 ticker,
                 f"cash_flow_{item['date']}",
+                period_type
+            )
+        # Save raw/unmapped version for debugging
+        if item.get('raw') is not None:
+            save_dataframe_to_csv(
+                item['raw'],
+                output_dir,
+                ticker,
+                f"cash_flow_raw_{item['date']}",
                 period_type
             )
     
