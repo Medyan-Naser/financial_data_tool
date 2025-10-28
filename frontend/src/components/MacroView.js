@@ -12,6 +12,10 @@ function MacroView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Z-index management for panels
+  const [activePanelId, setActivePanelId] = useState(null);
+  const [panelZIndexes, setPanelZIndexes] = useState({});
+  
   // Data states
   const [commoditiesData, setCommoditiesData] = useState(null);
   const [currenciesData, setCurrenciesData] = useState(null);
@@ -83,6 +87,24 @@ function MacroView() {
       ...prev,
       [panelId]: { ...prev[panelId], size }
     }));
+  };
+
+  // Handle panel focus - bring to front
+  const handlePanelFocus = (panelId) => {
+    setActivePanelId(panelId);
+    // Assign z-index based on order of interaction
+    setPanelZIndexes(prev => {
+      const maxZ = Math.max(1, ...Object.values(prev));
+      return {
+        ...prev,
+        [panelId]: maxZ + 1
+      };
+    });
+  };
+
+  // Get z-index for a panel (default to 1 if not set)
+  const getPanelZIndex = (panelId) => {
+    return panelZIndexes[panelId] || 1;
   };
 
   // Fetch data only when section is active
@@ -473,11 +495,9 @@ function MacroView() {
     
     if (!plotlyData || !plotlyData.data || plotlyData.data.length === 0) {
       return (
-        <div className="chart-card" style={{ height: '100%' }}>
-          <div className="chart-header">
-            <h4>{title}</h4>
-          </div>
-          <div className="chart-content" style={{ flex: 1, overflow: 'auto' }}>
+        <div className="chart-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <h4>{title}</h4>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="chart-loading">No data available</div>
           </div>
         </div>
@@ -494,11 +514,9 @@ function MacroView() {
     const numRows = cells.length > 0 ? cells[0].length : 0;
 
     return (
-      <div className="chart-card" style={{ height: '100%' }}>
-        <div className="chart-header">
-          <h4>{title}</h4>
-        </div>
-        <div className="chart-content" style={{ flex: 1, overflow: 'auto' }}>
+      <div className="chart-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <h4>{title}</h4>
+        <div style={{ flex: 1, overflow: 'auto' }}>
           <div className="table-wrapper">
             <table className="financial-table">
               <thead>
@@ -535,11 +553,9 @@ function MacroView() {
     if (!data) {
       console.error(`No data provided for ${title}`);
       return (
-        <div className="chart-card" style={{ height: '100%' }}>
-          <div className="chart-header">
-            <h4>{title}</h4>
-          </div>
-          <div className="chart-content" style={{ flex: 1 }}>
+        <div className="chart-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <h4>{title}</h4>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="chart-loading">No data available</div>
           </div>
         </div>
@@ -557,11 +573,9 @@ function MacroView() {
     if (chartData.length === 0) {
       console.warn(`No chart data after conversion for ${title}`);
       return (
-        <div className="chart-card" style={{ height: '100%' }}>
-          <div className="chart-header">
-            <h4>{title}</h4>
-          </div>
-          <div className="chart-content" style={{ flex: 1 }}>
+        <div className="chart-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <h4>{title}</h4>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="chart-loading">Unable to load chart data</div>
           </div>
         </div>
@@ -571,11 +585,9 @@ function MacroView() {
     console.log(`Successfully converted data for ${title}:`, chartData.length, 'points');
 
     return (
-      <div className="chart-card" style={{ height: '100%' }}>
-        <div className="chart-header">
-          <h4>{title}</h4>
-        </div>
-        <div className="chart-content" style={{ flex: 1 }}>
+      <div className="chart-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <h4>{title}</h4>
+        <div style={{ flex: 1 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -784,17 +796,21 @@ function MacroView() {
 
         {/* Commodities */}
         {activeSection === 'commodities' && commoditiesData && (
-          <div className="commodities-section" style={{ position: 'relative', minHeight: '1450px' }}>
-            <h3>Commodities Data</h3>
-            <DraggableResizablePanel
-              id="commodityEnergy"
-              position={chartPanels.commodityEnergy.position}
-              size={chartPanels.commodityEnergy.size}
-              onPositionChange={(pos) => updatePanelPosition('commodityEnergy', pos)}
-              onSizeChange={(size) => updatePanelSize('commodityEnergy', size)}
-              minWidth={400}
-              minHeight={300}
-            >
+          <div className="commodities-section">
+            <div className="data-section">
+              <h3>Commodities Data</h3>
+              <div style={{ position: 'relative', minHeight: '1450px' }}>
+              <DraggableResizablePanel
+                id="commodityEnergy"
+                position={chartPanels.commodityEnergy.position}
+                size={chartPanels.commodityEnergy.size}
+                onPositionChange={(pos) => updatePanelPosition('commodityEnergy', pos)}
+                onSizeChange={(size) => updatePanelSize('commodityEnergy', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('commodityEnergy')}
+                minWidth={400}
+                minHeight={300}
+              >
               {renderChart(commoditiesData.energy.chart, 'Energy Commodities')}
             </DraggableResizablePanel>
             
@@ -804,6 +820,8 @@ function MacroView() {
               size={chartPanels.commodityMetals.size}
               onPositionChange={(pos) => updatePanelPosition('commodityMetals', pos)}
               onSizeChange={(size) => updatePanelSize('commodityMetals', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('commodityMetals')}
               minWidth={400}
               minHeight={300}
             >
@@ -816,6 +834,8 @@ function MacroView() {
               size={chartPanels.commodityAgricultural.size}
               onPositionChange={(pos) => updatePanelPosition('commodityAgricultural', pos)}
               onSizeChange={(size) => updatePanelSize('commodityAgricultural', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('commodityAgricultural')}
               minWidth={400}
               minHeight={300}
             >
@@ -828,6 +848,8 @@ function MacroView() {
               size={chartPanels.commodityLivestock.size}
               onPositionChange={(pos) => updatePanelPosition('commodityLivestock', pos)}
               onSizeChange={(size) => updatePanelSize('commodityLivestock', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('commodityLivestock')}
               minWidth={400}
               minHeight={300}
             >
@@ -840,6 +862,8 @@ function MacroView() {
               size={chartPanels.commodityIndustrial.size}
               onPositionChange={(pos) => updatePanelPosition('commodityIndustrial', pos)}
               onSizeChange={(size) => updatePanelSize('commodityIndustrial', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('commodityIndustrial')}
               minWidth={400}
               minHeight={300}
             >
@@ -852,150 +876,200 @@ function MacroView() {
               size={chartPanels.commodityIndex.size}
               onPositionChange={(pos) => updatePanelPosition('commodityIndex', pos)}
               onSizeChange={(size) => updatePanelSize('commodityIndex', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('commodityIndex')}
               minWidth={400}
               minHeight={300}
             >
               {renderChart(commoditiesData.index.chart, 'Commodity Index')}
             </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Currencies */}
         {activeSection === 'currencies' && currenciesData && (
-          <div className="currencies-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>Major Currencies</h3>
-            <DraggableResizablePanel
-              id="currencies"
-              position={chartPanels.currencies.position}
-              size={chartPanels.currencies.size}
-              onPositionChange={(pos) => updatePanelPosition('currencies', pos)}
-              onSizeChange={(size) => updatePanelSize('currencies', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(currenciesData.chart, 'Major Currencies')}
-            </DraggableResizablePanel>
+          <div className="currencies-section">
+            <div className="data-section">
+              <h3>Major Currencies</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="currencies"
+                position={chartPanels.currencies.position}
+                size={chartPanels.currencies.size}
+                onPositionChange={(pos) => updatePanelPosition('currencies', pos)}
+                onSizeChange={(size) => updatePanelSize('currencies', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('currencies')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(currenciesData.chart, 'Major Currencies')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Inflation */}
         {activeSection === 'inflation' && inflationData && (
-          <div className="inflation-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>CPI Inflation</h3>
-            <DraggableResizablePanel
-              id="inflation"
-              position={chartPanels.inflation.position}
-              size={chartPanels.inflation.size}
-              onPositionChange={(pos) => updatePanelPosition('inflation', pos)}
-              onSizeChange={(size) => updatePanelSize('inflation', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(inflationData.chart, 'CPI Inflation')}
-            </DraggableResizablePanel>
+          <div className="inflation-section">
+            <div className="data-section">
+              <h3>CPI Inflation</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="inflation"
+                position={chartPanels.inflation.position}
+                size={chartPanels.inflation.size}
+                onPositionChange={(pos) => updatePanelPosition('inflation', pos)}
+                onSizeChange={(size) => updatePanelSize('inflation', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('inflation')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(inflationData.chart, 'CPI Inflation')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Debt to GDP */}
         {activeSection === 'debt' && debtToGdpData && (
-          <div className="debt-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>Debt to GDP Ratio</h3>
-            <DraggableResizablePanel
-              id="debt"
-              position={chartPanels.debt.position}
-              size={chartPanels.debt.size}
-              onPositionChange={(pos) => updatePanelPosition('debt', pos)}
-              onSizeChange={(size) => updatePanelSize('debt', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(debtToGdpData.chart, 'Debt to GDP Ratio')}
-            </DraggableResizablePanel>
+          <div className="debt-section">
+            <div className="data-section">
+              <h3>Debt to GDP Ratio</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="debt"
+                position={chartPanels.debt.position}
+                size={chartPanels.debt.size}
+                onPositionChange={(pos) => updatePanelPosition('debt', pos)}
+                onSizeChange={(size) => updatePanelSize('debt', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('debt')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(debtToGdpData.chart, 'Debt to GDP Ratio')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Dollar Index */}
         {activeSection === 'dollar' && dollarIndexData && (
-          <div className="dollar-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>Dollar Index</h3>
-            <DraggableResizablePanel
-              id="dollar"
-              position={chartPanels.dollar.position}
-              size={chartPanels.dollar.size}
-              onPositionChange={(pos) => updatePanelPosition('dollar', pos)}
-              onSizeChange={(size) => updatePanelSize('dollar', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(dollarIndexData.chart, 'Dollar Index')}
-            </DraggableResizablePanel>
+          <div className="dollar-section">
+            <div className="data-section">
+              <h3>Dollar Index</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="dollar"
+                position={chartPanels.dollar.position}
+                size={chartPanels.dollar.size}
+                onPositionChange={(pos) => updatePanelPosition('dollar', pos)}
+                onSizeChange={(size) => updatePanelSize('dollar', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('dollar')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(dollarIndexData.chart, 'Dollar Index')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Velocity */}
         {activeSection === 'velocity' && velocityData && (
-          <div className="velocity-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>Money Velocity</h3>
-            <DraggableResizablePanel
-              id="velocity"
-              position={chartPanels.velocity.position}
-              size={chartPanels.velocity.size}
-              onPositionChange={(pos) => updatePanelPosition('velocity', pos)}
-              onSizeChange={(size) => updatePanelSize('velocity', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(velocityData.chart, 'Money Velocity')}
-            </DraggableResizablePanel>
+          <div className="velocity-section">
+            <div className="data-section">
+              <h3>Money Velocity</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="velocity"
+                position={chartPanels.velocity.position}
+                size={chartPanels.velocity.size}
+                onPositionChange={(pos) => updatePanelPosition('velocity', pos)}
+                onSizeChange={(size) => updatePanelSize('velocity', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('velocity')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(velocityData.chart, 'Money Velocity')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Unemployment */}
         {activeSection === 'unemployment' && unemploymentData && (
-          <div className="unemployment-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>Unemployment Rate</h3>
-            <DraggableResizablePanel
-              id="unemployment"
-              position={chartPanels.unemployment.position}
-              size={chartPanels.unemployment.size}
-              onPositionChange={(pos) => updatePanelPosition('unemployment', pos)}
-              onSizeChange={(size) => updatePanelSize('unemployment', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(unemploymentData.chart, 'Unemployment Rate')}
-            </DraggableResizablePanel>
+          <div className="unemployment-section">
+            <div className="data-section">
+              <h3>Unemployment Rate</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="unemployment"
+                position={chartPanels.unemployment.position}
+                size={chartPanels.unemployment.size}
+                onPositionChange={(pos) => updatePanelPosition('unemployment', pos)}
+                onSizeChange={(size) => updatePanelSize('unemployment', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('unemployment')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(unemploymentData.chart, 'Unemployment Rate')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Real Estate */}
         {activeSection === 'realestate' && realEstateData && (
-          <div className="realestate-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>Real Estate Trends</h3>
-            <DraggableResizablePanel
-              id="realestate"
-              position={chartPanels.realestate.position}
-              size={chartPanels.realestate.size}
-              onPositionChange={(pos) => updatePanelPosition('realestate', pos)}
-              onSizeChange={(size) => updatePanelSize('realestate', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(realEstateData.chart, 'Real Estate Trends')}
-            </DraggableResizablePanel>
+          <div className="realestate-section">
+            <div className="data-section">
+              <h3>Real Estate Trends</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="realestate"
+                position={chartPanels.realestate.position}
+                size={chartPanels.realestate.size}
+                onPositionChange={(pos) => updatePanelPosition('realestate', pos)}
+                onSizeChange={(size) => updatePanelSize('realestate', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('realestate')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(realEstateData.chart, 'Real Estate Trends')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Bonds */}
         {activeSection === 'bonds' && bondsData && (
-          <div className="bonds-section" style={{ position: 'relative', minHeight: '1450px' }}>
-            <h3>Global Bonds</h3>
+          <div className="bonds-section">
+            <div className="data-section">
+              <h3>Global Bonds</h3>
+              <div style={{ position: 'relative', minHeight: '1450px' }}>
             <DraggableResizablePanel
               id="bondMajor10y"
               position={chartPanels.bondMajor10y.position}
               size={chartPanels.bondMajor10y.size}
               onPositionChange={(pos) => updatePanelPosition('bondMajor10y', pos)}
               onSizeChange={(size) => updatePanelSize('bondMajor10y', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('bondMajor10y')}
               minWidth={400}
               minHeight={300}
             >
@@ -1008,6 +1082,8 @@ function MacroView() {
               size={chartPanels.bondEurope.size}
               onPositionChange={(pos) => updatePanelPosition('bondEurope', pos)}
               onSizeChange={(size) => updatePanelSize('bondEurope', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('bondEurope')}
               minWidth={400}
               minHeight={300}
             >
@@ -1020,6 +1096,8 @@ function MacroView() {
               size={chartPanels.bondAmerica.size}
               onPositionChange={(pos) => updatePanelPosition('bondAmerica', pos)}
               onSizeChange={(size) => updatePanelSize('bondAmerica', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('bondAmerica')}
               minWidth={400}
               minHeight={300}
             >
@@ -1032,6 +1110,8 @@ function MacroView() {
               size={chartPanels.bondAsia.size}
               onPositionChange={(pos) => updatePanelPosition('bondAsia', pos)}
               onSizeChange={(size) => updatePanelSize('bondAsia', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('bondAsia')}
               minWidth={400}
               minHeight={300}
             >
@@ -1044,6 +1124,8 @@ function MacroView() {
               size={chartPanels.bondAustralia.size}
               onPositionChange={(pos) => updatePanelPosition('bondAustralia', pos)}
               onSizeChange={(size) => updatePanelSize('bondAustralia', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('bondAustralia')}
               minWidth={400}
               minHeight={300}
             >
@@ -1056,105 +1138,139 @@ function MacroView() {
               size={chartPanels.bondAfrica.size}
               onPositionChange={(pos) => updatePanelPosition('bondAfrica', pos)}
               onSizeChange={(size) => updatePanelSize('bondAfrica', size)}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('bondAfrica')}
               minWidth={400}
               minHeight={300}
             >
               {renderChart(bondsData.africa, 'Africa Bonds')}
             </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Yield Curve / Interest Rates */}
         {activeSection === 'yield-curve' && yieldCurveData && (
-          <div className="yield-curve-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>📊 US Treasury Yield Curve</h3>
-            <p className="section-description">
-              The yield curve shows the relationship between interest rates and different maturity periods for US Treasury securities.
-              An inverted yield curve (short-term rates higher than long-term) often signals economic uncertainty.
-            </p>
-            <DraggableResizablePanel
-              id="yieldCurve"
-              position={chartPanels.yieldCurve.position}
-              size={chartPanels.yieldCurve.size}
-              onPositionChange={(pos) => updatePanelPosition('yieldCurve', pos)}
-              onSizeChange={(size) => updatePanelSize('yieldCurve', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(yieldCurveData.chart, 'US Treasury Yield Curve')}
-            </DraggableResizablePanel>
+          <div className="yield-curve-section">
+            <div className="data-section">
+              <h3>📊 US Treasury Yield Curve</h3>
+              <p className="section-description">
+                The yield curve shows the relationship between interest rates and different maturity periods for US Treasury securities.
+                An inverted yield curve (short-term rates higher than long-term) often signals economic uncertainty.
+              </p>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="yieldCurve"
+                position={chartPanels.yieldCurve.position}
+                size={chartPanels.yieldCurve.size}
+                onPositionChange={(pos) => updatePanelPosition('yieldCurve', pos)}
+                onSizeChange={(size) => updatePanelSize('yieldCurve', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('yieldCurve')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(yieldCurveData.chart, 'US Treasury Yield Curve')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* GDP Growth */}
         {activeSection === 'gdp-growth' && gdpGrowthData && (
-          <div className="gdp-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>📈 GDP Growth Rate</h3>
-            <DraggableResizablePanel
-              id="gdpGrowth"
-              position={chartPanels.gdpGrowth.position}
-              size={chartPanels.gdpGrowth.size}
-              onPositionChange={(pos) => updatePanelPosition('gdpGrowth', pos)}
-              onSizeChange={(size) => updatePanelSize('gdpGrowth', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(gdpGrowthData.chart, 'US Real GDP Growth')}
-            </DraggableResizablePanel>
+          <div className="gdp-section">
+            <div className="data-section">
+              <h3>📈 GDP Growth Rate</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="gdpGrowth"
+                position={chartPanels.gdpGrowth.position}
+                size={chartPanels.gdpGrowth.size}
+                onPositionChange={(pos) => updatePanelPosition('gdpGrowth', pos)}
+                onSizeChange={(size) => updatePanelSize('gdpGrowth', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('gdpGrowth')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(gdpGrowthData.chart, 'US Real GDP Growth')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Consumer Sentiment */}
         {activeSection === 'consumer-sentiment' && consumerSentimentData && (
-          <div className="sentiment-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>💭 Consumer Sentiment Index</h3>
-            <DraggableResizablePanel
-              id="consumerSentiment"
-              position={chartPanels.consumerSentiment.position}
-              size={chartPanels.consumerSentiment.size}
-              onPositionChange={(pos) => updatePanelPosition('consumerSentiment', pos)}
-              onSizeChange={(size) => updatePanelSize('consumerSentiment', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(consumerSentimentData.chart, 'Consumer Sentiment')}
-            </DraggableResizablePanel>
+          <div className="sentiment-section">
+            <div className="data-section">
+              <h3>💭 Consumer Sentiment Index</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="consumerSentiment"
+                position={chartPanels.consumerSentiment.position}
+                size={chartPanels.consumerSentiment.size}
+                onPositionChange={(pos) => updatePanelPosition('consumerSentiment', pos)}
+                onSizeChange={(size) => updatePanelSize('consumerSentiment', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('consumerSentiment')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(consumerSentimentData.chart, 'Consumer Sentiment')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Manufacturing PMI */}
         {activeSection === 'pmi' && pmiData && (
-          <div className="pmi-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>🏭 Manufacturing PMI</h3>
-            <DraggableResizablePanel
-              id="pmi"
-              position={chartPanels.pmi.position}
-              size={chartPanels.pmi.size}
-              onPositionChange={(pos) => updatePanelPosition('pmi', pos)}
-              onSizeChange={(size) => updatePanelSize('pmi', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(pmiData.chart, 'Manufacturing PMI')}
-            </DraggableResizablePanel>
+          <div className="pmi-section">
+            <div className="data-section">
+              <h3>🏭 Manufacturing PMI</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="pmi"
+                position={chartPanels.pmi.position}
+                size={chartPanels.pmi.size}
+                onPositionChange={(pos) => updatePanelPosition('pmi', pos)}
+                onSizeChange={(size) => updatePanelSize('pmi', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('pmi')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(pmiData.chart, 'Manufacturing PMI')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Retail Sales */}
         {activeSection === 'retail-sales' && retailSalesData && (
-          <div className="retail-section" style={{ position: 'relative', minHeight: '600px' }}>
-            <h3>🛒 Retail Sales</h3>
-            <DraggableResizablePanel
-              id="retailSales"
-              position={chartPanels.retailSales.position}
-              size={chartPanels.retailSales.size}
-              onPositionChange={(pos) => updatePanelPosition('retailSales', pos)}
-              onSizeChange={(size) => updatePanelSize('retailSales', size)}
-              minWidth={500}
-              minHeight={350}
-            >
-              {renderChart(retailSalesData.chart, 'US Retail Sales')}
-            </DraggableResizablePanel>
+          <div className="retail-section">
+            <div className="data-section">
+              <h3>🛒 Retail Sales</h3>
+              <div style={{ position: 'relative', minHeight: '600px' }}>
+              <DraggableResizablePanel
+                id="retailSales"
+                position={chartPanels.retailSales.position}
+                size={chartPanels.retailSales.size}
+                onPositionChange={(pos) => updatePanelPosition('retailSales', pos)}
+                onSizeChange={(size) => updatePanelSize('retailSales', size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('retailSales')}
+                minWidth={500}
+                minHeight={350}
+              >
+                {renderChart(retailSalesData.chart, 'US Retail Sales')}
+              </DraggableResizablePanel>
+              </div>
+            </div>
           </div>
         )}
 
