@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import pandas as pd
+import numpy as np
 import os
 import glob
 import re
@@ -7,6 +8,32 @@ from typing import Dict, List, Optional
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
+
+
+def clean_for_json(data):
+    """
+    Clean data for JSON serialization by replacing NaN/Inf values with 0.
+    
+    Args:
+        data: List of lists (DataFrame.values.tolist())
+    
+    Returns:
+        Cleaned data safe for JSON serialization
+    """
+    cleaned = []
+    for row in data:
+        cleaned_row = []
+        for val in row:
+            # Replace NaN, Inf, -Inf with 0
+            if isinstance(val, (float, np.floating)):
+                if np.isnan(val) or np.isinf(val):
+                    cleaned_row.append(0)
+                else:
+                    cleaned_row.append(val)
+            else:
+                cleaned_row.append(val)
+        cleaned.append(cleaned_row)
+    return cleaned
 
 # Get the absolute path to the current directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -97,8 +124,8 @@ def load_statement(ticker: str, statement_type: str, quarterly: bool = False) ->
                             # Apply adjustments
                             df_adjusted, adjustment_info = process_quarterly_adjustments(df, df.columns.tolist())
                             
-                            # Convert back to dict format
-                            result['data'] = df_adjusted.values.tolist()
+                            # Convert back to dict format (clean NaN/Inf for JSON)
+                            result['data'] = clean_for_json(df_adjusted.values.tolist())
                             result['columns'] = df_adjusted.columns.tolist()
                             result['row_names'] = df_adjusted.index.tolist()
                             
@@ -126,8 +153,8 @@ def load_statement(ticker: str, statement_type: str, quarterly: bool = False) ->
                 columns = df.columns[1:].tolist()
                 # Get row names (first column)
                 row_names = df.iloc[:, 0].tolist()
-                # Get data values
-                data = df.iloc[:, 1:].values.tolist()
+                # Get data values (clean NaN/Inf for JSON)
+                data = clean_for_json(df.iloc[:, 1:].values.tolist())
                 
                 return {
                     "columns": columns,

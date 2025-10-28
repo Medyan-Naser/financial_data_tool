@@ -14,10 +14,37 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional, AsyncGenerator
 import logging
+import glob
+import numpy as np
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def clean_for_json(data):
+    """
+    Clean data for JSON serialization by replacing NaN/Inf values with 0.
+    
+    Args:
+        data: List of lists (DataFrame.values.tolist())
+    
+    Returns:
+        Cleaned data safe for JSON serialization
+    """
+    cleaned = []
+    for row in data:
+        cleaned_row = []
+        for val in row:
+            # Replace NaN, Inf, -Inf with 0
+            if isinstance(val, (float, np.floating)):
+                if np.isnan(val) or np.isinf(val):
+                    cleaned_row.append(0)
+                else:
+                    cleaned_row.append(val)
+            else:
+                cleaned_row.append(val)
+        cleaned.append(cleaned_row)
+    return cleaned
 
 # Paths
 BASE_DIR = Path(__file__).parent.parent
@@ -46,14 +73,26 @@ class DataCollectionService:
         return cache_path.exists()
     
     def load_from_cache(self, ticker: str, quarterly: bool = False) -> Optional[Dict]:
-        """Load cached data for a ticker."""
+        """Load cached data for a ticker and clean any NaN/Inf values."""
         cache_path = self.get_cache_path(ticker, quarterly)
         if not cache_path.exists():
             return None
         
         try:
             with open(cache_path, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+            
+            # Clean NaN/Inf from cached data (old caches may have these values)
+            if 'statements' in data:
+                for stmt_key in ['income_statement', 'balance_sheet', 'cash_flow']:
+                    if stmt_key in data['statements'] and data['statements'][stmt_key].get('available'):
+                        stmt = data['statements'][stmt_key]
+                        if 'data' in stmt:
+                            stmt['data'] = clean_for_json(stmt['data'])
+                        if 'raw_data' in stmt:
+                            stmt['raw_data'] = clean_for_json(stmt['raw_data'])
+            
+            return data
         except Exception as e:
             logger.error(f"Error loading cache for {ticker}: {e}")
             return None
@@ -330,10 +369,10 @@ class DataCollectionService:
                     # Note: Quarterly adjustments are now applied during data loading in data.py
                     # This avoids adjusting data twice and keeps cached files in raw form
                     
-                    # Format data
+                    # Format data (clean NaN/Inf for JSON)
                     columns = merged_df.columns.tolist()
                     row_names = merged_df.index.tolist()
-                    data = merged_df.values.tolist()
+                    data = clean_for_json(merged_df.values.tolist())
                     
                     statements_data[stmt_key] = {
                         "available": True,
@@ -345,6 +384,37 @@ class DataCollectionService:
                     
                     has_data = True
                     logger.info(f"Loaded {stmt_key} for {ticker} from {len(matching_files)} files")
+                    
+                    # Also load raw/unmapped data for debugging (separate files with "_raw_" pattern)
+                    raw_pattern = str(ticker_output_dir / f"{file_base}_raw_*_{period_suffix}.csv")
+                    raw_matching_files = glob.glob(raw_pattern)
+                    
+                    if raw_matching_files:
+                        raw_dfs = []
+                        for file_path in sorted(raw_matching_files):
+                            try:
+                                raw_df = pd.read_csv(file_path, index_col=0)
+                                raw_dfs.append(raw_df)
+                            except Exception as e:
+                                logger.error(f"Error loading raw file {file_path}: {e}")
+                        
+                        if raw_dfs:
+                            # Merge raw DataFrames
+                            merged_raw_df = pd.concat(raw_dfs, axis=1)
+                            merged_raw_df = merged_raw_df.loc[:, ~merged_raw_df.columns.duplicated(keep='first')]
+                            
+                            # Sort columns by date
+                            try:
+                                sorted_cols = sorted(merged_raw_df.columns, key=lambda x: pd.to_datetime(x), reverse=True)
+                                merged_raw_df = merged_raw_df[sorted_cols]
+                            except:
+                                pass
+                            
+                            # Add raw data to statement (clean NaN/Inf for JSON)
+                            statements_data[stmt_key]["raw_data"] = clean_for_json(merged_raw_df.values.tolist())
+                            statements_data[stmt_key]["raw_row_names"] = merged_raw_df.index.tolist()
+                            statements_data[stmt_key]["raw_row_count"] = len(merged_raw_df)
+                            logger.info(f"Loaded raw {stmt_key} for {ticker} ({len(merged_raw_df)} rows)")
             else:
                 # Try old single-file pattern
                 file_path = ticker_output_dir / f"{file_base}_annual.csv"
@@ -354,10 +424,10 @@ class DataCollectionService:
                         import pandas as pd
                         df = pd.read_csv(file_path)
                         
-                        # Format data
+                        # Format data (clean NaN/Inf for JSON)
                         columns = df.columns[1:].tolist()
                         row_names = df.iloc[:, 0].tolist()
-                        data = df.iloc[:, 1:].values.tolist()
+                        data = clean_for_json(df.iloc[:, 1:].values.tolist())
                         
                         statements_data[stmt_key] = {
                             "available": True,
