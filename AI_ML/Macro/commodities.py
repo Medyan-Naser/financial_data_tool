@@ -53,7 +53,7 @@ def get_energy():
     header=dict(values=list(energy.columns),
                 fill_color='lightgoldenrodyellow',
                 align='left'),
-    cells=dict(values=[energy.Energy, energy.Price, energy.Day, energy.Weekly, energy.Monthly, energy.YoY],
+    cells=dict(values=[energy[col] for col in energy.columns],
                fill_color='white',
                align='left'))
 ])
@@ -64,7 +64,7 @@ def get_metals():
     header=dict(values=list(metals.columns),
                 fill_color='gold',
                 align='left'),
-    cells=dict(values=[metals.Metals, metals.Price, metals.Day, metals.Weekly, metals.Monthly, metals.YoY],
+    cells=dict(values=[metals[col] for col in metals.columns],
                fill_color='white',
                align='left'))
 ])
@@ -75,7 +75,7 @@ def get_agricultural():
     header=dict(values=list(agricultural.columns),
                 fill_color='mediumseagreen',
                 align='left'),
-    cells=dict(values=[agricultural.Agricultural, agricultural.Price, agricultural.Day, agricultural.Weekly, agricultural.Monthly, agricultural.YoY],
+    cells=dict(values=[agricultural[col] for col in agricultural.columns],
                fill_color='white',
                align='left'))
 ])
@@ -86,7 +86,7 @@ def get_livestock():
     header=dict(values=list(livestock.columns),
                 fill_color='firebrick',
                 align='left'),
-    cells=dict(values=[livestock.Livestock, livestock.Price, livestock.Day, livestock.Weekly, livestock.Monthly, livestock.YoY],
+    cells=dict(values=[livestock[col] for col in livestock.columns],
                fill_color='white',
                align='left'))
 ])
@@ -97,7 +97,7 @@ def get_industrial():
     header=dict(values=list(industrial.columns),
                 fill_color='gray',
                 align='left'),
-    cells=dict(values=[industrial.Industrial, industrial.Price, industrial.Day, industrial.Weekly, industrial.Monthly, industrial.YoY],
+    cells=dict(values=[industrial[col] for col in industrial.columns],
                fill_color='white',
                align='left'))
 ])
@@ -108,7 +108,7 @@ def get_index():
     header=dict(values=list(commodities_index.columns),
                 fill_color='mediumorchid',
                 align='left'),
-    cells=dict(values=[commodities_index.Index, commodities_index.Price, commodities_index.Day, commodities_index.Weekly, commodities_index.Monthly, commodities_index.YoY],
+    cells=dict(values=[commodities_index[col] for col in commodities_index.columns],
                fill_color='white',
                align='left'))
 ])
