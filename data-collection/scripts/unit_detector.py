@@ -89,6 +89,9 @@ class UnitDetector:
         """
         Parse table header for unit declarations.
         
+        IMPORTANT: Extract shares unit FIRST and remove it from text before parsing currency unit.
+        This prevents shares unit from being mistakenly used as currency unit.
+        
         Returns:
             (currency_scale, shares_scale, has_explicit_units)
         """
@@ -98,36 +101,56 @@ class UnitDetector:
             return 1000, 1, False  # Default: thousands
         
         header_text = ' '.join([h.get_text().lower() for h in headers])
+        original_header_text = header_text  # Keep original for logging
         
-        # Default: thousands (most common in US filings)
-        currency_scale = 1000
+        # Default values
+        currency_scale = 1000  # Default: thousands (most common in US filings)
         shares_scale = 1
         has_explicit_units = False
         
-        # Check for explicit currency units
-        if 'in millions' in header_text or 'in million' in header_text:
+        # STEP 1: Extract shares unit FIRST (and remove from text to avoid confusion)
+        shares_text_removed = ""
+        if 'shares in billions' in header_text or 'shares in billion' in header_text:
+            shares_scale = 1000000000
+            # Remove this phrase so it doesn't interfere with currency parsing
+            header_text = header_text.replace('shares in billions', '').replace('shares in billion', '')
+            shares_text_removed = "shares in billions"
+        elif 'shares in millions' in header_text or 'shares in million' in header_text:
+            shares_scale = 1000000
+            header_text = header_text.replace('shares in millions', '').replace('shares in million', '')
+            shares_text_removed = "shares in millions"
+        elif 'shares in thousands' in header_text or 'shares in thousand' in header_text:
+            shares_scale = 1000
+            header_text = header_text.replace('shares in thousands', '').replace('shares in thousand', '')
+            shares_text_removed = "shares in thousands"
+        
+        # STEP 2: Now parse currency unit from the REMAINING text (with shares unit removed)
+        # This ensures we don't accidentally parse the shares unit as currency unit
+        if 'in billions' in header_text or 'in billion' in header_text:
+            currency_scale = 1000000000
+            has_explicit_units = True
+        elif 'in millions' in header_text or 'in million' in header_text:
             currency_scale = 1000000
             has_explicit_units = True
         elif 'in thousands' in header_text or 'in thousand' in header_text:
             currency_scale = 1000
             has_explicit_units = True
-        elif 'in billions' in header_text or 'in billion' in header_text:
-            currency_scale = 1000000000
-            has_explicit_units = True
         elif 'in dollars' in header_text or 'in ones' in header_text or 'in dollar' in header_text:
             currency_scale = 1
             has_explicit_units = True
         
-        # Check for share units (often stated separately)
-        if 'shares in millions' in header_text or 'shares in million' in header_text:
-            shares_scale = 1000000
-        elif 'shares in thousands' in header_text or 'shares in thousand' in header_text:
-            shares_scale = 1000
-        elif 'shares in billions' in header_text or 'shares in billion' in header_text:
-            shares_scale = 1000000000
+        # Note: Currency unit should ALWAYS be present (required by SEC)
+        # If we didn't find explicit units, default to thousands
+        if not has_explicit_units:
+            logger.debug(f"No explicit currency unit found in header, using default (thousands): {original_header_text}")
         
-        if has_explicit_units:
-            logger.debug(f"Header declares: currency={currency_scale}, shares={shares_scale}")
+        if has_explicit_units or shares_text_removed:
+            scale_names = {1000000000: 'billions', 1000000: 'millions', 1000: 'thousands', 1: 'ones'}
+            logger.debug(
+                f"Header parsing: currency={scale_names.get(currency_scale, currency_scale)}, "
+                f"shares={scale_names.get(shares_scale, shares_scale)}"
+                f"{' (shares unit removed: ' + shares_text_removed + ')' if shares_text_removed else ''}"
+            )
         
         return currency_scale, shares_scale, has_explicit_units
     
