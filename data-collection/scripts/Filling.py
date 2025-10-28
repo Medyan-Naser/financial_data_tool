@@ -323,10 +323,13 @@ class Filling():
 
         rows_that_are_sum = []
         sections_dict = {}
+        
+        # Track scale verifications to correct table header if needed
+        verified_scales = []  # List of (fact, verified_scale) tuples
 
         for table in soup.find_all("table"):
             unit_multiplier, shares_unit_multiplier = parse_table_header(table)
-            # Fact check the multipler later
+            # We'll verify and potentially correct this multipler using company_facts
             # Process each row of the table
             inside_section = False
             is_row_header = False
@@ -415,11 +418,58 @@ class Filling():
                         is_negative = "nump" not in cell.get("class")
                         raw_values[column_counter] = -value if is_negative else value
                         
-                        # Determine multiplier for THIS row based on type
-                        # Use header multiplier as the authority (it's explicitly stated!)
+                        # Extract fact name for company_facts lookup
+                        fact_name = None
+                        if "_" in row_title:
+                            fact_name = row_title.split("_", 1)[1]
+                            if ":" in fact_name:
+                                fact_name = fact_name.split(":")[-1]
+                                if "_" in fact_name:
+                                    fact_name = fact_name.split("_", 1)[1]
+                        
+                        # Try to verify scale with company_facts
+                        verified_scale = None
+                        if fact_name and self.company_facts_DF is not None and not self.company_facts_DF.empty:
+                            try:
+                                # Get the date for this column
+                                if column_counter < len(dates):
+                                    col_date = dates[column_counter]
+                                    if hasattr(col_date, 'strftime'):
+                                        col_date_str = col_date.strftime('%Y-%m-%d')
+                                    else:
+                                        col_date_str = str(col_date).split(' ')[0]
+                                    
+                                    # Look up in company_facts
+                                    filtered_data = self.company_facts_DF[
+                                        (self.company_facts_DF['fact'] == fact_name) & 
+                                        (self.company_facts_DF['end'] == col_date_str)
+                                    ]
+                                    
+                                    if not filtered_data.empty:
+                                        company_value = filtered_data.iloc[0]['val']
+                                        if company_value != 0 and value != 0:
+                                            # Calculate ratio to determine scale
+                                            ratio = abs(company_value) / abs(value)
+                                            # Check if ratio is a clean power of 10
+                                            common_scales = [1000000000, 1000000, 1000, 1]
+                                            for scale in common_scales:
+                                                relative_error = abs(ratio - scale) / scale
+                                                if relative_error < 0.10:  # 10% tolerance
+                                                    verified_scale = scale
+                                                    verified_scales.append((fact_name, verified_scale))
+                                                    logger.debug(f"Verified {fact_name}: scale={scale}")
+                                                    break
+                            except Exception as e:
+                                logger.debug(f"Could not verify scale for {row_title}: {e}")
+                        
+                        # Determine multiplier for THIS row
+                        # Priority: verified scale > specific row type > header scale
                         row_multiplier = unit_multiplier  # Default: header currency scale
                         
-                        if row_title in keep_value_unchanged:
+                        if verified_scale is not None:
+                            # Use verified scale from company_facts (highest priority)
+                            row_multiplier = verified_scale
+                        elif row_title in keep_value_unchanged:
                             # Per-share, ratios, etc. - no scaling
                             row_multiplier = 1
                         elif row_title in shares_facts:
@@ -507,6 +557,45 @@ class Filling():
                         source='fallback',
                         original_scale=row_multiplier  # Track scale that was applied
                     )
+        
+        # Analyze verified scales to detect potential table header misparse
+        corrected_default_scale = unit_multiplier  # Default remains header scale
+        
+        if verified_scales:
+            from collections import Counter
+            scale_counts = Counter([scale for _, scale in verified_scales])
+            most_common_scale, count = scale_counts.most_common(1)[0]
+            
+            # Calculate percentage of verified rows that match most common scale
+            verification_percentage = (count / len(verified_scales)) * 100
+            
+            # If >60% of verified scales differ from original header scale, use common scale as default
+            if verification_percentage > 60 and most_common_scale != unit_multiplier:
+                scale_names = {1000000000: 'billions', 1000000: 'millions', 1000: 'thousands', 1: 'ones'}
+                logger.warning(
+                    f"Table header scale ({scale_names.get(unit_multiplier, unit_multiplier)}) "
+                    f"appears incorrect. {count}/{len(verified_scales)} ({verification_percentage:.1f}%) "
+                    f"rows verified as {scale_names.get(most_common_scale, most_common_scale)}. "
+                    f"Using {scale_names.get(most_common_scale)} as default for unverified rows."
+                )
+                corrected_default_scale = most_common_scale
+                
+                # Re-process values_set and unit_multiplier_set with corrected scale
+                # Apply corrected scale to rows that weren't verified
+                for i, (values, row_multiplier) in enumerate(zip(values_set, unit_multiplier_set)):
+                    # Check if this row was verified
+                    row_was_verified = any(columns[i] == f"us-gaap_{fact}" or columns[i].endswith(f":{fact}") 
+                                          for fact, _ in verified_scales)
+                    
+                    # If not verified and used header scale, recalculate with corrected scale
+                    if not row_was_verified and row_multiplier == unit_multiplier:
+                        scale_correction_factor = corrected_default_scale / unit_multiplier
+                        # Update the values
+                        for j in range(len(values)):
+                            if values[j] != 0:
+                                values[j] = values[j] * scale_correction_factor
+                        # Update the multiplier record
+                        unit_multiplier_set[i] = corrected_default_scale
         
         return columns, values_set, dates, rows_that_are_sum, text_set, sections_dict, units_dict
 
