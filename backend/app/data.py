@@ -97,12 +97,20 @@ def load_statement(ticker: str, statement_type: str, quarterly: bool = False) ->
                 statements = cached_data.get('statements', {})
                 
                 if statement_type in statements and statements[statement_type].get('available'):
+                    stmt = statements[statement_type]
+                    
                     result = {
-                        "columns": statements[statement_type]['columns'],
-                        "row_names": statements[statement_type]['row_names'],
-                        "data": statements[statement_type]['data'],
+                        "columns": stmt.get('columns', []),
+                        "row_names": stmt.get('row_names', []),
+                        "data": stmt.get('data', []),
                         "available": True
                     }
+                    
+                    # Add raw view if available
+                    if 'raw_row_names' in stmt:
+                        result["raw_row_names"] = stmt.get('raw_row_names', [])
+                        result["raw_data"] = stmt.get('raw_data', [])
+                        result["raw_row_count"] = stmt.get('raw_row_count', 0)
                     
                     # Apply quarterly adjustments for quarterly data on income_statement and cash_flow
                     if quarterly and statement_type in ['income_statement', 'cash_flow']:
