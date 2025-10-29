@@ -73,7 +73,7 @@ class DataCollectionService:
         return cache_path.exists()
     
     def load_from_cache(self, ticker: str, quarterly: bool = False) -> Optional[Dict]:
-        """Load cached data for a ticker and clean any NaN/Inf values."""
+        """Load cached data for a ticker."""
         cache_path = self.get_cache_path(ticker, quarterly)
         if not cache_path.exists():
             return None
@@ -81,17 +81,6 @@ class DataCollectionService:
         try:
             with open(cache_path, 'r') as f:
                 data = json.load(f)
-            
-            # Clean NaN/Inf from cached data (old caches may have these values)
-            if 'statements' in data:
-                for stmt_key in ['income_statement', 'balance_sheet', 'cash_flow']:
-                    if stmt_key in data['statements'] and data['statements'][stmt_key].get('available'):
-                        stmt = data['statements'][stmt_key]
-                        if 'data' in stmt:
-                            stmt['data'] = clean_for_json(stmt['data'])
-                        if 'raw_data' in stmt:
-                            stmt['raw_data'] = clean_for_json(stmt['raw_data'])
-            
             return data
         except Exception as e:
             logger.error(f"Error loading cache for {ticker}: {e}")
@@ -336,9 +325,13 @@ class DataCollectionService:
         for stmt_key, file_base in statement_types:
             # Look for files matching the pattern: {statement}_*_{annual|quarterly}.csv
             # e.g., income_statement_2024-12-31_annual.csv or income_statement_2024-09-30_quarterly.csv
+            # IMPORTANT: Exclude raw files (which have "raw" in the filename)
             import glob
             pattern = str(ticker_output_dir / f"{file_base}_*_{period_suffix}.csv")
-            matching_files = glob.glob(pattern)
+            all_files = glob.glob(pattern)
+            
+            # Filter out raw files - they should be loaded separately
+            matching_files = [f for f in all_files if '_raw_' not in os.path.basename(f)]
             
             if matching_files:
                 # We have multiple files (one per year), merge them

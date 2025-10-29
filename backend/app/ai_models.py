@@ -56,6 +56,14 @@ def extract_financial_metrics(data: Dict) -> Dict:
     
     statements = data.get('statements', {})
     
+    # Helper function to check if a row has all zeros
+    def is_all_zeros(row_data):
+        """Check if a row contains only zeros or None values."""
+        for val in row_data:
+            if val is not None and val != 0 and (isinstance(val, (int, float)) and abs(val) > 0.01):
+                return False
+        return True
+    
     # Extract from income statement
     income_stmt = statements.get('income_statement', {})
     if income_stmt and income_stmt.get('available'):
@@ -67,6 +75,9 @@ def extract_financial_metrics(data: Dict) -> Dict:
         for i, row_name in enumerate(row_names):
             if i < len(data_matrix):
                 row_data = data_matrix[i]
+                # Skip rows with all zeros to avoid overwriting real data
+                if is_all_zeros(row_data):
+                    continue
                 if 'revenue' in row_name.lower() and 'total' in row_name.lower():
                     metrics['revenue'] = [float(x) if x and x != 0 else None for x in row_data]
                 elif 'net income' in row_name.lower() or 'net loss' in row_name.lower():
@@ -83,6 +94,9 @@ def extract_financial_metrics(data: Dict) -> Dict:
         for i, row_name in enumerate(row_names):
             if i < len(data_matrix):
                 row_data = data_matrix[i]
+                # Skip rows with all zeros to avoid overwriting real data
+                if is_all_zeros(row_data):
+                    continue
                 if 'total assets' in row_name.lower():
                     metrics['total_assets'] = [float(x) if x and x != 0 else None for x in row_data]
                 elif 'total liabilities' in row_name.lower():
@@ -99,6 +113,9 @@ def extract_financial_metrics(data: Dict) -> Dict:
         for i, row_name in enumerate(row_names):
             if i < len(data_matrix):
                 row_data = data_matrix[i]
+                # Skip rows with all zeros to avoid overwriting real data
+                if is_all_zeros(row_data):
+                    continue
                 if 'operating' in row_name.lower() and 'cash flow' in row_name.lower():
                     metrics['operating_cash_flow'] = [float(x) if x and x != 0 else None for x in row_data]
     

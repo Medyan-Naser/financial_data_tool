@@ -22,18 +22,18 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
     }
 
     const chartData = selectedRows.map(rowIndex => ({
-      name: row_names[rowIndex],
-      values: tableData[rowIndex]
+      name: displayRowNames[rowIndex],
+      values: displayData[rowIndex]
     }));
 
     onAddChart({
       type: chartType,
       data: chartData,
-      columns: columns,
+      columns: displayColumns,
       title: `${ticker} - ${statementType.replace('_', ' ').toUpperCase()}`,
       ticker: ticker,
       statementType: statementType,
-      selectedRowNames: selectedRows.map(idx => row_names[idx]),
+      selectedRowNames: selectedRows.map(idx => displayRowNames[idx]),
       comparisonTicker: comparisonTicker || null,
       analysisMode: analysisMode
     });
@@ -86,8 +86,7 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
         <button 
           className="btn-create-chart"
           onClick={() => setShowChartBuilder(!showChartBuilder)}
-          disabled={viewMode === 'raw'}
-          title={viewMode === 'raw' ? 'Charts only available in Clean View' : ''}
+          title={viewMode === 'raw' ? 'Create charts from raw data' : 'Create charts from clean data'}
         >
           {showChartBuilder ? 'Hide Chart Builder' : '📈 Create Chart'}
         </button>
@@ -98,9 +97,9 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
           <h3>Chart Builder</h3>
           <div className="chart-options">
             <div className="option-group">
-              <label>Select Metrics:</label>
+              <label>Select Metrics ({viewMode === 'raw' ? 'Raw Data' : 'Clean Data'}):</label>
               <MultiSelectDropdown
-                options={row_names}
+                options={displayRowNames}
                 selected={selectedRows}
                 onChange={setSelectedRows}
                 placeholder="Select metrics to chart..."

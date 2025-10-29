@@ -30,6 +30,10 @@ function App() {
   const [draggingPanel, setDraggingPanel] = useState(null);
   const [alignmentGuides, setAlignmentGuides] = useState([]);
   
+  // Z-index management for panels
+  const [activePanelId, setActivePanelId] = useState(null);
+  const [panelZIndexes, setPanelZIndexes] = useState({});
+  
   // New state for caching and progress
   const [isCollecting, setIsCollecting] = useState(false);
   const [collectionProgress, setCollectionProgress] = useState({ status: '', message: '', progress: 0 });
@@ -249,6 +253,24 @@ function App() {
     }));
   };
 
+  // Handle panel focus - bring to front
+  const handlePanelFocus = (panelId) => {
+    setActivePanelId(panelId);
+    // Assign z-index based on order of interaction
+    setPanelZIndexes(prev => {
+      const maxZ = Math.max(1, ...Object.values(prev));
+      return {
+        ...prev,
+        [panelId]: maxZ + 1
+      };
+    });
+  };
+
+  // Get z-index for a panel (default to 1 if not set)
+  const getPanelZIndex = (panelId) => {
+    return panelZIndexes[panelId] || 1;
+  };
+
   // Clear guides when drag ends
   useEffect(() => {
     const handleMouseUp = () => {
@@ -343,6 +365,8 @@ function App() {
               size={tablePanel.size}
               onPositionChange={handleTablePositionChange}
               onSizeChange={handleTableSizeChange}
+              onFocus={handlePanelFocus}
+              zIndex={getPanelZIndex('table')}
               minWidth={400}
               minHeight={400}
               alignmentGuides={alignmentGuides}
@@ -355,11 +379,9 @@ function App() {
                     {financialData.currency && (
                       <span className="currency-badge">{financialData.currency}</span>
                     )}
-                    {financialData.period_type && (
-                      <span className="period-badge">
-                        {financialData.period_type === 'quarterly' ? '📊 Quarterly' : '📅 Annual'}
-                      </span>
-                    )}
+                    <span className="period-badge" key={quarterly ? 'quarterly' : 'annual'}>
+                      {quarterly ? '📊 Quarterly' : '📅 Annual'}
+                    </span>
                   </div>
                 </div>
                 
@@ -421,6 +443,8 @@ function App() {
                   size={panel.size}
                   onPositionChange={(pos) => handleChartPositionChange(chart.id, pos)}
                   onSizeChange={(size) => handleChartSizeChange(chart.id, size)}
+                  onFocus={handlePanelFocus}
+                  zIndex={getPanelZIndex(chart.id)}
                   minWidth={300}
                   minHeight={250}
                   alignmentGuides={alignmentGuides}

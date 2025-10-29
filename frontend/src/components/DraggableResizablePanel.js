@@ -10,7 +10,9 @@ function DraggableResizablePanel({
   minWidth = 300, 
   minHeight = 200,
   showAlignmentGuides,
-  alignmentGuides = []
+  alignmentGuides = [],
+  zIndex = 1,
+  onFocus
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState({ horizontal: false, vertical: false, corner: false });
@@ -26,6 +28,9 @@ function DraggableResizablePanel({
     e.preventDefault();
     e.stopPropagation();
     
+    // Notify parent that this panel is now active
+    if (onFocus) onFocus(id);
+    
     dragStartPos.current = {
       x: e.clientX,
       y: e.clientY,
@@ -40,6 +45,9 @@ function DraggableResizablePanel({
   const handleResizeStart = (type) => (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Notify parent that this panel is now active
+    if (onFocus) onFocus(id);
     
     resizeStartPos.current = {
       x: e.clientX,
@@ -88,9 +96,9 @@ function DraggableResizablePanel({
         }
       });
 
-      // Keep within viewport bounds
-      newX = Math.max(0, Math.min(newX, window.innerWidth - size.width - 50));
-      newY = Math.max(0, Math.min(newY, window.innerHeight - size.height - 150));
+      // Keep within viewport bounds (more generous bounds)
+      newX = Math.max(-size.width + 100, Math.min(newX, window.innerWidth - 100));
+      newY = Math.max(0, newY);
 
       onPositionChange({ x: newX, y: newY });
     };
@@ -145,6 +153,18 @@ function DraggableResizablePanel({
     };
   }, [isResizing, minWidth, minHeight, onSizeChange]);
 
+  // Handle panel click to bring to front
+  const handlePanelClick = (e) => {
+    // Always bring panel to front on any click
+    if (onFocus) onFocus(id);
+  };
+
+  // Handle mousedown to bring to front immediately
+  const handlePanelMouseDown = (e) => {
+    // Bring to front as soon as mouse is pressed
+    if (onFocus) onFocus(id);
+  };
+
   return (
     <div 
       ref={panelRef}
@@ -155,8 +175,10 @@ function DraggableResizablePanel({
         top: `${position.y}px`,
         width: `${size.width}px`, 
         height: `${size.height}px`,
-        zIndex: isDragging ? 1000 : 1
+        zIndex: isDragging || isResizing.horizontal || isResizing.vertical ? 1000 : zIndex
       }}
+      onMouseDown={handlePanelMouseDown}
+      onClick={handlePanelClick}
     >
       {/* Drag Handle */}
       <div 
