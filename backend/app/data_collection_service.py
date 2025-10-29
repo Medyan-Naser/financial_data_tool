@@ -325,9 +325,13 @@ class DataCollectionService:
         for stmt_key, file_base in statement_types:
             # Look for files matching the pattern: {statement}_*_{annual|quarterly}.csv
             # e.g., income_statement_2024-12-31_annual.csv or income_statement_2024-09-30_quarterly.csv
+            # IMPORTANT: Exclude raw files (which have "raw" in the filename)
             import glob
             pattern = str(ticker_output_dir / f"{file_base}_*_{period_suffix}.csv")
-            matching_files = glob.glob(pattern)
+            all_files = glob.glob(pattern)
+            
+            # Filter out raw files - they should be loaded separately
+            matching_files = [f for f in all_files if '_raw_' not in os.path.basename(f)]
             
             if matching_files:
                 # We have multiple files (one per year), merge them
