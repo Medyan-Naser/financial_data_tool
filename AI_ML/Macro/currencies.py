@@ -38,7 +38,7 @@ def get_major_currencies():
     header=dict(values=list(major_currencies.columns),
                 fill_color='lightgreen',
                 align='left'),
-    cells=dict(values=[major_currencies.Major, major_currencies.Price, major_currencies.Day, major_currencies.Weekly, major_currencies.Monthly, major_currencies.YoY],
+    cells=dict(values=[major_currencies[col] for col in major_currencies.columns],
                fill_color='white',
                align='left'))
 ])
