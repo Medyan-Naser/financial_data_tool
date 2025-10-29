@@ -297,7 +297,7 @@ Contributions are welcome! Please follow these steps:
 ---
 
 
-## 📸 Media Assets Checklist
+<!-- ## 📸 Media Assets Checklist
 
 To complete this README, please add the following files:
 
@@ -318,4 +318,4 @@ To complete this README, please add the following files:
 - Keep file sizes under 10MB per GIF
 - Show key features in action
 - Include smooth transitions
-- Add brief text overlays if helpful
+- Add brief text overlays if helpful -->
