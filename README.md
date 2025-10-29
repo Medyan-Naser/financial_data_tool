@@ -39,7 +39,7 @@
   FILE TO ATTACH: GIFs/ai_predictions_demo.gif
   DESCRIPTION: Demo showing LSTM forecast and GARCH volatility analysis with interactive charts
 -->
-![AI Predictions Demo](GIFs/ai_predictions_demo.gif)
+![AI Predictions Demo](GIFs/BirdView_AI_predictions.gif)
 
 ### 🌍 Macroeconomic Dashboard
 - **Commodities**: Energy, metals, agricultural, livestock, and industrial commodities
@@ -54,7 +54,7 @@
   FILE TO ATTACH: GIFs/economy_dashboard_demo.gif
   DESCRIPTION: Demo showing various economic indicators with resizable/moveable charts
 -->
-![Economy Dashboard Demo](GIFs/economy_dashboard_demo.gif)
+<!-- ![Economy Dashboard Demo](GIFs/economy_dashboard_demo.gif) -->
 
 ### ⚡ Advanced UI Features
 - **Resizable Panels**: All charts and visualizations can be resized
@@ -68,7 +68,7 @@
   FILE TO ATTACH: GIFs/ui_features_demo.gif
   DESCRIPTION: Demo showing dragging, resizing, and multi-ticker comparison features
 -->
-![UI Features Demo](GIFs/ui_features_demo.gif)
+<!-- ![UI Features Demo](GIFs/ui_features_demo.gif) -->
 
 ---
 
@@ -86,7 +86,7 @@
   FILE TO ATTACH: images/architecture_diagram.png
   DESCRIPTION: System architecture diagram showing frontend, backend, data collection, and external APIs
 -->
-![Architecture Diagram](images/architecture_diagram.png)
+<!-- ![Architecture Diagram](images/architecture_diagram.png) -->
 
 ### Frontend (React)
 - **React 18**: Modern component-based UI
@@ -107,7 +107,7 @@
   FILE TO ATTACH: images/data_flow_diagram.png
   DESCRIPTION: Flowchart showing data collection, processing, caching, and delivery pipeline
 -->
-![Data Flow Diagram](images/data_flow_diagram.png)
+<!-- ![Data Flow Diagram](images/data_flow_diagram.png) -->
 
 ---
 
