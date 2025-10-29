@@ -19,6 +19,12 @@ function EconomyView() {
   const [interestRatesData, setInterestRatesData] = useState(null);
   const [unemploymentData, setUnemploymentData] = useState(null);
   
+  // Historical data states
+  const [cryptoHistoricalData, setCryptoHistoricalData] = useState({});
+  const [interestRatesHistoricalData, setInterestRatesHistoricalData] = useState(null);
+  const [indexData, setIndexData] = useState({});
+  const [commoditiesData, setCommoditiesData] = useState(null);
+  
   // Z-index management for panels
   const [activePanelId, setActivePanelId] = useState(null);
   const [panelZIndexes, setPanelZIndexes] = useState({});
@@ -32,7 +38,14 @@ function EconomyView() {
     inflationChart: { position: { x: 20, y: 20 }, size: { width: 900, height: 550 } },
     interestRatesTable: { position: { x: 20, y: 20 }, size: { width: 900, height: 600 } },
     interestRatesChart: { position: { x: 20, y: 640 }, size: { width: 900, height: 500 } },
+    interestRatesHistoricalChart: { position: { x: 20, y: 1160 }, size: { width: 900, height: 550 } },
     unemploymentChart: { position: { x: 20, y: 20 }, size: { width: 900, height: 550 } },
+    cryptoHistoricalChart: { position: { x: 20, y: 640 }, size: { width: 900, height: 500 } },
+    indicesSPY: { position: { x: 20, y: 20 }, size: { width: 700, height: 500 } },
+    indicesDJIA: { position: { x: 740, y: 20 }, size: { width: 700, height: 500 } },
+    indicesNDAQ: { position: { x: 20, y: 540 }, size: { width: 700, height: 500 } },
+    indicesIWM: { position: { x: 740, y: 540 }, size: { width: 700, height: 500 } },
+    commoditiesCard: { position: { x: 20, y: 20 }, size: { width: 600, height: 400 } },
   });
   
   const updatePanelPosition = (panelId, position) => {
@@ -171,6 +184,80 @@ function EconomyView() {
     }
   };
 
+  // Fetch Crypto Historical Data
+  const fetchCryptoHistorical = async (symbol = 'bitcoin', days = 365) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/economy/crypto/historical/${symbol}?days=${days}`);
+      setCryptoHistoricalData(prev => ({ ...prev, [symbol]: response.data }));
+    } catch (err) {
+      setError(`Error fetching crypto historical: ${err.message}`);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Interest Rates Historical Data (many years)
+  const fetchInterestRatesHistorical = async (startYear = 2010) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/economy/interest-rates/historical?start_year=${startYear}`);
+      setInterestRatesHistoricalData(response.data);
+    } catch (err) {
+      setError(`Error fetching historical rates: ${err.message}`);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Market Index Chart
+  const loadIndexChart = async (indexTicker) => {
+    if (indexData[indexTicker]) return; // Already loaded
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/economy/index-chart/${indexTicker}`);
+      setIndexData(prev => ({ ...prev, [indexTicker]: response.data }));
+    } catch (err) {
+      console.error(`Error loading ${indexTicker} chart:`, err);
+    }
+  };
+
+  // Load All Market Indices
+  const loadAllIndices = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        loadIndexChart('SPY'),
+        loadIndexChart('DJIA'),
+        loadIndexChart('NDAQ'),
+        loadIndexChart('IWM')
+      ]);
+    } catch (err) {
+      setError('Error loading indices');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Commodities Data
+  const fetchCommoditiesData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/economy/commodities`);
+      setCommoditiesData(response.data);
+    } catch (err) {
+      setError(`Error fetching commodities: ${err.message}`);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Format currency for display
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return '-';
@@ -218,7 +305,7 @@ function EconomyView() {
         </button>
         <button 
           className={`section-btn ${activeView === 'crypto' ? 'active' : ''}`}
-          onClick={() => { setActiveView('crypto'); fetchCryptoData(); }}
+          onClick={() => { setActiveView('crypto'); fetchCryptoData(); fetchCryptoHistorical('bitcoin', 365); fetchCryptoHistorical('ethereum', 365); }}
         >
           ₿ Crypto
         </button>
@@ -242,7 +329,7 @@ function EconomyView() {
         </button>
         <button 
           className={`section-btn ${activeView === 'interest-rates' ? 'active' : ''}`}
-          onClick={() => { setActiveView('interest-rates'); fetchInterestRatesData(); }}
+          onClick={() => { setActiveView('interest-rates'); fetchInterestRatesData(); fetchInterestRatesHistorical(2010); }}
         >
           💰 Interest Rates
         </button>
@@ -251,6 +338,18 @@ function EconomyView() {
           onClick={() => { setActiveView('unemployment'); fetchUnemploymentData(); }}
         >
           👔 Unemployment
+        </button>
+        <button 
+          className={`section-btn ${activeView === 'indices' ? 'active' : ''}`}
+          onClick={() => { setActiveView('indices'); loadAllIndices(); }}
+        >
+          📊 Market Indices
+        </button>
+        <button 
+          className={`section-btn ${activeView === 'commodities' ? 'active' : ''}`}
+          onClick={() => { setActiveView('commodities'); fetchCommoditiesData(); }}
+        >
+          🛢️ Commodities
         </button>
       </div>
 
@@ -292,8 +391,10 @@ function EconomyView() {
                 { title: 'Precious Metals', icon: '🥇', desc: 'Gold and silver prices', onClick: () => { setActiveView('metals'); fetchMetalsData(); } },
                 { title: 'GDP Data', icon: '📈', desc: 'Gross Domestic Product trends', onClick: () => { setActiveView('gdp'); fetchGdpData(); } },
                 { title: 'Inflation Rates', icon: '📉', desc: 'Consumer Price Index (CPI)', onClick: () => { setActiveView('inflation'); fetchInflationData(); } },
-                { title: 'Interest Rates', icon: '💰', desc: 'US Treasury rates', onClick: () => { setActiveView('interest-rates'); fetchInterestRatesData(); } },
+                { title: 'Interest Rates', icon: '💰', desc: 'US Treasury rates', onClick: () => { setActiveView('interest-rates'); fetchInterestRatesData(); fetchInterestRatesHistorical(); } },
                 { title: 'Unemployment', icon: '👔', desc: 'Labor market statistics', onClick: () => { setActiveView('unemployment'); fetchUnemploymentData(); } },
+                { title: 'Market Indices', icon: '📊', desc: 'SPY, DJIA, NDAQ, IWM', onClick: () => { setActiveView('indices'); loadAllIndices(); } },
+                { title: 'Commodities', icon: '🛢️', desc: 'Oil, Gas, Agricultural', onClick: () => { setActiveView('commodities'); fetchCommoditiesData(); } },
               ].map((card) => (
                 <div 
                   key={card.title}
@@ -311,7 +412,7 @@ function EconomyView() {
 
         {/* Currency View */}
         {activeView === 'currency' && currencyData && (
-          <div className="currency-results" style={{ position: 'relative', minHeight: '600px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '600px' }}>
           <DraggableResizablePanel
             id="currencyTable"
             title="💱 Currency Exchange Rates"
@@ -346,7 +447,7 @@ function EconomyView() {
 
         {/* Crypto View */}
         {activeView === 'crypto' && cryptoData && (
-          <div className="crypto-results" style={{ position: 'relative', minHeight: '700px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '700px' }}>
           <DraggableResizablePanel
             id="cryptoTable"
             title="₿ Top Cryptocurrencies"
@@ -394,12 +495,54 @@ function EconomyView() {
               </table>
             </div>
           </DraggableResizablePanel>
+          
+          {/* Crypto Historical Chart - Bitcoin */}
+          {cryptoHistoricalData.bitcoin && (
+            <DraggableResizablePanel
+              id="cryptoHistoricalChart"
+              title="₿ Bitcoin Historical Price (1 Year)"
+              position={chartPanels.cryptoHistoricalChart.position}
+              size={chartPanels.cryptoHistoricalChart.size}
+              onPositionChange={(position) => updatePanelPosition('cryptoHistoricalChart', position)}
+              onSizeChange={(size) => updatePanelSize('cryptoHistoricalChart', size)}
+              onFocus={() => handlePanelFocus('cryptoHistoricalChart')}
+              zIndex={getPanelZIndex('cryptoHistoricalChart')}
+              minConstraints={[600, 400]}
+            >
+              <div style={{ padding: '15px' }}>
+                <div style={{ marginBottom: '15px', fontSize: '13px', color: '#666' }}>
+                  <span>{cryptoHistoricalData.bitcoin.data_points} data points over {cryptoHistoricalData.bitcoin.days} days | </span>
+                  <span style={{ color: '#667eea' }}>Cached until: {new Date(cryptoHistoricalData.bitcoin.cache_expires).toLocaleDateString()}</span>
+                </div>
+                <Plot
+                  data={[{
+                    x: cryptoHistoricalData.bitcoin.prices.map(p => p.date),
+                    y: cryptoHistoricalData.bitcoin.prices.map(p => p.price_usd),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Bitcoin Price',
+                    line: { color: '#F7931A', width: 2 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(247, 147, 26, 0.1)'
+                  }]}
+                  layout={{
+                    title: 'Bitcoin Price History',
+                    xaxis: { title: 'Date' },
+                    yaxis: { title: 'Price (USD)' },
+                    margin: { t: 40, r: 20, b: 40, l: 60 }
+                  }}
+                  config={{ displayModeBar: true, displaylogo: false }}
+                  style={{ width: '100%', height: '420px' }}
+                />
+              </div>
+            </DraggableResizablePanel>
+          )}
           </div>
         )}
 
         {/* Metals View */}
         {activeView === 'metals' && metalsData && (
-          <div className="metals-results" style={{ position: 'relative', minHeight: '500px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '500px' }}>
           <DraggableResizablePanel
             id="metalsCard"
             title="🥇 Precious Metals Prices"
@@ -441,7 +584,7 @@ function EconomyView() {
 
         {/* GDP View */}
         {activeView === 'gdp' && gdpData && (
-          <div className="gdp-results" style={{ position: 'relative', minHeight: '700px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '700px' }}>
           <DraggableResizablePanel
             id="gdpChart"
             title="📈 GDP Historical Data"
@@ -483,7 +626,7 @@ function EconomyView() {
 
         {/* Inflation View */}
         {activeView === 'inflation' && inflationData && (
-          <div className="inflation-results" style={{ position: 'relative', minHeight: '700px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '700px' }}>
           <DraggableResizablePanel
             id="inflationChart"
             title="📉 Inflation Rates"
@@ -525,7 +668,7 @@ function EconomyView() {
 
         {/* Interest Rates View */}
         {activeView === 'interest-rates' && interestRatesData && (
-          <div className="interest-rates-results" style={{ position: 'relative', minHeight: '700px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '1400px' }}>
           <DraggableResizablePanel
             id="interestRatesTable"
             title="💰 US Treasury Interest Rates"
@@ -625,12 +768,71 @@ function EconomyView() {
               />
             </div>
           </DraggableResizablePanel>
+          
+          {/* Historical Interest Rates - Long Term (Many Years) */}
+          {interestRatesHistoricalData && (
+            <DraggableResizablePanel
+              id="interestRatesHistoricalChart"
+              title="📊 Historical Treasury Rates (2010-Present)"
+              position={chartPanels.interestRatesHistoricalChart.position}
+              size={chartPanels.interestRatesHistoricalChart.size}
+              onPositionChange={(position) => updatePanelPosition('interestRatesHistoricalChart', position)}
+              onSizeChange={(size) => updatePanelSize('interestRatesHistoricalChart', size)}
+              onFocus={() => handlePanelFocus('interestRatesHistoricalChart')}
+              zIndex={getPanelZIndex('interestRatesHistoricalChart')}
+              minConstraints={[700, 450]}
+            >
+              <div style={{ padding: '15px' }}>
+                <div style={{ marginBottom: '15px', fontSize: '13px', color: '#666' }}>
+                  <span>{interestRatesHistoricalData.data_points} records from {interestRatesHistoricalData.start_year} | </span>
+                  <span style={{ color: '#667eea' }}>Cached until: {new Date(interestRatesHistoricalData.cache_expires).toLocaleDateString()}</span>
+                </div>
+                <Plot
+                  data={[
+                    {
+                      x: interestRatesHistoricalData.rates.filter(r => r.security_type && r.security_type.includes('Treasury Bills')).slice(0, 100).map(r => r.date),
+                      y: interestRatesHistoricalData.rates.filter(r => r.security_type && r.security_type.includes('Treasury Bills')).slice(0, 100).map(r => parseFloat(r.rate_percent) || 0),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Treasury Bills',
+                      line: { color: '#667eea', width: 2 }
+                    },
+                    {
+                      x: interestRatesHistoricalData.rates.filter(r => r.security_type && r.security_type.includes('Treasury Notes')).slice(0, 100).map(r => r.date),
+                      y: interestRatesHistoricalData.rates.filter(r => r.security_type && r.security_type.includes('Treasury Notes')).slice(0, 100).map(r => parseFloat(r.rate_percent) || 0),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Treasury Notes',
+                      line: { color: '#764ba2', width: 2 }
+                    },
+                    {
+                      x: interestRatesHistoricalData.rates.filter(r => r.security_type && r.security_type.includes('Treasury Bonds')).slice(0, 100).map(r => r.date),
+                      y: interestRatesHistoricalData.rates.filter(r => r.security_type && r.security_type.includes('Treasury Bonds')).slice(0, 100).map(r => parseFloat(r.rate_percent) || 0),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Treasury Bonds',
+                      line: { color: '#4CAF50', width: 2 }
+                    }
+                  ]}
+                  layout={{
+                    title: 'Long-Term Treasury Rate Trends',
+                    xaxis: { title: 'Date' },
+                    yaxis: { title: 'Interest Rate (%)' },
+                    legend: { x: 0, y: 1 },
+                    margin: { t: 40, r: 20, b: 60, l: 60 }
+                  }}
+                  config={{ displayModeBar: true, displaylogo: false }}
+                  style={{ width: '100%', height: '480px' }}
+                />
+              </div>
+            </DraggableResizablePanel>
+          )}
           </div>
         )}
 
         {/* Unemployment View */}
         {activeView === 'unemployment' && unemploymentData && (
-          <div className="unemployment-results" style={{ position: 'relative', minHeight: '700px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '700px' }}>
           <DraggableResizablePanel
             id="unemploymentChart"
             title="👔 Unemployment Rate"
@@ -667,6 +869,92 @@ function EconomyView() {
                 config={{ displayModeBar: true, displaylogo: false }}
                 style={{ width: '100%', height: '450px' }}
               />
+            </div>
+          </DraggableResizablePanel>
+          </div>
+        )}
+
+        {/* Market Indices View (Moved from AI Tab) */}
+        {activeView === 'indices' && (
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '1100px' }}>
+            <h3 style={{ padding: '20px 20px 0' }}>Major Market Indices (30 Days)</h3>
+            {['SPY', 'DJIA', 'NDAQ', 'IWM'].map(index => (
+              indexData[index] && (
+                <DraggableResizablePanel
+                  key={index}
+                  id={`indices${index}`}
+                  title={`📊 ${index} - ${index === 'SPY' ? 'S&P 500' : index === 'DJIA' ? 'Dow Jones' : index === 'NDAQ' ? 'NASDAQ' : 'Russell 2000'}`}
+                  position={chartPanels[`indices${index}`].position}
+                  size={chartPanels[`indices${index}`].size}
+                  onPositionChange={(position) => updatePanelPosition(`indices${index}`, position)}
+                  onSizeChange={(size) => updatePanelSize(`indices${index}`, size)}
+                  onFocus={() => handlePanelFocus(`indices${index}`)}
+                  zIndex={getPanelZIndex(`indices${index}`)}
+                  minWidth={500}
+                  minHeight={400}
+                >
+                  <div className="chart-container">
+                    <Plot 
+                      data={indexData[index].chart.data} 
+                      layout={{
+                        ...indexData[index].chart.layout,
+                        autosize: true
+                      }}
+                      style={{ width: '100%', height: 'calc(100% - 10px)' }}
+                      useResizeHandler={true}
+                      config={{ responsive: true, displaylogo: false }}
+                    />
+                  </div>
+                </DraggableResizablePanel>
+              )
+            ))}
+          </div>
+        )}
+
+        {/* Commodities View */}
+        {activeView === 'commodities' && commoditiesData && (
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '600px' }}>
+          <DraggableResizablePanel
+            id="commoditiesCard"
+            title="🛢️ Commodity Information"
+            position={chartPanels.commoditiesCard.position}
+            size={chartPanels.commoditiesCard.size}
+            onPositionChange={(position) => updatePanelPosition('commoditiesCard', position)}
+            onSizeChange={(size) => updatePanelSize('commoditiesCard', size)}
+            onFocus={() => handlePanelFocus('commoditiesCard')}
+            zIndex={getPanelZIndex('commoditiesCard')}
+            minConstraints={[500, 350]}
+          >
+            <div style={{ padding: '20px' }}>
+              <div style={{ marginBottom: '20px', fontSize: '13px', color: '#666' }}>
+                <span style={{ color: '#667eea' }}>Cached until: {new Date(commoditiesData.cache_expires).toLocaleDateString()}</span>
+              </div>
+              
+              <div style={{ marginBottom: '20px', padding: '15px', background: '#fff3cd', borderRadius: '8px', border: '1px solid #ffc107' }}>
+                <strong>ℹ️ Note:</strong> {commoditiesData.note}
+              </div>
+
+              <div style={{ display: 'grid', gap: '15px' }}>
+                {commoditiesData.commodities.map((commodity, index) => (
+                  <div key={index} style={{ 
+                    padding: '20px', 
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                    borderRadius: '12px',
+                    color: 'white'
+                  }}>
+                    <h4 style={{ marginBottom: '10px', fontSize: '18px' }}>{commodity.name}</h4>
+                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                      <strong>Symbol:</strong> {commodity.symbol}
+                    </div>
+                    <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                      {commodity.description}
+                    </div>
+                    <div style={{ fontSize: '12px', marginTop: '10px', opacity: 0.8, fontStyle: 'italic' }}>
+                      {commodity.note}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </DraggableResizablePanel>
           </div>
