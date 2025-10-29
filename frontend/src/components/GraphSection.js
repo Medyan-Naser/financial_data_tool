@@ -23,6 +23,7 @@ const GraphSection = ({ financialData }) => {
   const [graphData, setGraphData] = useState(null);
   const [selectedTab, setSelectedTab] = useState("income");
   const [yearRange, setYearRange] = useState(null);
+  const [activePreset, setActivePreset] = useState('ALL');
 
   // Ensure financialData exists and has tab1 and tab2
   const tabData = {
@@ -122,6 +123,57 @@ const GraphSection = ({ financialData }) => {
 
   return (
     <div className="graph-section-container">
+      <div className="time-presets">
+        {(() => {
+          const years = getAvailableYears();
+          const minY = years[0];
+          const maxY = years[years.length - 1];
+          const setPreset = (n) => {
+            if (!years.length) return;
+            setActivePreset(n);
+            if (n === 'ALL') { 
+              setYearRange([minY, maxY]); 
+              return; 
+            }
+            const start = Math.max(minY, maxY - (n - 1));
+            setYearRange([start, maxY]);
+          };
+          return (
+            <div className="btn-group" style={{ marginBottom: 12 }}>
+              <button 
+                className={`btn-secondary ${activePreset === 1 ? 'active' : ''}`} 
+                onClick={() => setPreset(1)}
+              >
+                1Y
+              </button>
+              <button 
+                className={`btn-secondary ${activePreset === 3 ? 'active' : ''}`} 
+                onClick={() => setPreset(3)}
+              >
+                3Y
+              </button>
+              <button 
+                className={`btn-secondary ${activePreset === 5 ? 'active' : ''}`} 
+                onClick={() => setPreset(5)}
+              >
+                5Y
+              </button>
+              <button 
+                className={`btn-secondary ${activePreset === 10 ? 'active' : ''}`} 
+                onClick={() => setPreset(10)}
+              >
+                10Y
+              </button>
+              <button 
+                className={`btn-secondary ${activePreset === 'ALL' ? 'active' : ''}`} 
+                onClick={() => setPreset('ALL')}
+              >
+                All
+              </button>
+            </div>
+          );
+        })()}
+      </div>
       {/* Graph type selection */}
       <div className="graph-type-selector">
         <label htmlFor="graphType">Graph Type:</label>

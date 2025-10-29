@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  LineChart, Line, BarChart, Bar, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  LineChart, Line, BarChart, Bar, AreaChart, Area, ScatterChart, Scatter,
+  ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
 } from 'recharts';
 import ResizablePanel from './ResizablePanel';
 import YearRangeSlider from './YearRangeSlider';
@@ -97,16 +97,63 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
     return { filteredColumns, filteredIndices };
   };
 
+  const applyAnalysisMode = (chartData, analysisMode) => {
+    if (!chartData || chartData.length === 0) return chartData;
+    
+    if (analysisMode === 'growth') {
+      // Calculate year-over-year growth percentage
+      return chartData.map((point, idx) => {
+        if (idx === 0) return null; // Skip first point (no previous to compare)
+        
+        const newPoint = { date: point.date };
+        Object.keys(point).forEach(key => {
+          if (key !== 'date') {
+            const current = parseFloat(point[key]) || 0;
+            const previous = parseFloat(chartData[idx - 1][key]) || 0;
+            if (previous !== 0) {
+              newPoint[key] = ((current - previous) / Math.abs(previous)) * 100;
+            } else {
+              newPoint[key] = 0;
+            }
+          }
+        });
+        return newPoint;
+      }).filter(p => p !== null);
+    } else if (analysisMode === 'ratio') {
+      // Express all metrics as percentage of first metric
+      const firstMetricKey = Object.keys(chartData[0]).find(k => k !== 'date');
+      if (!firstMetricKey) return chartData;
+      
+      return chartData.map(point => {
+        const newPoint = { date: point.date };
+        const baseValue = parseFloat(point[firstMetricKey]) || 1;
+        
+        Object.keys(point).forEach(key => {
+          if (key !== 'date') {
+            newPoint[key] = ((parseFloat(point[key]) || 0) / baseValue) * 100;
+          }
+        });
+        return newPoint;
+      });
+    }
+    
+    return chartData; // absolute mode - no transformation
+  };
+
   const formatChartData = (chart) => {
-    const { data, columns, comparisonTicker, selectedRowNames } = chart;
+    const { data, columns, comparisonTicker, selectedRowNames, analysisMode = 'absolute' } = chart;
     const comparison = comparisonData[chart.id];
     
     // Filter columns by year range
     const { filteredColumns, filteredIndices } = filterColumnsByYearRange(columns);
     
+    // Reverse the order to show oldest to newest (chronological order)
+    const reversedColumns = [...filteredColumns].reverse();
+    const reversedIndices = [...filteredIndices].reverse();
+    
     // Transform data to format needed by recharts
-    const chartData = filteredColumns.map((col, filteredIndex) => {
-      const colIndex = filteredIndices[filteredIndex];
+    let chartData = reversedColumns.map((col, filteredIndex) => {
+      const colIndex = reversedIndices[filteredIndex];
       const point = { date: col };
       
       // Add primary ticker data (use original colIndex from unfiltered data)
@@ -133,6 +180,9 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
       
       return point;
     });
+    
+    // Apply analysis mode transformation
+    chartData = applyAnalysisMode(chartData, analysisMode);
     
     return chartData;
   };
@@ -206,6 +256,27 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
           </ResponsiveContainer>
         );
 
+      case 'stacked-bar':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" angle={-45} textAnchor="end" height={80} />
+              <YAxis tickFormatter={(value) => formatValue(value)} />
+              <Tooltip formatter={(value) => formatValue(value)} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} />
+              {seriesKeys.map((key, idx) => (
+                <Bar
+                  key={key}
+                  dataKey={key}
+                  stackId="a"
+                  fill={getRandomColor(idx)}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
       case 'area':
         return (
           <ResponsiveContainer {...commonProps}>
@@ -226,6 +297,87 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
                 />
               ))}
             </AreaChart>
+          </ResponsiveContainer>
+        );
+
+      case 'stacked-area':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <AreaChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" angle={-45} textAnchor="end" height={80} />
+              <YAxis tickFormatter={(value) => formatValue(value)} />
+              <Tooltip formatter={(value) => formatValue(value)} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} />
+              {seriesKeys.map((key, idx) => (
+                <Area
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  stackId="1"
+                  stroke={getRandomColor(idx)}
+                  fill={getRandomColor(idx)}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        );
+
+      case 'scatter':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <ScatterChart>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" angle={-45} textAnchor="end" height={80} name="Date" />
+              <YAxis domain={yDomain} tickFormatter={(value) => formatValue(value)} />
+              <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value) => formatValue(value)} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} />
+              {seriesKeys.map((key, idx) => (
+                <Scatter
+                  key={key}
+                  name={key}
+                  data={chartData.map(d => ({ date: d.date, value: d[key] }))}
+                  fill={getRandomColor(idx)}
+                  dataKey="value"
+                />
+              ))}
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+
+      case 'composed':
+        return (
+          <ResponsiveContainer {...commonProps}>
+            <ComposedChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" angle={-45} textAnchor="end" height={80} />
+              <YAxis domain={yDomain} tickFormatter={(value) => formatValue(value)} />
+              <Tooltip formatter={(value) => formatValue(value)} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} />
+              {seriesKeys.map((key, idx) => {
+                // Alternate between bars and lines for visual variety
+                if (idx % 2 === 0) {
+                  return (
+                    <Bar
+                      key={key}
+                      dataKey={key}
+                      fill={getRandomColor(idx)}
+                    />
+                  );
+                } else {
+                  return (
+                    <Line
+                      key={key}
+                      type="monotone"
+                      dataKey={key}
+                      stroke={getRandomColor(idx)}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  );
+                }
+              })}
+            </ComposedChart>
           </ResponsiveContainer>
         );
 
@@ -327,6 +479,9 @@ function ChartManager({ charts, onRemoveChart, ticker }) {
         <small>
           Type: {chart.type.charAt(0).toUpperCase() + chart.type.slice(1)} | 
           Metrics: {chart.data.length}
+          {chart.analysisMode && chart.analysisMode !== 'absolute' && (
+            <span> | Mode: {chart.analysisMode === 'growth' ? 'YoY Growth %' : chart.analysisMode === 'ratio' ? '% of First Metric' : 'Absolute'}</span>
+          )}
           {chart.comparisonTicker && comparisonData[chart.id] && (
             <span> | Comparing with {Object.keys(comparisonData[chart.id] || {}).join(', ')}</span>
           )}

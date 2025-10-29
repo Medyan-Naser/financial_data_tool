@@ -6,8 +6,14 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
   const [chartType, setChartType] = useState('line');
   const [showChartBuilder, setShowChartBuilder] = useState(false);
   const [comparisonTicker, setComparisonTicker] = useState('');
+  const [analysisMode, setAnalysisMode] = useState('absolute'); // absolute, growth, ratio
+  const [viewMode, setViewMode] = useState('clean'); // 'clean' or 'raw'
 
-  const { columns, row_names, data: tableData } = data;
+  // Choose data based on view mode
+  const hasRawData = data.raw_data && data.raw_row_names;
+  const displayColumns = data.columns;
+  const displayRowNames = viewMode === 'raw' && hasRawData ? data.raw_row_names : data.row_names;
+  const displayData = viewMode === 'raw' && hasRawData ? data.raw_data : data.data;
 
   const handleCreateChart = () => {
     if (selectedRows.length === 0) {
@@ -28,7 +34,8 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
       ticker: ticker,
       statementType: statementType,
       selectedRowNames: selectedRows.map(idx => row_names[idx]),
-      comparisonTicker: comparisonTicker || null
+      comparisonTicker: comparisonTicker || null,
+      analysisMode: analysisMode
     });
 
     // Don't reset selections to allow creating multiple charts
@@ -53,9 +60,34 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
   return (
     <div className="financial-table-container">
       <div className="table-controls">
+        {/* View Mode Toggle */}
+        <div className="view-toggle">
+          <button 
+            className={`toggle-btn ${viewMode === 'clean' ? 'active' : ''}`}
+            onClick={() => setViewMode('clean')}
+          >
+            📊 Clean View
+          </button>
+          <button 
+            className={`toggle-btn ${viewMode === 'raw' ? 'active' : ''}`}
+            onClick={() => setViewMode('raw')}
+            disabled={!hasRawData}
+            title={hasRawData ? 'Show all original rows from SEC filing' : 'Raw data not available'}
+          >
+            🔍 Raw View (Debug)
+          </button>
+          {viewMode === 'raw' && hasRawData && (
+            <span className="row-count">
+              {data.raw_row_count || data.raw_row_names.length} rows
+            </span>
+          )}
+        </div>
+        
         <button 
           className="btn-create-chart"
           onClick={() => setShowChartBuilder(!showChartBuilder)}
+          disabled={viewMode === 'raw'}
+          title={viewMode === 'raw' ? 'Charts only available in Clean View' : ''}
         >
           {showChartBuilder ? 'Hide Chart Builder' : '📈 Create Chart'}
         </button>
@@ -82,9 +114,26 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
                 onChange={(e) => setChartType(e.target.value)}
                 className="chart-type-select"
               >
-                <option value="line">Line Chart</option>
-                <option value="bar">Bar Chart</option>
-                <option value="area">Area Chart</option>
+                <option value="line">📈 Line Chart</option>
+                <option value="bar">📊 Bar Chart</option>
+                <option value="area">📉 Area Chart</option>
+                <option value="stacked-bar">📚 Stacked Bar Chart</option>
+                <option value="stacked-area">🌊 Stacked Area Chart</option>
+                <option value="scatter">🔵 Scatter Plot</option>
+                <option value="composed">🎯 Composed Chart (Line + Bar)</option>
+              </select>
+            </div>
+
+            <div className="option-group">
+              <label>Analysis Mode:</label>
+              <select 
+                value={analysisMode} 
+                onChange={(e) => setAnalysisMode(e.target.value)}
+                className="analysis-mode-select"
+              >
+                <option value="absolute">Absolute Values</option>
+                <option value="growth">Year-over-Year Growth %</option>
+                <option value="ratio">As % of First Metric</option>
               </select>
             </div>
 
@@ -111,26 +160,33 @@ function FinancialTable({ data, statementType, ticker, onAddChart }) {
         </div>
       )}
 
+      {viewMode === 'raw' && (
+        <div className="raw-view-info">
+          ℹ️ Raw View shows all original rows from the SEC filing with human-readable labels.
+          Use this for debugging and validation. Switch to Clean View for mapped/standardized data.
+        </div>
+      )}
+
       <div className="table-wrapper">
-        <table className="financial-table">
+        <table className={`financial-table ${viewMode === 'raw' ? 'raw-view' : ''}`}>
           <thead>
             <tr>
               <th className="row-name-col">Metric</th>
-              {columns.map((col, idx) => (
+              {displayColumns.map((col, idx) => (
                 <th key={idx}>{col}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {row_names.map((rowName, rowIndex) => (
+            {displayRowNames.map((rowName, rowIndex) => (
               <tr 
                 key={rowIndex}
-                className={selectedRows.includes(rowIndex) ? 'row-selected' : ''}
+                className={selectedRows.includes(rowIndex) && viewMode === 'clean' ? 'row-selected' : ''}
               >
-                <td className="row-name-col" title={rowName}>
+                <td className={`row-name-col ${viewMode === 'raw' ? 'raw-label' : ''}`} title={rowName}>
                   {rowName}
                 </td>
-                {tableData[rowIndex].map((value, colIndex) => (
+                {displayData[rowIndex].map((value, colIndex) => (
                   <td key={colIndex} className="data-cell">
                     {formatValue(value)}
                   </td>

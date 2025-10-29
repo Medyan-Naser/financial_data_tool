@@ -17,6 +17,10 @@ function AIView() {
   const [volatilityData, setVolatilityData] = useState(null);
   const [indexData, setIndexData] = useState({});
   
+  // Z-index management for panels
+  const [activePanelId, setActivePanelId] = useState(null);
+  const [panelZIndexes, setPanelZIndexes] = useState({});
+  
   // Panel state for draggable/resizable charts
   const [chartPanels, setChartPanels] = useState({
     actualVsPredicted: { position: { x: 20, y: 20 }, size: { width: 800, height: 450 } },
@@ -45,6 +49,24 @@ function AIView() {
       ...prev,
       [panelId]: { ...prev[panelId], size }
     }));
+  };
+
+  // Handle panel focus - bring to front
+  const handlePanelFocus = (panelId) => {
+    setActivePanelId(panelId);
+    // Assign z-index based on order of interaction
+    setPanelZIndexes(prev => {
+      const maxZ = Math.max(1, ...Object.values(prev));
+      return {
+        ...prev,
+        [panelId]: maxZ + 1
+      };
+    });
+  };
+
+  // Get z-index for a panel (default to 1 if not set)
+  const getPanelZIndex = (panelId) => {
+    return panelZIndexes[panelId] || 1;
   };
 
   const runStockForecast = async () => {
@@ -252,6 +274,8 @@ function AIView() {
                     size={chartPanels.actualVsPredicted.size}
                     onPositionChange={(pos) => updatePanelPosition('actualVsPredicted', pos)}
                     onSizeChange={(size) => updatePanelSize('actualVsPredicted', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('actualVsPredicted')}
                     minWidth={400}
                     minHeight={300}
                   >
@@ -273,6 +297,8 @@ function AIView() {
                     size={chartPanels.forecast.size}
                     onPositionChange={(pos) => updatePanelPosition('forecast', pos)}
                     onSizeChange={(size) => updatePanelSize('forecast', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('forecast')}
                     minWidth={400}
                     minHeight={300}
                   >
@@ -294,6 +320,8 @@ function AIView() {
                     size={chartPanels.trainingLoss.size}
                     onPositionChange={(pos) => updatePanelPosition('trainingLoss', pos)}
                     onSizeChange={(size) => updatePanelSize('trainingLoss', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('trainingLoss')}
                     minWidth={400}
                     minHeight={250}
                   >
@@ -308,39 +336,41 @@ function AIView() {
                       />
                     </div>
                   </DraggableResizablePanel>
-                </div>
 
-                <DraggableResizablePanel
-                  id="forecastTable"
-                  position={chartPanels.forecastTable.position}
-                  size={chartPanels.forecastTable.size}
-                  onPositionChange={(pos) => updatePanelPosition('forecastTable', pos)}
-                  onSizeChange={(size) => updatePanelSize('forecastTable', size)}
-                  minWidth={350}
-                  minHeight={300}
-                >
-                  <div className="forecast-table" style={{ height: '100%', overflow: 'auto' }}>
-                    <h4>Forecast Data</h4>
-                    <div className="table-wrapper">
-                      <table className="financial-table">
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Predicted Price</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {forecastData.forecast_data.map((row, idx) => (
-                            <tr key={idx}>
-                              <td>{Object.keys(row)[0]}</td>
-                              <td>${Object.values(row)[0].toFixed(2)}</td>
+                  <DraggableResizablePanel
+                    id="forecastTable"
+                    position={chartPanels.forecastTable.position}
+                    size={chartPanels.forecastTable.size}
+                    onPositionChange={(pos) => updatePanelPosition('forecastTable', pos)}
+                    onSizeChange={(size) => updatePanelSize('forecastTable', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('forecastTable')}
+                    minWidth={350}
+                    minHeight={300}
+                  >
+                    <div className="forecast-table" style={{ height: '100%', overflow: 'auto' }}>
+                      <h4>Forecast Data</h4>
+                      <div className="table-wrapper">
+                        <table className="financial-table">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Predicted Price</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {forecastData.forecast_data.map((row, idx) => (
+                              <tr key={idx}>
+                                <td>{Object.keys(row)[0]}</td>
+                                <td>${Object.values(row)[0].toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                </DraggableResizablePanel>
+                  </DraggableResizablePanel>
+                </div>
               </div>
             )}
           </div>
@@ -363,6 +393,8 @@ function AIView() {
                     size={chartPanels.returns.size}
                     onPositionChange={(pos) => updatePanelPosition('returns', pos)}
                     onSizeChange={(size) => updatePanelSize('returns', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('returns')}
                     minWidth={400}
                     minHeight={300}
                   >
@@ -384,6 +416,8 @@ function AIView() {
                     size={chartPanels.rollingVolatility.size}
                     onPositionChange={(pos) => updatePanelPosition('rollingVolatility', pos)}
                     onSizeChange={(size) => updatePanelSize('rollingVolatility', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('rollingVolatility')}
                     minWidth={400}
                     minHeight={300}
                   >
@@ -405,6 +439,8 @@ function AIView() {
                     size={chartPanels.volatilityForecast.size}
                     onPositionChange={(pos) => updatePanelPosition('volatilityForecast', pos)}
                     onSizeChange={(size) => updatePanelSize('volatilityForecast', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('volatilityForecast')}
                     minWidth={400}
                     minHeight={300}
                   >
@@ -419,22 +455,24 @@ function AIView() {
                       />
                     </div>
                   </DraggableResizablePanel>
-                </div>
 
-                <DraggableResizablePanel
-                  id="garchSummary"
-                  position={chartPanels.garchSummary.position}
-                  size={chartPanels.garchSummary.size}
-                  onPositionChange={(pos) => updatePanelPosition('garchSummary', pos)}
-                  onSizeChange={(size) => updatePanelSize('garchSummary', size)}
-                  minWidth={400}
-                  minHeight={300}
-                >
-                  <div className="model-summary" style={{ height: '100%', overflow: 'auto' }}>
-                    <h4>GARCH Model Summary</h4>
-                    <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{volatilityData.model_summary}</pre>
-                  </div>
-                </DraggableResizablePanel>
+                  <DraggableResizablePanel
+                    id="garchSummary"
+                    position={chartPanels.garchSummary.position}
+                    size={chartPanels.garchSummary.size}
+                    onPositionChange={(pos) => updatePanelPosition('garchSummary', pos)}
+                    onSizeChange={(size) => updatePanelSize('garchSummary', size)}
+                    onFocus={handlePanelFocus}
+                    zIndex={getPanelZIndex('garchSummary')}
+                    minWidth={400}
+                    minHeight={300}
+                  >
+                    <div className="model-summary" style={{ height: '100%', overflow: 'auto' }}>
+                      <h4>GARCH Model Summary</h4>
+                      <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{volatilityData.model_summary}</pre>
+                    </div>
+                  </DraggableResizablePanel>
+                </div>
               </div>
             )}
           </div>
@@ -452,6 +490,8 @@ function AIView() {
                 size={chartPanels[`index${index}`].size}
                 onPositionChange={(pos) => updatePanelPosition(`index${index}`, pos)}
                 onSizeChange={(size) => updatePanelSize(`index${index}`, size)}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex(`index${index}`)}
                 minWidth={400}
                 minHeight={300}
               >

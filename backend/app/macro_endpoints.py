@@ -91,7 +91,14 @@ async def get_debt_to_gdp_data():
     """
     Get debt to GDP ratio data.
     """
-    raise HTTPException(status_code=503, detail="Temporarily unavailable due to Yahoo Finance rate limiting. Try FRED API endpoints like inflation and unemployment instead.")
+    try:
+        from debt_to_gdp import get_debt_to_gdp_vis
+        chart = get_debt_to_gdp_vis()
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching debt to GDP data: {str(e)}")
 
 
 @router.get("/api/macro/dollar-index")
@@ -99,7 +106,14 @@ async def get_dollar_index_data():
     """
     Get dollar index data.
     """
-    raise HTTPException(status_code=503, detail="Temporarily unavailable due to Yahoo Finance rate limiting. Try FRED API endpoints like inflation and unemployment instead.")
+    try:
+        from dollar_index import get_dollar_index_vis
+        chart = get_dollar_index_vis()
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching dollar index data: {str(e)}")
 
 
 @router.get("/api/macro/velocity")
@@ -107,7 +121,14 @@ async def get_velocity_data():
     """
     Get money velocity data.
     """
-    raise HTTPException(status_code=503, detail="Temporarily unavailable due to FRED API dependency. Will be available when FRED API key is configured.")
+    try:
+        from velocity import get_velocity_vis
+        chart = get_velocity_vis()
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching velocity data: {str(e)}")
 
 
 @router.get("/api/macro/unemployment")
@@ -132,7 +153,28 @@ async def get_real_estate_data():
     """
     Get real estate data.
     """
-    raise HTTPException(status_code=503, detail="Temporarily unavailable due to FRED API dependency. Will be available when FRED API key is configured.")
+    try:
+        from realestate import get_re_vis
+        chart = get_re_vis()
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching real estate data: {str(e)}")
+
+@router.get("/api/macro/markets")
+async def get_markets_data():
+    """
+    Get key market indicators (gold, silver, oil, bitcoin, ethereum, dollar index) with YTD and YoY.
+    """
+    try:
+        from markets import get_markets_table, markets_json
+        return JSONResponse(content={
+            "data": markets_json,
+            "chart": json.loads(get_markets_table().to_json())
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching markets data: {str(e)}")
 
 
 @router.get("/api/macro/bonds")
@@ -175,6 +217,82 @@ async def get_yield_curve_data():
         raise HTTPException(status_code=500, detail=f"Error fetching yield curve data: {str(e)}")
 
 
+@router.get("/api/macro/gdp-growth")
+async def get_gdp_growth_data():
+    """
+    Get US GDP growth rate data.
+    """
+    try:
+        from gdp_growth import get_gdp_growth_vis
+        chart = get_gdp_growth_vis()
+        if chart is None:
+            raise HTTPException(status_code=503, detail="GDP data temporarily unavailable. The FRED API may be experiencing issues.")
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching GDP growth data: {str(e)}")
+
+
+@router.get("/api/macro/consumer-sentiment")
+async def get_consumer_sentiment_data():
+    """
+    Get consumer sentiment index data.
+    """
+    try:
+        from gdp_growth import get_consumer_sentiment_vis
+        chart = get_consumer_sentiment_vis()
+        if chart is None:
+            raise HTTPException(status_code=503, detail="Consumer sentiment data temporarily unavailable. The FRED API may be experiencing issues.")
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching consumer sentiment data: {str(e)}")
+
+
+@router.get("/api/macro/pmi")
+async def get_pmi_data():
+    """
+    Get ISM Manufacturing PMI data.
+    """
+    try:
+        from gdp_growth import get_pmi_vis
+        chart = get_pmi_vis()
+        if chart is None:
+            raise HTTPException(status_code=503, detail="PMI data temporarily unavailable. The FRED API may be experiencing issues.")
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching PMI data: {str(e)}")
+
+
+@router.get("/api/macro/retail-sales")
+async def get_retail_sales_data():
+    """
+    Get retail sales data.
+    """
+    try:
+        from gdp_growth import get_retail_sales_vis
+        chart = get_retail_sales_vis()
+        if chart is None:
+            raise HTTPException(status_code=503, detail="Retail sales data temporarily unavailable. The FRED API may be experiencing issues.")
+        return JSONResponse(content={
+            "chart": json.loads(chart.to_json())
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching retail sales data: {str(e)}")
+
+
 @router.get("/api/macro/overview")
 async def get_macro_overview():
     """
@@ -194,6 +312,30 @@ async def get_macro_overview():
                     "description": "Current unemployment rate in the United States",
                     "available": True,
                     "section": "unemployment"
+                },
+                {
+                    "name": "GDP Growth",
+                    "description": "Real GDP growth rate (quarterly % change)",
+                    "available": True,
+                    "section": "gdp-growth"
+                },
+                {
+                    "name": "Consumer Sentiment",
+                    "description": "University of Michigan Consumer Sentiment Index",
+                    "available": True,
+                    "section": "consumer-sentiment"
+                },
+                {
+                    "name": "Manufacturing PMI",
+                    "description": "ISM Manufacturing Purchasing Managers Index",
+                    "available": True,
+                    "section": "pmi"
+                },
+                {
+                    "name": "Retail Sales",
+                    "description": "US retail and food services sales",
+                    "available": True,
+                    "section": "retail-sales"
                 },
                 {
                     "name": "Treasury Yield Curve",

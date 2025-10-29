@@ -9,11 +9,22 @@ from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 # from keras.preprocessing.sequence import TimeseriesGenerator
 import pandas as pd
 import numpy as np
-import yfinance as yf
+import sys
+import os
 import plotly.express as px
 from get_stock_prices import *
 import contextlib
 import io
+
+# Add parent directory to path for cached_yfinance
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# Use cached yfinance to avoid rate limiting
+try:
+    import cached_yfinance as yf
+except ImportError:
+    import yfinance as yf
+    print("Warning: Using direct yfinance - caching not available")
 
 def window_data(df, window, feature_col_number, target_col_number):
     """

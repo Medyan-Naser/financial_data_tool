@@ -165,7 +165,7 @@ body {
 }
 
 .canvas-container::before {
-  content: 'Drag panels by the purple header • Resize from edges/corners • Blue guides show alignment suggestions';
+  /* content: 'Drag panels by the purple header • Resize from edges/corners • Blue guides show alignment suggestions'; */
   position: absolute;
   top: -30px;
   left: 0;
@@ -885,7 +885,7 @@ body {
 
 .macro-overview h3 {
   margin-bottom: 10px;
-  color: #667eea;
+  color: black;
 }
 
 .macro-overview .overview-subtitle {
