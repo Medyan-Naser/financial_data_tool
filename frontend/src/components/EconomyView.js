@@ -21,6 +21,7 @@ function EconomyView() {
   
   // Historical data states
   const [cryptoHistoricalData, setCryptoHistoricalData] = useState({});
+  const [metalsHistoricalData, setMetalsHistoricalData] = useState(null);
   const [interestRatesHistoricalData, setInterestRatesHistoricalData] = useState(null);
   const [indexData, setIndexData] = useState({});
   const [commoditiesData, setCommoditiesData] = useState(null);
@@ -34,13 +35,15 @@ function EconomyView() {
     currencyTable: { position: { x: 20, y: 20 }, size: { width: 600, height: 500 } },
     cryptoTable: { position: { x: 20, y: 20 }, size: { width: 900, height: 600 } },
     metalsCard: { position: { x: 20, y: 20 }, size: { width: 600, height: 350 } },
+    metalsHistoricalChart: { position: { x: 640, y: 20 }, size: { width: 900, height: 550 } },
     gdpChart: { position: { x: 20, y: 20 }, size: { width: 900, height: 550 } },
     inflationChart: { position: { x: 20, y: 20 }, size: { width: 900, height: 550 } },
     interestRatesTable: { position: { x: 20, y: 20 }, size: { width: 900, height: 600 } },
     interestRatesChart: { position: { x: 20, y: 640 }, size: { width: 900, height: 500 } },
     interestRatesHistoricalChart: { position: { x: 20, y: 1160 }, size: { width: 900, height: 550 } },
     unemploymentChart: { position: { x: 20, y: 20 }, size: { width: 900, height: 550 } },
-    cryptoHistoricalChart: { position: { x: 20, y: 640 }, size: { width: 900, height: 500 } },
+    cryptoHistoricalBitcoin: { position: { x: 20, y: 640 }, size: { width: 900, height: 500 } },
+    cryptoHistoricalEthereum: { position: { x: 940, y: 640 }, size: { width: 900, height: 500 } },
     indicesSPY: { position: { x: 20, y: 20 }, size: { width: 700, height: 500 } },
     indicesDJIA: { position: { x: 740, y: 20 }, size: { width: 700, height: 500 } },
     indicesNDAQ: { position: { x: 20, y: 540 }, size: { width: 700, height: 500 } },
@@ -185,7 +188,7 @@ function EconomyView() {
   };
 
   // Fetch Crypto Historical Data
-  const fetchCryptoHistorical = async (symbol = 'bitcoin', days = 365) => {
+  const fetchCryptoHistorical = async (symbol = 'bitcoin', days = '365') => {
     setLoading(true);
     setError(null);
     try {
@@ -193,6 +196,21 @@ function EconomyView() {
       setCryptoHistoricalData(prev => ({ ...prev, [symbol]: response.data }));
     } catch (err) {
       setError(`Error fetching crypto historical: ${err.message}`);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Metals Historical Data
+  const fetchMetalsHistorical = async (years = 5) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/economy/metals/historical?years=${years}`);
+      setMetalsHistoricalData(response.data);
+    } catch (err) {
+      setError(`Error fetching metals historical: ${err.message}`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -305,13 +323,13 @@ function EconomyView() {
         </button>
         <button 
           className={`section-btn ${activeView === 'crypto' ? 'active' : ''}`}
-          onClick={() => { setActiveView('crypto'); fetchCryptoData(); fetchCryptoHistorical('bitcoin', 365); fetchCryptoHistorical('ethereum', 365); }}
+          onClick={() => { setActiveView('crypto'); fetchCryptoData(); fetchCryptoHistorical('bitcoin', '365'); fetchCryptoHistorical('ethereum', '365'); }}
         >
           ₿ Crypto
         </button>
         <button 
           className={`section-btn ${activeView === 'metals' ? 'active' : ''}`}
-          onClick={() => { setActiveView('metals'); fetchMetalsData(); }}
+          onClick={() => { setActiveView('metals'); fetchMetalsData(); fetchMetalsHistorical(5); }}
         >
           🥇 Metals
         </button>
@@ -499,19 +517,19 @@ function EconomyView() {
           {/* Crypto Historical Chart - Bitcoin */}
           {cryptoHistoricalData.bitcoin && (
             <DraggableResizablePanel
-              id="cryptoHistoricalChart"
-              title="₿ Bitcoin Historical Price (1 Year)"
-              position={chartPanels.cryptoHistoricalChart.position}
-              size={chartPanels.cryptoHistoricalChart.size}
-              onPositionChange={(position) => updatePanelPosition('cryptoHistoricalChart', position)}
-              onSizeChange={(size) => updatePanelSize('cryptoHistoricalChart', size)}
-              onFocus={() => handlePanelFocus('cryptoHistoricalChart')}
-              zIndex={getPanelZIndex('cryptoHistoricalChart')}
+              id="cryptoHistoricalBitcoin"
+              title={`₿ Bitcoin - Historical Price (${cryptoHistoricalData.bitcoin.data_points} points)`}
+              position={chartPanels.cryptoHistoricalBitcoin.position}
+              size={chartPanels.cryptoHistoricalBitcoin.size}
+              onPositionChange={(position) => updatePanelPosition('cryptoHistoricalBitcoin', position)}
+              onSizeChange={(size) => updatePanelSize('cryptoHistoricalBitcoin', size)}
+              onFocus={() => handlePanelFocus('cryptoHistoricalBitcoin')}
+              zIndex={getPanelZIndex('cryptoHistoricalBitcoin')}
               minConstraints={[600, 400]}
             >
               <div style={{ padding: '15px' }}>
                 <div style={{ marginBottom: '15px', fontSize: '13px', color: '#666' }}>
-                  <span>{cryptoHistoricalData.bitcoin.data_points} data points over {cryptoHistoricalData.bitcoin.days} days | </span>
+                  <span>{cryptoHistoricalData.bitcoin.data_points} data points (1 year) | </span>
                   <span style={{ color: '#667eea' }}>Cached until: {new Date(cryptoHistoricalData.bitcoin.cache_expires).toLocaleDateString()}</span>
                 </div>
                 <Plot
@@ -526,7 +544,49 @@ function EconomyView() {
                     fillcolor: 'rgba(247, 147, 26, 0.1)'
                   }]}
                   layout={{
-                    title: 'Bitcoin Price History',
+                    title: 'Bitcoin Price History (1 Year)',
+                    xaxis: { title: 'Date' },
+                    yaxis: { title: 'Price (USD)' },
+                    margin: { t: 40, r: 20, b: 40, l: 60 }
+                  }}
+                  config={{ displayModeBar: true, displaylogo: false }}
+                  style={{ width: '100%', height: '420px' }}
+                />
+              </div>
+            </DraggableResizablePanel>
+          )}
+
+          {/* Crypto Historical Chart - Ethereum */}
+          {cryptoHistoricalData.ethereum && (
+            <DraggableResizablePanel
+              id="cryptoHistoricalEthereum"
+              title={`⟠ Ethereum - Historical Price (${cryptoHistoricalData.ethereum.data_points} points)`}
+              position={chartPanels.cryptoHistoricalEthereum.position}
+              size={chartPanels.cryptoHistoricalEthereum.size}
+              onPositionChange={(position) => updatePanelPosition('cryptoHistoricalEthereum', position)}
+              onSizeChange={(size) => updatePanelSize('cryptoHistoricalEthereum', size)}
+              onFocus={() => handlePanelFocus('cryptoHistoricalEthereum')}
+              zIndex={getPanelZIndex('cryptoHistoricalEthereum')}
+              minConstraints={[600, 400]}
+            >
+              <div style={{ padding: '15px' }}>
+                <div style={{ marginBottom: '15px', fontSize: '13px', color: '#666' }}>
+                  <span>{cryptoHistoricalData.ethereum.data_points} data points (1 year) | </span>
+                  <span style={{ color: '#667eea' }}>Cached until: {new Date(cryptoHistoricalData.ethereum.cache_expires).toLocaleDateString()}</span>
+                </div>
+                <Plot
+                  data={[{
+                    x: cryptoHistoricalData.ethereum.prices.map(p => p.date),
+                    y: cryptoHistoricalData.ethereum.prices.map(p => p.price_usd),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Ethereum Price',
+                    line: { color: '#627EEA', width: 2 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(98, 126, 234, 0.1)'
+                  }]}
+                  layout={{
+                    title: 'Ethereum Price History (1 Year)',
                     xaxis: { title: 'Date' },
                     yaxis: { title: 'Price (USD)' },
                     margin: { t: 40, r: 20, b: 40, l: 60 }
@@ -542,7 +602,7 @@ function EconomyView() {
 
         {/* Metals View */}
         {activeView === 'metals' && metalsData && (
-          <div className="forecast-results" style={{ position: 'relative', minHeight: '500px' }}>
+          <div className="forecast-results" style={{ position: 'relative', minHeight: '700px' }}>
           <DraggableResizablePanel
             id="metalsCard"
             title="🥇 Precious Metals Prices"
@@ -579,6 +639,76 @@ function EconomyView() {
               </div>
             </div>
           </DraggableResizablePanel>
+
+          {/* Metals Historical Chart */}
+          {metalsHistoricalData && (
+            <DraggableResizablePanel
+              id="metalsHistoricalChart"
+              title={`📊 Gold & Silver Historical Prices (${metalsHistoricalData.years} Years)`}
+              position={chartPanels.metalsHistoricalChart.position}
+              size={chartPanels.metalsHistoricalChart.size}
+              onPositionChange={(position) => updatePanelPosition('metalsHistoricalChart', position)}
+              onSizeChange={(size) => updatePanelSize('metalsHistoricalChart', size)}
+              onFocus={() => handlePanelFocus('metalsHistoricalChart')}
+              zIndex={getPanelZIndex('metalsHistoricalChart')}
+              minConstraints={[700, 450]}
+            >
+              <div style={{ padding: '15px' }}>
+                <div style={{ marginBottom: '15px', fontSize: '13px', color: '#666' }}>
+                  <span>{metalsHistoricalData.data_points} data points over {metalsHistoricalData.years} years | </span>
+                  <span style={{ color: '#667eea' }}>Cached until: {new Date(metalsHistoricalData.cache_expires).toLocaleDateString()}</span>
+                  {metalsHistoricalData.note && (
+                    <div style={{ marginTop: '8px', padding: '8px', background: '#fff3cd', borderRadius: '4px', color: '#856404', fontSize: '12px' }}>
+                      ℹ️ {metalsHistoricalData.note}
+                    </div>
+                  )}
+                </div>
+                <Plot
+                  data={[
+                    {
+                      x: metalsHistoricalData.gold.map(p => p.date),
+                      y: metalsHistoricalData.gold.map(p => p.price_usd_oz),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Gold',
+                      line: { color: '#FFD700', width: 2 },
+                      yaxis: 'y1'
+                    },
+                    {
+                      x: metalsHistoricalData.silver.map(p => p.date),
+                      y: metalsHistoricalData.silver.map(p => p.price_usd_oz),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: 'Silver',
+                      line: { color: '#C0C0C0', width: 2 },
+                      yaxis: 'y2'
+                    }
+                  ]}
+                  layout={{
+                    title: 'Historical Gold & Silver Prices',
+                    xaxis: { title: 'Date' },
+                    yaxis: { 
+                      title: 'Gold Price (USD/oz)', 
+                      side: 'left',
+                      titlefont: { color: '#FFD700' },
+                      tickfont: { color: '#FFD700' }
+                    },
+                    yaxis2: { 
+                      title: 'Silver Price (USD/oz)', 
+                      overlaying: 'y',
+                      side: 'right',
+                      titlefont: { color: '#C0C0C0' },
+                      tickfont: { color: '#C0C0C0' }
+                    },
+                    legend: { x: 0, y: 1 },
+                    margin: { t: 40, r: 60, b: 60, l: 60 }
+                  }}
+                  config={{ displayModeBar: true, displaylogo: false }}
+                  style={{ width: '100%', height: '480px' }}
+                />
+              </div>
+            </DraggableResizablePanel>
+          )}
           </div>
         )}
 
