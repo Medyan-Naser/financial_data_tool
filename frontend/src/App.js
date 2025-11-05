@@ -6,8 +6,8 @@ import ChartManager from './components/ChartManager';
 import TickerSearch from './components/TickerSearch';
 import DraggableResizablePanel from './components/DraggableResizablePanel';
 import AlignmentGuides from './components/AlignmentGuides';
-import MacroView from './components/MacroView';
 import AIView from './components/AIView';
+import EconomyView from './components/EconomyView';
 import DataCollectionProgress from './components/DataCollectionProgress';
 import { checkCacheStatus, getCachedFinancialData, collectFinancialData, refreshFinancialData } from './api';
 
@@ -474,7 +474,7 @@ function App() {
 
         {/* Economy Tab */}
         {activeMainTab === 'economy' && (
-          <MacroView />
+          <EconomyView />
         )}
 
         {/* AI Predictions Tab */}
