@@ -15,7 +15,6 @@ function AIView() {
   // AI Model Data
   const [forecastData, setForecastData] = useState(null);
   const [volatilityData, setVolatilityData] = useState(null);
-  const [indexData, setIndexData] = useState({});
   
   // Z-index management for panels
   const [activePanelId, setActivePanelId] = useState(null);
@@ -31,10 +30,6 @@ function AIView() {
     rollingVolatility: { position: { x: 20, y: 490 }, size: { width: 800, height: 450 } },
     volatilityForecast: { position: { x: 20, y: 960 }, size: { width: 800, height: 450 } },
     garchSummary: { position: { x: 840, y: 20 }, size: { width: 500, height: 600 } },
-    indexSPY: { position: { x: 20, y: 20 }, size: { width: 600, height: 400 } },
-    indexDJIA: { position: { x: 640, y: 20 }, size: { width: 600, height: 400 } },
-    indexNDAQ: { position: { x: 20, y: 440 }, size: { width: 600, height: 400 } },
-    indexIWM: { position: { x: 640, y: 440 }, size: { width: 600, height: 400 } },
   });
   
   const updatePanelPosition = (panelId, position) => {
@@ -107,32 +102,6 @@ function AIView() {
     }
   };
 
-  const loadIndexChart = async (indexTicker) => {
-    if (indexData[indexTicker]) return; // Already loaded
-    
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/ai/index-chart/${indexTicker}`);
-      setIndexData(prev => ({ ...prev, [indexTicker]: response.data }));
-    } catch (err) {
-      console.error(`Error loading ${indexTicker} chart:`, err);
-    }
-  };
-
-  const loadAllIndices = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        loadIndexChart('SPY'),
-        loadIndexChart('DJIA'),
-        loadIndexChart('NDAQ'),
-        loadIndexChart('IWM')
-      ]);
-    } catch (err) {
-      setError('Error loading indices');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="ai-view">
@@ -171,15 +140,6 @@ function AIView() {
           onClick={() => setActiveModel('volatility')}
         >
           Volatility (GARCH)
-        </button>
-        <button
-          className={`section-btn ${activeModel === 'indices' ? 'active' : ''}`}
-          onClick={() => {
-            setActiveModel('indices');
-            loadAllIndices();
-          }}
-        >
-          Market Indices
         </button>
         <button
           className={`section-btn ${activeModel === 'ai-models' ? 'active' : ''}`}
@@ -222,16 +182,6 @@ function AIView() {
                   <li>GARCH(2,2) model</li>
                   <li>Rolling 365-day predictions</li>
                   <li>7-day volatility forecast</li>
-                </ul>
-              </div>
-              <div className="overview-card" onClick={() => { setActiveModel('indices'); loadAllIndices(); }} style={{ cursor: 'pointer' }}>
-                <h4>📉 Market Indices</h4>
-                <p>30-day charts for major indices</p>
-                <ul>
-                  <li>SPY - S&P 500</li>
-                  <li>DJIA - Dow Jones</li>
-                  <li>NDAQ - Nasdaq</li>
-                  <li>IWM - Russell 2000</li>
                 </ul>
               </div>
               <div className="overview-card" onClick={() => setActiveModel('ai-models')} style={{ cursor: 'pointer' }}>
@@ -478,41 +428,6 @@ function AIView() {
           </div>
         )}
 
-        {/* Market Indices */}
-        {activeModel === 'indices' && (
-          <div className="indices-section" style={{ position: 'relative', minHeight: '900px' }}>
-            <h3>Major Market Indices (30 Days)</h3>
-            {['SPY', 'DJIA', 'NDAQ', 'IWM'].map(index => (
-              <DraggableResizablePanel
-                key={index}
-                id={`index${index}`}
-                position={chartPanels[`index${index}`].position}
-                size={chartPanels[`index${index}`].size}
-                onPositionChange={(pos) => updatePanelPosition(`index${index}`, pos)}
-                onSizeChange={(size) => updatePanelSize(`index${index}`, size)}
-                onFocus={handlePanelFocus}
-                zIndex={getPanelZIndex(`index${index}`)}
-                minWidth={400}
-                minHeight={300}
-              >
-                <div className="index-chart" style={{ height: '100%' }}>
-                  <h4>{index}</h4>
-                  {indexData[index] ? (
-                    <Plot 
-                      data={indexData[index].chart.data} 
-                      layout={indexData[index].chart.layout} 
-                      style={{ width: '100%', height: 'calc(100% - 40px)' }}
-                      useResizeHandler={true}
-                    config={{ responsive: true }}
-                    />
-                  ) : (
-                    <div className="loading-small">Loading...</div>
-                  )}
-                </div>
-              </DraggableResizablePanel>
-            ))}
-          </div>
-        )}
 
         {/* AI Models */}
         {activeModel === 'ai-models' && (
