@@ -362,6 +362,32 @@ class IncomeStatementMap:
                 r"(?i)^diluted\s*\(.*shares\)",  # Apple: "Diluted (in shares)"
             ]
         )
+        
+        self.DividendsPerShare = MapFact(
+            fact="Dividends Per Share",
+            priority=4,
+            gaap_pattern=[
+                r"(?i)CommonStockDividendsPerShareDeclared\b",
+                r"(?i)CommonStockDividendsPerShare\w*",
+            ],
+            human_pattern=[
+                r"(?i)^dividends?\s+per\s+share\b",
+                r"(?i)^cash\s+dividends?\s+per\s+share\b",
+            ]
+        )
+        
+        self.ComprehensiveIncome = MapFact(
+            fact="Comprehensive Income",
+            priority=8,
+            gaap_pattern=[
+                r"(?i)ComprehensiveIncomeNetOfTax\b",
+                r"(?i)ComprehensiveIncome\w*",
+            ],
+            human_pattern=[
+                r"(?i)^comprehensive\s+income\b",
+                r"(?i)^total\s+comprehensive\s+income\b",
+            ]
+        )
 
 
 #########################################
@@ -541,6 +567,19 @@ class BalanceSheetMap:
             ],
             human_pattern=[
                 r"(?i)^other\s+non-?current\s+assets\b",
+            ]
+        )
+        
+        self.OperatingLeaseRightOfUseAsset = MapFact(
+            fact="Operating Lease Right of Use Asset",
+            priority=7,
+            gaap_pattern=[
+                r"(?i)OperatingLeaseRightOfUseAsset\b",
+                r"(?i)Operating\w*Lease\w*Assets?\b",
+            ],
+            human_pattern=[
+                r"(?i)^operating\s+lease.*assets?\b",
+                r"(?i)^right.*use.*assets?\b",
             ]
         )
         
