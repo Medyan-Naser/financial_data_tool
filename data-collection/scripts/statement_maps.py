@@ -131,6 +131,8 @@ class IncomeStatementMap:
                 r"(?i)^cost\s+of\s+(goods|sales|revenue|services)\b",
                 r"(?i)^costs?\s+of\s+sales?\b",  # Apple uses "Cost of sales"
                 r"(?i)^cost\s+of\s+revenues?\b",  # Google uses "Cost of revenues"
+                r"(?i)^COGS\b",
+                r"(?i)^cogs\b",
             ]
         )
         
@@ -166,6 +168,7 @@ class IncomeStatementMap:
                 r"(?i)\bselling\s*,?\s*general\s+and\s+administrative\b",
                 r"(?i)\bgeneral\s+and\s+administrative\b",  # Google: "General and administrative"
                 r"(?i)\bsg&a\b",
+                r"(?i)^SG&A\b",
                 r"(?i)^sales\s+and\s+marketing\b",  # Google: "Sales and marketing"
                 r"(?i)^selling\s+and\s+marketing\b",
             ]
@@ -208,6 +211,7 @@ class IncomeStatementMap:
                 r"(?i)OperatingExpenses\b",
                 r"(?i)OperatingExpensesAndCosts\b",
                 r"(?i)CostsAndExpenses\b",  # Google uses "Total costs and expenses"
+                r"(?i)Total\w*Operating\w*Expenses\b",
             ],
             human_pattern=[
                 r"(?i)^total\s+operating\s+expenses?\b",
@@ -262,6 +266,7 @@ class IncomeStatementMap:
                 r"(?i)\bother\s+income.*expense.*net\b",  # Apple: "Other income/(expense), net"
                 r"(?i)\binterest\s+and\s+other.*income\b",
                 r"(?i)\binterest.*other.*net\b",
+                r"(?i)^Interest and investment income\b",
             ]
         )
         
@@ -279,6 +284,7 @@ class IncomeStatementMap:
                 r"(?i)^provision\s+for\s+income\s+taxes\b",
                 r"(?i)^income\s+taxes\b",
                 r"(?i)^tax\s+(expense|provision)\b",
+                r"(?i)^Income Tax Expense\b",
             ]
         )
         
@@ -400,6 +406,8 @@ class BalanceSheetMap:
                 r"(?i)MarketableSecuritiesCurrent\b",
                 r"(?i)AvailableForSaleSecuritiesCurrent\b",
                 r"(?i)ShortTermInvestments\b",
+                r"(?i)Short\w*Term\w*Marketable\w*Securities\b",
+                r"(?i)Marketable\w*Securities(?!Noncurrent)\b",
             ],
             human_pattern=[
                 r"(?i)^marketable\s+securities\b",
@@ -450,6 +458,8 @@ class BalanceSheetMap:
                 r"(?i)OtherAssetsCurrent\b",
                 r"(?i)PrepaidExpenseCurrent\b",
                 r"(?i)PrepaidExpenseAndOtherAssetsCurrent\b",
+                r"(?i)Prepaid\w*AndOther\w*AssetsCurrent\b",
+                r"(?i)Other\w*Current\w*Assets\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+current\s+assets\b",
@@ -465,6 +475,7 @@ class BalanceSheetMap:
             ],
             human_pattern=[
                 r"(?i)^total\s+current\s+assets\b",
+                r"(?i)^Current Assets\b",
             ]
         )
         
@@ -503,6 +514,7 @@ class BalanceSheetMap:
             ],
             human_pattern=[
                 r"(?i)^goodwill\b",
+                r"(?i)^Goodwill\b",
             ]
         )
         
@@ -523,7 +535,9 @@ class BalanceSheetMap:
             priority=6,
             gaap_pattern=[
                 r"(?i)OtherAssetsNoncurrent\b",
-                r"(?i)OtherAssets\b",
+                r"(?i)OtherAssets(?!Current)\b",
+                r"(?i)Other\w*Noncurrent\w*Assets\b",
+                r"(?i)Other\w*LongTerm\w*Assets\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+non-?current\s+assets\b",
@@ -572,8 +586,10 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)OtherLiabilitiesCurrent\b",
                 r"(?i)AccruedLiabilitiesCurrent\b",
-                r"(?i)AccruedLiabilities\b",
+                r"(?i)AccruedLiabilities(?!Noncurrent)\b",
                 r"(?i)AccruedIncomeTaxesCurrent\b",
+                r"(?i)Other\w*Current\w*Liabilities\b",
+                r"(?i)Accrued\w*And\w*Other\w*Current\w*Liabilities\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+current\s+liabilities\b",
@@ -611,11 +627,15 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)LongTermDebtCurrent\b",  # Current portion of long-term debt
                 r"(?i)ShortTermBorrowings\b",
+                r"(?i)DebtCurrent\b",
+                r"(?i)Short\w*Term\w*Debt\w*",
+                r"(?i)Current\w*Portion\w*LongTermDebt\b",
             ],
             human_pattern=[
                 r"(?i)^term\s+debt\b",  # Apple uses this for current portion
                 r"(?i)^current\s+portion.*debt\b",
                 r"(?i)^short-?term\s+debt\b",
+                r"(?i)^Short Term Debt Current\b",
             ]
         )
         
@@ -627,6 +647,7 @@ class BalanceSheetMap:
             ],
             human_pattern=[
                 r"(?i)^total\s+current\s+liabilities\b",
+                r"(?i)^Current Liabilities\b",
             ]
         )
         
@@ -637,10 +658,13 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)LongTermDebtNoncurrent\b",
                 r"(?i)LongTermDebtAndCapitalLeaseObligations\b",
+                r"(?i)LongTermDebt(?!Current)\w*",
+                r"(?i)Long\w*Term\w*Borrowings\b",
             ],
             human_pattern=[
                 r"(?i)^long-?term\s+debt\b",
                 r"(?i)^term\s+debt.*non-?current\b",
+                r"(?i)^Long Term Debt\b",
             ]
         )
         
@@ -651,7 +675,9 @@ class BalanceSheetMap:
                 r"(?i)OtherLiabilitiesNoncurrent\b",
                 r"(?i)DeferredTaxLiabilitiesNoncurrent\b",
                 r"(?i)DeferredIncomeTaxLiabilitiesNet\b",
-                r"(?i)OperatingLeaseLiability\w*",
+                r"(?i)OperatingLeaseLiability(?!Current)\w*",
+                r"(?i)Other\w*Noncurrent\w*Liabilities\b",
+                r"(?i)Other\w*LongTerm\w*Liabilities\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+non-?current\s+liabilities\b",
@@ -666,6 +692,7 @@ class BalanceSheetMap:
             ],
             human_pattern=[
                 r"(?i)^total\s+non-?current\s+liabilities\b",
+                r"(?i)^Noncurrent Liabilities\b",
             ]
         )
         
@@ -695,6 +722,7 @@ class BalanceSheetMap:
             human_pattern=[
                 r"(?i)^common\s+stock\s+and\s+additional\s+paid-?in\s+capital\b",
                 r"(?i)^common\s+stock\b",
+                r"(?i)^Common Stock\b",
             ]
         )
         
@@ -741,6 +769,8 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)LiabilitiesAndStockholdersEquity\b",
                 r"(?i)LiabilitiesAndShareholdersEquity\b",
+                r"(?i)Liabilities\w*And\w*Equity\b",
+                r"(?i)Liabilities\w*And\w*Stockholders\w*Equity\b",
             ],
             human_pattern=[
                 r"(?i)^total\s+liabilities\s+and\s+(shareholders?|stockholders?)\s+equity\b",
@@ -781,7 +811,10 @@ class CashFlowMap:
                 r"(?i)DepreciationDepletionAndAmortization\b",
                 r"(?i)Depreciation\w*",
             ],
-            human_pattern=[r"(?i)^depreciation\s+and\s+amortization\b"]
+            human_pattern=[
+                r"(?i)^depreciation\s+and\s+amortization\b",
+                r"(?i)^Depreciation and amortization\b",
+            ]
         )
         
         self.StockBasedCompensation = MapFact(
@@ -807,6 +840,7 @@ class CashFlowMap:
             ],
             human_pattern=[
                 r"(?i)^other\b",
+                r"(?i)^Other noncash items\b",
             ]
         )
         
@@ -949,6 +983,7 @@ class CashFlowMap:
             human_pattern=[
                 r"(?i)^net\s+cash\s+(used\s+in|from|generated.*by)\s+investing\s+activities\b",
                 r"(?i)^cash\s+(used\s+in|from)\s+investing",
+                r"(?i)^Net cash from investing activities\b",
             ]
         )
         
@@ -984,6 +1019,8 @@ class CashFlowMap:
             gaap_pattern=[
                 r"(?i)PaymentsForRepurchaseOfCommonStock\b",
                 r"(?i)ProceedsFromIssuanceOfCommonStock\b",
+                r"(?i)Payments\w*Repurchase\w*Stock\b",
+                r"(?i)Treasury\w*Stock\w*Repurchased\b",
             ],
             human_pattern=[
                 r"(?i)repurchase.*common\s+stock",
@@ -1011,6 +1048,7 @@ class CashFlowMap:
                 r"(?i)RepaymentsOfLongTermDebt\w*",
                 r"(?i)RepaymentsOf\w*Debt\w*",
                 r"(?i)Repayments\w*Debt\w*",
+                r"(?i)Payments\w*LongTermDebt\b",
             ],
             human_pattern=[
                 r"(?i)repayment.*debt",
@@ -1040,6 +1078,7 @@ class CashFlowMap:
             human_pattern=[
                 r"(?i)^net\s+cash\s+(provided\s+by|used\s+in|from)\s+financing\s+activities\b",
                 r"(?i)^cash\s+(used\s+in|from)\s+financing",
+                r"(?i)^Net cash from financing activities\b",
             ]
         )
         
@@ -1055,5 +1094,8 @@ class CashFlowMap:
                 r"(?i)EffectOfExchangeRateOnCash\w*",
                 r"(?i)IncomeTaxesPaidNet\b",
             ],
-            human_pattern=[r"(?i)^net\s+(increase|decrease|change).*cash\b"]
+            human_pattern=[
+                r"(?i)^net\s+(increase|decrease|change).*cash\b",
+                r"(?i)^Net change in cash\b",
+            ]
         )
