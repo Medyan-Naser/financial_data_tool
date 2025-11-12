@@ -91,6 +91,7 @@ class IncomeStatementMap:
                 r"(?i)\bSalesRevenueServicesNet\b",
                 r"(?i)\bRevenueNet\b",
                 r"(?i)\bNetSales\b",
+                r"(?i)\bSalesRevenue\w*\b",
             ],
             ifrs_pattern=[
                 r"(?i)\bRevenue\b",
@@ -120,6 +121,7 @@ class IncomeStatementMap:
                 # Product/service costs
                 r"(?i)\bCostOfProduct\b",
                 r"(?i)\bCostOfGoodsAndServicesExcluding\b",
+                r"(?i)\bCostsAndExpenses\b",
             ],
             ifrs_pattern=[
                 r"(?i)\bCostOfSales\b",
@@ -158,6 +160,7 @@ class IncomeStatementMap:
                 r"(?i)\bSellingGeneralAndAdministrativeExpense\b",
                 r"(?i)\bGeneralAndAdministrativeExpense\b",  # Google splits into separate items
                 r"(?i)\bSellingAndMarketingExpense\b",  # Google uses this separately
+                r"(?i)\bMarketingExpense\b",
             ],
             human_pattern=[
                 r"(?i)\bselling\s*,?\s*general\s+and\s+administrative\b",
@@ -232,7 +235,7 @@ class IncomeStatementMap:
             fact=InterestExpense,
             priority=6,
             gaap_pattern=[
-                r"(?i)\bInterestExpense\b",
+                r"(?i)\bInterestExpense\w*\b",
                 r"(?i)\bInterestAndDebtExpense\b",
             ],
             human_pattern=[
@@ -251,6 +254,7 @@ class IncomeStatementMap:
                 r"(?i)\bNonoperatingIncomeExpense\b",  # Apple uses this
                 r"(?i)\bOtherNonoperatingIncomeExpense\b",
                 r"(?i)\bInterestIncomeExpenseNet\b",
+                r"(?i)\bIncomeLossFromEquityMethodInvestments\b",
             ],
             human_pattern=[
                 r"(?i)\binterest\s+(and\s+other\s+)?income\b",
@@ -268,6 +272,7 @@ class IncomeStatementMap:
             gaap_pattern=[
                 r"(?i)\bIncomeTaxExpenseBenefit\b",
                 r"(?i)\bIncomeTaxesPaid\b",
+                r"(?i)\bIncomeLossFromContinuingOperationsBeforeIncomeTaxes\w*\b",
             ],
             human_pattern=[
                 r"(?i)^income\s+tax\s+(expense|provision)\b",
@@ -282,7 +287,7 @@ class IncomeStatementMap:
             fact=NetIncome,
             priority=10,
             gaap_pattern=[
-                r"(?i)\bNetIncomeLoss\b",
+                r"(?i)\bNetIncomeLoss\w*\b",
                 *GAAP_INCOME_PATTERNS
             ],
             human_pattern=[
@@ -295,7 +300,10 @@ class IncomeStatementMap:
         self.EarningsPerShareBasic = MapFact(
             fact=EarningsPerShareBasic,
             priority=5,
-            gaap_pattern=[r"(?i)\bEarningsPerShareBasic\b"],
+            gaap_pattern=[
+                r"(?i)\bEarningsPerShareBasic\b",
+                r"(?i)\bIncomeLossFromContinuingOperationsPerBasicShare\b",
+            ],
             human_pattern=[
                 r"(?i)\bearnings?\s+per\s+share\s*[-:,]?\s*basic\b",
                 r"(?i)\bbasic\s+eps\b",
@@ -308,7 +316,10 @@ class IncomeStatementMap:
         self.EarningsPerShareDiluted = MapFact(
             fact=EarningsPerShareDiluted,
             priority=5,
-            gaap_pattern=[r"(?i)\bEarningsPerShareDiluted\b"],
+            gaap_pattern=[
+                r"(?i)\bEarningsPerShareDiluted\b",
+                r"(?i)\bIncomeLossFromContinuingOperationsPerDilutedShare\b",
+            ],
             human_pattern=[
                 r"(?i)\bearnings?\s+per\s+share\s*[-:,]?\s*diluted\b",
                 r"(?i)\bdiluted\s+eps\b",
@@ -321,7 +332,10 @@ class IncomeStatementMap:
         self.WeightedAverageSharesOutstandingBasic = MapFact(
             fact=WeightedAverageSharesOutstandingBasic,
             priority=4,
-            gaap_pattern=[r"(?i)\bWeightedAverageNumberOfSharesOutstandingBasic\b"],
+            gaap_pattern=[
+                r"(?i)\bWeightedAverageNumberOfSharesOutstandingBasic\b",
+                r"(?i)\bWeightedAverageNumberOfShareOutstandingBasic\b",
+            ],
             human_pattern=[
                 r"(?i)\bweighted.average.*shares.*basic\b",
                 r"(?i)\bshares.*basic\b",
@@ -332,7 +346,10 @@ class IncomeStatementMap:
         self.WeightedAverageSharesOutstandingDiluted = MapFact(
             fact=WeightedAverageSharesOutstandingDiluted,
             priority=4,
-            gaap_pattern=[r"(?i)\bWeightedAverageNumberOfDilutedSharesOutstanding\b"],
+            gaap_pattern=[
+                r"(?i)\bWeightedAverageNumberOfDilutedSharesOutstanding\b",
+                r"(?i)\bWeightedAverageNumberDilutedSharesOutstanding\w*\b",
+            ],
             human_pattern=[
                 r"(?i)\bweighted.average.*shares.*diluted\b",
                 r"(?i)\bshares.*diluted\b",
@@ -382,6 +399,7 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)\bMarketableSecuritiesCurrent\b",
                 r"(?i)\bAvailableForSaleSecuritiesCurrent\b",
+                r"(?i)\bShortTermInvestments\b",
             ],
             human_pattern=[
                 r"(?i)^marketable\s+securities\b",
@@ -431,6 +449,7 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)\bOtherAssetsCurrent\b",
                 r"(?i)\bPrepaidExpenseCurrent\b",
+                r"(?i)\bPrepaidExpenseAndOtherAssetsCurrent\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+current\s+assets\b",
@@ -468,7 +487,7 @@ class BalanceSheetMap:
             priority=8,
             gaap_pattern=[
                 r"(?i)\bPropertyPlantAndEquipmentNet\b",
-                r"(?i)\bPropertyPlantAndEquipment\b",
+                r"(?i)\bPropertyPlantAndEquipment\w*\b",
             ],
             human_pattern=[
                 r"(?i)property.*plant.*equipment\b",
@@ -504,6 +523,7 @@ class BalanceSheetMap:
             priority=6,
             gaap_pattern=[
                 r"(?i)\bOtherAssetsNoncurrent\b",
+                r"(?i)\bOtherAssets\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+non-?current\s+assets\b",
@@ -551,6 +571,8 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)\bOtherLiabilitiesCurrent\b",
                 r"(?i)\bAccruedLiabilitiesCurrent\b",
+                r"(?i)\bAccruedLiabilities\b",
+                r"(?i)\bAccruedIncomeTaxesCurrent\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+current\s+liabilities\b",
@@ -562,8 +584,8 @@ class BalanceSheetMap:
             fact="Deferred Revenue",
             priority=6,
             gaap_pattern=[
-                r"(?i)\bContractWithCustomerLiability(Current)?\b",
-                r"(?i)\bDeferredRevenue(Current)?\b",
+                r"(?i)\bContractWithCustomerLiability\w*\b",
+                r"(?i)\bDeferredRevenue\w*\b",
             ],
             human_pattern=[
                 r"(?i)^deferred\s+revenue\b",
@@ -626,6 +648,9 @@ class BalanceSheetMap:
             priority=6,
             gaap_pattern=[
                 r"(?i)\bOtherLiabilitiesNoncurrent\b",
+                r"(?i)\bDeferredTaxLiabilitiesNoncurrent\b",
+                r"(?i)\bDeferredIncomeTaxLiabilitiesNet\b",
+                r"(?i)\bOperatingLeaseLiability\w*\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+non-?current\s+liabilities\b",
@@ -661,6 +686,9 @@ class BalanceSheetMap:
             gaap_pattern=[
                 r"(?i)\bCommonStocksIncludingAdditionalPaidInCapital\b",
                 r"(?i)\bCommonStockValue\b",
+                r"(?i)\bAdditionalPaidInCapital\w*\b",
+                r"(?i)\bPreferredStockValue\b",
+                r"(?i)\bTreasuryStockValue\b",
             ],
             human_pattern=[
                 r"(?i)^common\s+stock\s+and\s+additional\s+paid-?in\s+capital\b",
@@ -698,6 +726,7 @@ class BalanceSheetMap:
             priority=9,
             gaap_pattern=[
                 r"(?i)\bStockholdersEquity\b",
+                r"(?i)\bShareholdersEquity\b",
             ],
             human_pattern=[
                 r"(?i)^(total\s+)?(shareholders?|stockholders?)\s+equity\b",
@@ -709,6 +738,7 @@ class BalanceSheetMap:
             priority=10,
             gaap_pattern=[
                 r"(?i)\bLiabilitiesAndStockholdersEquity\b",
+                r"(?i)\bLiabilitiesAndShareholdersEquity\b",
             ],
             human_pattern=[
                 r"(?i)^total\s+liabilities\s+and\s+(shareholders?|stockholders?)\s+equity\b",
@@ -735,7 +765,10 @@ class CashFlowMap:
         self.NetIncomeCF = MapFact(
             fact="Net income (CF)",
             priority=9,
-            gaap_pattern=[r"(?i)\bNetIncomeLoss\b"],
+            gaap_pattern=[
+                r"(?i)\bNetIncomeLoss\w*\b",
+                r"(?i)\bProfitLoss\b",
+            ],
             human_pattern=[r"(?i)^net\s+(income|earnings)\b"]
         )
         
@@ -764,6 +797,8 @@ class CashFlowMap:
             priority=5,
             gaap_pattern=[
                 r"(?i)\bOtherNoncashIncomeExpense\b",
+                r"(?i)\bOtherOperatingActivitiesCashFlowStatement\b",
+                r"(?i)\bDeferredIncomeTaxExpenseBenefit\b",
             ],
             human_pattern=[
                 r"(?i)^other\b",
@@ -787,6 +822,7 @@ class CashFlowMap:
             priority=5,
             gaap_pattern=[
                 r"(?i)\bIncreaseDecreaseInInventories\b",
+                r"(?i)\bInventoryWriteDown\b",
             ],
             human_pattern=[
                 r"(?i)inventor(y|ies)\b",
@@ -820,6 +856,8 @@ class CashFlowMap:
             priority=4,
             gaap_pattern=[
                 r"(?i)\bIncreaseDecreaseInOtherOperatingLiabilities\b",
+                r"(?i)\bIncreaseDecreaseInAccruedLiabilities\w*\b",
+                r"(?i)\bIncreaseDecreaseInContractWithCustomerLiability\b",
             ],
             human_pattern=[
                 r"(?i)other.*liabilities",
@@ -869,6 +907,7 @@ class CashFlowMap:
             gaap_pattern=[
                 r"(?i)\bPaymentsToAcquirePropertyPlantAndEquipment\b",
                 r"(?i)\bPaymentsForCapitalImprovements\b",
+                r"(?i)\bPaymentsToAcquire\w*PlantAndEquipment\b",
             ],
             human_pattern=[
                 r"(?i)\bcapital\s+expenditures?\b",
@@ -882,6 +921,7 @@ class CashFlowMap:
             priority=6,
             gaap_pattern=[
                 r"(?i)\bPaymentsToAcquireBusinessesNetOfCashAcquired\b",
+                r"(?i)\bPaymentsToAcquireBusinesses\w*\b",
             ],
             human_pattern=[
                 r"(?i)\bacquisitions?\s+of\s+business\b",
@@ -893,6 +933,7 @@ class CashFlowMap:
             priority=10,
             gaap_pattern=[
                 r"(?i)\bNetCashProvidedByUsedInInvestingActivities\b",
+                r"(?i)\bPaymentsForProceedsFromOtherInvestingActivities\b",
             ],
             human_pattern=[
                 r"(?i)^net\s+cash\s+(used\s+in|from|generated.*by)\s+investing\s+activities\b",
@@ -906,6 +947,7 @@ class CashFlowMap:
             priority=5,
             gaap_pattern=[
                 r"(?i)\bPaymentsRelatedToTaxWithholdingForShareBasedCompensation\b",
+                r"(?i)\bExcessTaxBenefitFromShareBasedCompensationFinancingActivities\b",
             ],
             human_pattern=[
                 r"(?i)payment.*tax.*share.*compensation",
@@ -929,6 +971,7 @@ class CashFlowMap:
             priority=7,
             gaap_pattern=[
                 r"(?i)\bPaymentsForRepurchaseOfCommonStock\b",
+                r"(?i)\bProceedsFromIssuanceOfCommonStock\b",
             ],
             human_pattern=[
                 r"(?i)repurchase.*common\s+stock",
@@ -974,6 +1017,7 @@ class CashFlowMap:
             priority=10,
             gaap_pattern=[
                 r"(?i)\bNetCashProvidedByUsedInFinancingActivities\b",
+                r"(?i)\bPaymentsForProceedsFromOtherFinancingActivities\b",
             ],
             human_pattern=[
                 r"(?i)^net\s+cash\s+(provided\s+by|used\s+in|from)\s+financing\s+activities\b",
@@ -985,6 +1029,13 @@ class CashFlowMap:
         self.NetChangeInCash = MapFact(
             fact="Net change in cash",
             priority=9,
-            gaap_pattern=[r"(?i)\bCashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect\b"],
+            gaap_pattern=[
+                r"(?i)\bCashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecrease\w*\b",
+                r"(?i)\bCashAndCashEquivalentsPeriodIncreaseDecrease\b",
+                r"(?i)\bCashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents\b",
+                r"(?i)\bCashAndCashEquivalentsAtCarryingValue\b",
+                r"(?i)\bEffectOfExchangeRateOnCash\w*\b",
+                r"(?i)\bIncomeTaxesPaidNet\b",
+            ],
             human_pattern=[r"(?i)^net\s+(increase|decrease|change).*cash\b"]
         )
