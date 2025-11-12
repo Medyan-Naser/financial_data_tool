@@ -42,6 +42,12 @@ SCORING_CONFIG = {
         'enabled': True,  # Enable numeric comparison
         'weight': 25,     # High weight for numeric matches
         'tolerance': 0.05  # 5% difference allowed
+    },
+    'historical_similarity': {
+        'enabled': True,   # Enable historical comparison
+        'weight': 30,      # Higher weight than current-year comparison
+        'tolerance': 0.10  # 10% tolerance for historical data (companies revise numbers)
+        # Note: Comparing to 0 will not count as a match (handled in comparison logic)
     }
 }
 
@@ -81,7 +87,7 @@ def calculate_match_score(candidate: MatchCandidate, row_data: pd.Series,
         candidate: MatchCandidate object
         row_data: Pandas Series with row values
         mapped_df: DataFrame with already-mapped rows (for numeric comparison)
-        statement_obj: FinancialStatement object (for numeric similarity method)
+        statement_obj: FinancialStatement object (for numeric similarity and historical comparison)
     
     Returns:
         Float score (higher is better)
@@ -145,6 +151,23 @@ def calculate_match_score(candidate: MatchCandidate, row_data: pd.Series,
                 score += config['numeric_similarity']['weight']
                 logger.debug(f"  Numeric match bonus: +{config['numeric_similarity']['weight']}")
     
+    # Criterion 8: Historical Data Comparison (NEW - compare against previously parsed statements)
+    if (config['historical_similarity']['enabled'] and 
+        statement_obj is not None and
+        hasattr(statement_obj, 'historical_statements') and
+        statement_obj.historical_statements):
+        
+        historical_match = statement_obj._compare_with_historical(
+            candidate.map_fact.fact, 
+            row_data,
+            tolerance=config['historical_similarity']['tolerance']
+        )
+        
+        if historical_match:
+            score += config['historical_similarity']['weight']
+            logger.debug(f"  Historical match bonus: +{config['historical_similarity']['weight']} "
+                        f"(matched {historical_match['matched_years']} years)")
+    
     return score
 
 
@@ -191,7 +214,7 @@ class FinancialStatement():
     - Storing calculation relationships from XML
     """
 
-    def __init__(self, og_df: pd.DataFrame, rows_that_are_sum: list, rows_text: dict, cal_facts: dict, sections_dict={}, units_dict=None):
+    def __init__(self, og_df: pd.DataFrame, rows_that_are_sum: list, rows_text: dict, cal_facts: dict, sections_dict={}, units_dict=None, historical_statements=None):
         """
         Initialize the financial statement.
         
@@ -202,6 +225,7 @@ class FinancialStatement():
             cal_facts: Calculation relationships from _cal.xml file
             sections_dict: Dict grouping facts by sections in the statement
             units_dict: Dict mapping row indices to UnitInfo objects (unit information)
+            historical_statements: Dict of previously parsed statements {year: mapped_df} for disambiguation
         """
         self.og_df = og_df
         self.mapped_df = None
@@ -216,6 +240,7 @@ class FinancialStatement():
         self.sections_dict = sections_dict
         self.mapped_facts = []      # List of successfully mapped facts
         self.mapping_score = {}     # Score for each mapping
+        self.historical_statements = historical_statements or {}  # Historical data for disambiguation
         
         # NEW: Raw/unmapped data for debugging
         self.raw_df = None          # All original rows with human-readable labels
@@ -726,6 +751,89 @@ class FinancialStatement():
         
         # All compared values matched
         return matches >= comparisons * 0.8  # 80% of values must match
+    
+    def _compare_with_historical(self, fact_name: str, current_row: pd.Series, tolerance=0.10) -> Optional[dict]:
+        """
+        Compare current row values against historical statements for the same fact.
+        
+        This helps disambiguate when multiple rows match the same pattern by checking
+        which candidate's values match previously parsed historical data.
+        
+        Args:
+            fact_name: Name of the fact to compare (e.g., "Total revenue")
+            current_row: Series with current year's data including overlapping years
+            tolerance: Percentage difference allowed for historical comparison (default 10%)
+        
+        Returns:
+            Dict with match info if found, None otherwise
+            {
+                'matched': True/False,
+                'matched_years': List of years that matched,
+                'total_comparisons': Number of comparisons made
+            }
+        """
+        if not self.historical_statements:
+            return None
+        
+        # Get columns from current row (these are years/periods)
+        current_columns = current_row.index.tolist()
+        
+        matched_years = []
+        total_comparisons = 0
+        
+        # For each historical statement
+        for hist_year, hist_df in self.historical_statements.items():
+            # Check if this fact exists in historical data
+            if fact_name not in hist_df.index:
+                continue
+            
+            hist_row = hist_df.loc[fact_name]
+            
+            # Find overlapping columns (years that exist in both current and historical)
+            common_cols = [col for col in current_columns if col in hist_row.index]
+            
+            if not common_cols:
+                continue
+            
+            # Compare values in common columns
+            for col in common_cols:
+                curr_val = current_row[col]
+                hist_val = hist_row[col]
+                
+                # Skip NaN comparisons
+                if pd.isna(curr_val) or pd.isna(hist_val):
+                    continue
+                
+                total_comparisons += 1
+                
+                # IMPORTANT: Don't count zero==zero as a match (as per user requirement)
+                if curr_val == 0 and hist_val == 0:
+                    continue
+                
+                # If one is zero and other isn't, not a match
+                if curr_val == 0 or hist_val == 0:
+                    continue
+                
+                # Calculate percentage difference
+                avg = (abs(curr_val) + abs(hist_val)) / 2
+                diff = abs(curr_val - hist_val)
+                pct_diff = diff / avg if avg != 0 else 0
+                
+                if pct_diff <= tolerance:
+                    matched_years.append((hist_year, col))
+                    logger.debug(f"    Historical match: {fact_name} {col}: "
+                               f"current={curr_val:,.0f} vs hist({hist_year})={hist_val:,.0f} "
+                               f"(diff={pct_diff*100:.1f}%)")
+        
+        # Return match info if we had successful comparisons
+        if matched_years:
+            return {
+                'matched': True,
+                'matched_years': matched_years,
+                'total_comparisons': total_comparisons
+            }
+        
+        return None
 
 class IncomeStatement(FinancialStatement):
     """
