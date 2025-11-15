@@ -180,9 +180,9 @@ def get_ml_model(ticker):
             "Actual": real_prices.ravel(),
             "Predicted": predicted_prices.ravel()
         })
-        ml_plot = px.line(stocks, title =f'Actual vs Predicted Prices of {ticker}')
+        ml_plot = px.line(stocks, title =f'Actual vs Predicted Prices of {ticker}', template='plotly_white')
         
-        loss_plot = px.line(lstm_history.history["loss"])
+        loss_plot = px.line(lstm_history.history["loss"], template='plotly_white')
         
         #Forecasting
         look_back=11
@@ -222,7 +222,8 @@ def get_ml_model(ticker):
             forecast_df,
             x = forecast_df.index,
             y=[float(val) for val in forecast_df["Price"]],
-            title =f'Forecast of {ticker}'
+            title =f'Forecast of {ticker}',
+            template='plotly_white'
         )
     print("===========")
     print(forecast_df["Price"].values)
