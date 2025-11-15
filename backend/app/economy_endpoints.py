@@ -15,8 +15,9 @@ All data cached for 1 day in .api_cache/Macro/ directory.
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
+import json
 from .cache_manager import macro_cache
 
 logger = logging.getLogger(__name__)
@@ -342,16 +343,14 @@ async def get_gdp_data(country: str = "US"):
 @router.get("/api/economy/interest-rates")
 async def get_interest_rates():
     """
-    Get US Treasury interest rates (cached for 1 week).
+    Get US Treasury interest rates (cached for 1 day).
     Includes bills, notes, and bonds.
     """
-    cache_path = get_cache_path("interest_rates")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('interest_rates')
+    if cached_data:
+        logger.info("Returning cached interest rates")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -383,12 +382,11 @@ async def get_interest_rates():
             if len(rates) > 0:
                 result = {
                     "rates": rates,
-                    "cached_at": datetime.now().isoformat(),
-                    "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+                    "cached_at": datetime.now().isoformat()
                 }
                 
                 # Save to cache
-                save_to_cache(cache_path, result)
+                macro_cache.set('interest_rates', result)
                 
                 return JSONResponse(result)
             else:
@@ -404,17 +402,15 @@ async def get_interest_rates():
 @router.get("/api/economy/inflation/{country}")
 async def get_inflation_data(country: str = "US"):
     """
-    Get inflation rate data for a country (cached for 1 week).
+    Get inflation rate data for a country (cached for 1 day).
     Default: US
     Measured by CPI (Consumer Price Index)
     """
-    cache_path = get_cache_path(f"inflation_{country.upper()}")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('inflation', country=country.upper())
+    if cached_data:
+        logger.info(f"Returning cached inflation data for {country.upper()}")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -446,12 +442,11 @@ async def get_inflation_data(country: str = "US"):
                 "country": country.upper(),
                 "indicator": "Inflation (CPI Annual %)",
                 "data": inflation_data,
-                "cached_at": datetime.now().isoformat(),
-                "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+                "cached_at": datetime.now().isoformat()
             }
             
             # Save to cache
-            save_to_cache(cache_path, result)
+            macro_cache.set('inflation', result, country=country.upper())
             
             return JSONResponse(result)
         else:
@@ -469,17 +464,15 @@ async def get_inflation_data(country: str = "US"):
 @router.get("/api/economy/unemployment/{country}")
 async def get_unemployment_data(country: str = "US"):
     """
-    Get unemployment rate data for a country (cached for 1 week).
+    Get unemployment rate data for a country (cached for 1 day).
     Default: US
     Measured by unemployment rate (% of labor force)
     """
-    cache_path = get_cache_path(f"unemployment_{country.upper()}")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('unemployment', country=country.upper())
+    if cached_data:
+        logger.info(f"Returning cached unemployment data for {country.upper()}")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -513,12 +506,11 @@ async def get_unemployment_data(country: str = "US"):
                     "country": country.upper(),
                     "indicator": "Unemployment Rate (% of labor force)",
                     "data": unemployment_data,
-                    "cached_at": datetime.now().isoformat(),
-                    "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+                    "cached_at": datetime.now().isoformat()
                 }
                 
                 # Save to cache
-                save_to_cache(cache_path, result)
+                macro_cache.set('unemployment', result, country=country.upper())
                 
                 return JSONResponse(result)
             else:
@@ -538,23 +530,18 @@ async def get_unemployment_data(country: str = "US"):
 @router.get("/api/economy/crypto/historical/{symbol}")
 async def get_crypto_historical(symbol: str = "bitcoin", days: str = "365"):
     """
-    Get historical cryptocurrency price data (cached for 1 week).
+    Get historical cryptocurrency price data (cached for 1 day).
     Default: Bitcoin, 365 days
     Use large numbers like 3650 (10 years) or 1825 (5 years) for extended history
     Note: CoinGecko free API may not support "max" parameter
     """
-    # Normalize the days parameter for cache key
-    cache_key = f"crypto_historical_{symbol}_{days}"
-    cache_path = get_cache_path(cache_key)
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        # Validate cached data has prices
-        if cached_data and cached_data.get('prices') and len(cached_data.get('prices', [])) > 0:
-            logger.info(f"Using cached data for {symbol} ({days} days)")
-            return JSONResponse(cached_data)
-        else:
+    cached_data = macro_cache.get('crypto_historical', symbol=symbol, days=days)
+    if cached_data and cached_data.get('prices') and len(cached_data.get('prices', [])) > 0:
+        logger.info(f"Returning cached crypto historical data for {symbol} ({days} days)")
+        return JSONResponse(cached_data)
+    else:
+        if cached_data:
             logger.warning(f"Cache for {symbol} exists but has invalid data, refetching")
     
     # Fetch fresh data
@@ -597,14 +584,13 @@ async def get_crypto_historical(symbol: str = "bitcoin", days: str = "365"):
                 "actual_days": api_days,  # What we actually requested
                 "data_points": len(prices),
                 "prices": prices,
-                "cached_at": datetime.now().isoformat(),
-                "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+                "cached_at": datetime.now().isoformat()
             }
             
             # Validate data before caching
             if len(prices) > 0:
                 # Save to cache
-                save_to_cache(cache_path, result)
+                macro_cache.set('crypto_historical', result, symbol=symbol, days=days)
                 logger.info(f"Successfully cached {len(prices)} price points for {symbol}")
                 return JSONResponse(result)
             else:
@@ -634,15 +620,13 @@ async def get_crypto_historical(symbol: str = "bitcoin", days: str = "365"):
 @router.get("/api/economy/interest-rates/historical")
 async def get_interest_rates_historical(start_year: int = 2015):
     """
-    Get historical US Treasury interest rates (cached for 1 week).
+    Get historical US Treasury interest rates (cached for 1 day).
     """
-    cache_path = get_cache_path(f"interest_rates_historical_{start_year}")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('interest_rates_historical', start_year=start_year)
+    if cached_data:
+        logger.info(f"Returning cached historical interest rates (from {start_year})")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -676,12 +660,11 @@ async def get_interest_rates_historical(start_year: int = 2015):
                     "start_year": start_year,
                     "data_points": len(rates),
                     "rates": rates,
-                    "cached_at": datetime.now().isoformat(),
-                    "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+                    "cached_at": datetime.now().isoformat()
                 }
                 
                 # Save to cache
-                save_to_cache(cache_path, result)
+                macro_cache.set('interest_rates_historical', result, start_year=start_year)
                 
                 return JSONResponse(result)
             else:
@@ -728,13 +711,11 @@ async def get_commodities():
     Get commodity prices (Oil, Gold index, Agricultural products).
     Using World Bank pink sheet commodity prices.
     """
-    cache_path = get_cache_path("commodities")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('commodities')
+    if cached_data:
+        logger.info("Returning cached commodities data")
+        return JSONResponse(cached_data)
     
     # For now, return a simplified version with oil data from an API
     # We'll use a combination of sources
@@ -762,12 +743,11 @@ async def get_commodities():
                 }
             ],
             "note": "Free real-time commodity data is limited. Consider upgrading to paid API for live prices.",
-            "cached_at": datetime.now().isoformat(),
-            "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+            "cached_at": datetime.now().isoformat()
         }
         
         # Save to cache
-        save_to_cache(cache_path, commodities_data)
+        macro_cache.set('commodities', commodities_data)
         
         return JSONResponse(commodities_data)
         

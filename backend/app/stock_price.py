@@ -6,6 +6,7 @@ Provides real-time and historical stock price data using:
 - Finnhub for real-time quotes (free tier)
 
 All responses are cached for 1 week to minimize API calls.
+Cache stored in: .api_cache/stocks/ (JSON format)
 """
 
 from fastapi import APIRouter, HTTPException, Query
@@ -15,7 +16,7 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 import logging
-from .api_cache import api_cache
+from .cache_manager import stock_cache
 
 logger = logging.getLogger(__name__)
 
@@ -145,8 +146,7 @@ async def get_historical_prices(
         symbol = symbol.upper()
         
         # Check cache first
-        cache_key = f"historical_{symbol}_{period}"
-        cached_data = api_cache.get('stock_price', symbol=symbol, period=period)
+        cached_data = stock_cache.get('historical', symbol=symbol, period=period)
         
         if cached_data:
             logger.info(f"Returning cached historical data for {symbol}")
@@ -162,7 +162,7 @@ async def get_historical_prices(
             )
         
         # Cache the result
-        api_cache.set(data, 'stock_price', symbol=symbol, period=period)
+        stock_cache.set('historical', data, symbol=symbol, period=period)
         
         return data
         
@@ -186,9 +186,8 @@ async def get_quote(symbol: str):
     try:
         symbol = symbol.upper()
         
-        # Check cache first (cache for shorter time - 5 minutes for real-time data)
-        # For now, using the same cache duration as other APIs
-        cached_data = api_cache.get('stock_quote', symbol=symbol)
+        # Check cache first
+        cached_data = stock_cache.get('quote', symbol=symbol)
         
         if cached_data:
             logger.info(f"Returning cached quote for {symbol}")
@@ -231,7 +230,7 @@ async def get_quote(symbol: str):
             )
         
         # Cache the result
-        api_cache.set(data, 'stock_quote', symbol=symbol)
+        stock_cache.set('quote', data, symbol=symbol)
         
         return data
         
