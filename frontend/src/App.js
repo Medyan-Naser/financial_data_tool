@@ -9,6 +9,7 @@ import AlignmentGuides from './components/AlignmentGuides';
 import AIView from './components/AIView';
 import EconomyView from './components/EconomyView';
 import DataCollectionProgress from './components/DataCollectionProgress';
+import StockPriceChart from './components/StockPriceChart';
 import { checkCacheStatus, getCachedFinancialData, collectFinancialData, refreshFinancialData } from './api';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -26,6 +27,11 @@ function App() {
     position: { x: 20, y: 20 },
     size: { width: 1000, height: 700 }
   });
+  const [stockPricePanel, setStockPricePanel] = useState({
+    position: { x: 1040, y: 20 },
+    size: { width: 800, height: 600 }
+  });
+  const [showStockPrice, setShowStockPrice] = useState(true);
   const [chartPanels, setChartPanels] = useState({});
   const [draggingPanel, setDraggingPanel] = useState(null);
   const [alignmentGuides, setAlignmentGuides] = useState([]);
@@ -209,6 +215,7 @@ function App() {
     const guides = [];
     const allPanels = [
       { id: 'table', ...tablePanel },
+      { id: 'stockPrice', ...stockPricePanel },
       ...Object.entries(chartPanels).map(([id, panel]) => ({ id, ...panel }))
     ].filter(p => p.id !== excludePanelId);
 
@@ -235,6 +242,16 @@ function App() {
 
   const handleTableSizeChange = (newSize) => {
     setTablePanel(prev => ({ ...prev, size: newSize }));
+  };
+
+  const handleStockPricePositionChange = (newPosition) => {
+    setStockPricePanel(prev => ({ ...prev, position: newPosition }));
+    setDraggingPanel('stockPrice');
+    setAlignmentGuides(calculateAlignmentGuides('stockPrice'));
+  };
+
+  const handleStockPriceSizeChange = (newSize) => {
+    setStockPricePanel(prev => ({ ...prev, size: newSize }));
   };
 
   const handleChartPositionChange = (chartId, newPosition) => {
@@ -460,6 +477,25 @@ function App() {
                 </DraggableResizablePanel>
               );
             })}
+
+            {/* Stock Price Panel */}
+            {showStockPrice && selectedTicker && (
+              <DraggableResizablePanel
+                id="stockPrice"
+                position={stockPricePanel.position}
+                size={stockPricePanel.size}
+                onPositionChange={handleStockPricePositionChange}
+                onSizeChange={handleStockPriceSizeChange}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('stockPrice')}
+                minWidth={600}
+                minHeight={400}
+                alignmentGuides={alignmentGuides}
+                showAlignmentGuides={draggingPanel === 'stockPrice'}
+              >
+                <StockPriceChart ticker={selectedTicker} />
+              </DraggableResizablePanel>
+            )}
           </div>
             )}
 
