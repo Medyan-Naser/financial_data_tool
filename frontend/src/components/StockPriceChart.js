@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -8,11 +8,11 @@ import './StockPriceChart.css';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-function StockPriceChart({ ticker }) {
+const StockPriceChart = React.memo(({ ticker }) => {
   const [priceData, setPriceData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [period, setPeriod] = useState('max');
+  const [period, setPeriod] = useState('1y');
   const [chartType, setChartType] = useState('area'); // 'line' or 'area'
 
   // Fetch stock price data
@@ -41,8 +41,8 @@ function StockPriceChart({ ticker }) {
     fetchPriceData();
   }, [ticker, period]);
 
-  // Prepare data for chart
-  const prepareChartData = () => {
+  // Prepare data for chart (memoized for performance)
+  const chartData = useMemo(() => {
     if (!priceData || !priceData.historical) return [];
 
     const { dates, close, open, high, low, volume } = priceData.historical;
@@ -55,9 +55,7 @@ function StockPriceChart({ ticker }) {
       low: low[index],
       volume: volume[index]
     }));
-  };
-
-  const chartData = prepareChartData();
+  }, [priceData]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }) => {
@@ -183,11 +181,13 @@ function StockPriceChart({ ticker }) {
                 tickFormatter={formatXAxis}
                 stroke="#999"
                 style={{ fontSize: '12px' }}
+                minTickGap={50}
               />
               <YAxis
                 tickFormatter={formatYAxis}
                 stroke="#999"
                 style={{ fontSize: '12px' }}
+                width={60}
               />
               <Tooltip content={<CustomTooltip />} />
               <Area
@@ -197,6 +197,7 @@ function StockPriceChart({ ticker }) {
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorPrice)"
+                isAnimationActive={false}
               />
             </AreaChart>
           ) : (
@@ -207,11 +208,13 @@ function StockPriceChart({ ticker }) {
                 tickFormatter={formatXAxis}
                 stroke="#999"
                 style={{ fontSize: '12px' }}
+                minTickGap={50}
               />
               <YAxis
                 tickFormatter={formatYAxis}
                 stroke="#999"
                 style={{ fontSize: '12px' }}
+                width={60}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line
@@ -221,6 +224,7 @@ function StockPriceChart({ ticker }) {
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 6 }}
+                isAnimationActive={false}
               />
             </LineChart>
           )}
@@ -235,6 +239,6 @@ function StockPriceChart({ ticker }) {
       </div>
     </div>
   );
-}
+});
 
 export default StockPriceChart;
