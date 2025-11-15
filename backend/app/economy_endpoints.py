@@ -1,87 +1,40 @@
 """
 Economy Data API Endpoints
 
-Provides economic indicators with 1-week caching:
+Provides economic indicators with caching in .api_cache/Macro/:
 - Currency exchange rates
 - Cryptocurrency prices
 - Gold/Silver prices
 - GDP data
 - Interest rates
 - Inflation rates
+
+All data cached for 1 day in .api_cache/Macro/ directory.
 """
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 import requests
-from datetime import datetime, timedelta
-import json
-from pathlib import Path
+from datetime import datetime
 import logging
+from .cache_manager import macro_cache
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Cache configuration
-CACHE_DIR = Path(__file__).parent / "api" / "economy_cache"
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-CACHE_DURATION = timedelta(days=7)  # 1 week cache
-
-
-def get_cache_path(endpoint_name: str) -> Path:
-    """Get cache file path for an endpoint."""
-    return CACHE_DIR / f"{endpoint_name}.json"
-
-
-def is_cache_valid(cache_path: Path) -> bool:
-    """Check if cache exists and is still valid (less than 1 week old)."""
-    if not cache_path.exists():
-        return False
-    
-    # Check file modification time
-    mod_time = datetime.fromtimestamp(cache_path.stat().st_mtime)
-    age = datetime.now() - mod_time
-    
-    return age < CACHE_DURATION
-
-
-def load_from_cache(cache_path: Path):
-    """Load data from cache file."""
-    try:
-        with open(cache_path, 'r') as f:
-            data = json.load(f)
-            # Validate that we actually have data
-            if not data or not isinstance(data, dict):
-                logger.warning(f"Invalid cache data structure in {cache_path}")
-                return None
-            return data
-    except Exception as e:
-        logger.error(f"Error loading cache from {cache_path}: {e}")
-        return None
-
-
-def save_to_cache(cache_path: Path, data: dict):
-    """Save data to cache file."""
-    try:
-        with open(cache_path, 'w') as f:
-            json.dump(data, f, indent=2)
-    except Exception as e:
-        logger.error(f"Error saving cache to {cache_path}: {e}")
-
 
 @router.get("/api/economy/currency")
 async def get_currency_rates():
     """
-    Get current currency exchange rates (cached for 1 week).
+    Get current currency exchange rates (cached for 1 day).
     Base currency: USD
     """
-    cache_path = get_cache_path("currency")
-    
-    # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    # Check cache first
+    cached_data = macro_cache.get('currency_rates')
+    if cached_data:
+        logger.info("Returning cached currency rates")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -98,12 +51,11 @@ async def get_currency_rates():
             "base": data.get("base", "USD"),
             "date": data.get("date"),
             "rates": data.get("rates", {}),
-            "cached_at": datetime.now().isoformat(),
-            "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+            "cached_at": datetime.now().isoformat()
         }
         
         # Save to cache
-        save_to_cache(cache_path, result)
+        macro_cache.set('currency_rates', result)
         
         return JSONResponse(result)
         
@@ -115,16 +67,14 @@ async def get_currency_rates():
 @router.get("/api/economy/crypto")
 async def get_crypto_prices():
     """
-    Get top cryptocurrency prices (cached for 1 week).
+    Get top cryptocurrency prices (cached for 1 day).
     Includes: BTC, ETH, and top 20 by market cap
     """
-    cache_path = get_cache_path("crypto")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('crypto_prices')
+    if cached_data:
+        logger.info("Returning cached crypto prices")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -164,12 +114,11 @@ async def get_crypto_prices():
         result = {
             "cryptocurrencies": cryptocurrencies,
             "total_count": len(cryptocurrencies),
-            "cached_at": datetime.now().isoformat(),
-            "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+            "cached_at": datetime.now().isoformat()
         }
         
         # Save to cache
-        save_to_cache(cache_path, result)
+        macro_cache.set('crypto_prices', result)
         
         return JSONResponse(result)
         
@@ -181,15 +130,13 @@ async def get_crypto_prices():
 @router.get("/api/economy/metals")
 async def get_metals_prices():
     """
-    Get precious metals prices (gold, silver) - cached for 1 week.
+    Get precious metals prices (gold, silver) - cached for 1 day.
     """
-    cache_path = get_cache_path("metals")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('metals_prices')
+    if cached_data:
+        logger.info("Returning cached metals prices")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -224,12 +171,11 @@ async def get_metals_prices():
                     "prev_close": item.get("xagClose")
                 },
                 "date": data.get("date"),
-                "cached_at": datetime.now().isoformat(),
-                "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+                "cached_at": datetime.now().isoformat()
             }
             
             # Save to cache
-            save_to_cache(cache_path, result)
+            macro_cache.set('metals_prices', result)
             
             return JSONResponse(result)
         else:
@@ -247,13 +193,11 @@ async def get_metals_historical(years: int = 5):
     Uses World Bank commodity price data.
     Default: 5 years
     """
-    cache_path = get_cache_path(f"metals_historical_{years}y")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data and cached_data.get('gold') and cached_data.get('silver'):  # Validate data exists
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('metals_historical', years=years)
+    if cached_data and cached_data.get('gold') and cached_data.get('silver'):
+        logger.info(f"Returning cached metals historical data ({years}y)")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data - Using a free API approach
     # We'll fetch data from multiple sources and combine
@@ -317,14 +261,13 @@ async def get_metals_historical(years: int = 5):
             "gold": gold_prices,
             "silver": silver_prices,
             "note": "Historical data synthesized from current prices. For production use, integrate with Alpha Vantage or Quandl API.",
-            "cached_at": datetime.now().isoformat(),
-            "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+            "cached_at": datetime.now().isoformat()
         }
         
         # Validate data before caching
         if result.get('gold') and result.get('silver') and len(result['gold']) > 0:
             # Save to cache
-            save_to_cache(cache_path, result)
+            macro_cache.set('metals_historical', result, years=years)
             return JSONResponse(result)
         else:
             raise HTTPException(status_code=500, detail="No valid historical metals data generated")
@@ -337,17 +280,15 @@ async def get_metals_historical(years: int = 5):
 @router.get("/api/economy/gdp/{country}")
 async def get_gdp_data(country: str = "US"):
     """
-    Get GDP data for a country (cached for 1 week).
+    Get GDP data for a country (cached for 1 day).
     Default: US
     Other examples: GB, DE, FR, JP, CN, IN
     """
-    cache_path = get_cache_path(f"gdp_{country.upper()}")
-    
     # Check cache
-    if is_cache_valid(cache_path):
-        cached_data = load_from_cache(cache_path)
-        if cached_data:
-            return JSONResponse(cached_data)
+    cached_data = macro_cache.get('gdp', country=country.upper())
+    if cached_data:
+        logger.info(f"Returning cached GDP data for {country.upper()}")
+        return JSONResponse(cached_data)
     
     # Fetch fresh data
     try:
@@ -379,12 +320,11 @@ async def get_gdp_data(country: str = "US"):
                 "country": country.upper(),
                 "indicator": "GDP (Current USD)",
                 "data": gdp_data,
-                "cached_at": datetime.now().isoformat(),
-                "cache_expires": (datetime.now() + CACHE_DURATION).isoformat()
+                "cached_at": datetime.now().isoformat()
             }
             
             # Save to cache
-            save_to_cache(cache_path, result)
+            macro_cache.set('gdp', result, country=country.upper())
             
             return JSONResponse(result)
         else:
