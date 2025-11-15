@@ -7,6 +7,8 @@ This module provides various AI/ML models that analyze cached financial data:
 3. Revenue Forecasting (Time Series)
 4. Trend Analysis
 5. Anomaly Detection
+
+Model predictions are cached in: .api_cache/AI/ (30 days)
 """
 
 from fastapi import APIRouter, HTTPException
@@ -18,11 +20,12 @@ import pandas as pd
 from pathlib import Path
 import json
 from datetime import datetime
+from .cache_manager import ai_cache
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Cache directory
+# Cache directory for financial statements
 CACHE_DIR = Path(__file__).parent.parent / "api" / "cached_statements"
 
 
@@ -133,8 +136,18 @@ async def calculate_health_score(ticker: str, quarterly: bool = False):
     - Solvency (Debt-to-Equity, Interest Coverage)
     - Efficiency (Asset Turnover)
     - Growth (Revenue Growth, Earnings Growth)
+    
+    Results are cached for 30 days.
     """
     ticker = ticker.upper()
+    
+    # Check cache first
+    cached_result = ai_cache.get('health_score', ticker=ticker, quarterly=quarterly)
+    if cached_result:
+        logger.info(f"Returning cached health score for {ticker}")
+        return cached_result
+    
+    # Load data
     data = load_ticker_data(ticker, quarterly)
     
     if not data:
@@ -225,7 +238,7 @@ async def calculate_health_score(ticker: str, quarterly: bool = False):
         rating = "Critical"
         color = "#dc3545"
     
-    return JSONResponse({
+    result = {
         "ticker": ticker,
         "period_type": data.get("period_type", "annual"),
         "total_score": round(total_score, 2),
@@ -243,7 +256,12 @@ async def calculate_health_score(ticker: str, quarterly: bool = False):
             "net_income": metrics['net_income'][:5] if metrics['net_income'] else [],
             "dates": metrics['dates'][:5] if metrics['dates'] else []
         }
-    })
+    }
+    
+    # Cache the result
+    ai_cache.set('health_score', result, ticker=ticker, quarterly=quarterly)
+    
+    return JSONResponse(result)
 
 
 @router.get("/api/ai-models/bankruptcy-risk/{ticker}")
