@@ -145,6 +145,130 @@
   opacity: 1;
 }
 
+/* Range Slider */
+.range-slider-container {
+  margin: 15px 0 5px 0;
+  padding: 15px;
+  background: #2a2a2a;
+  border-radius: 6px;
+}
+
+.range-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  color: #e0e0e0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reset-range-btn {
+  padding: 4px 12px;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  color: #fff;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-range-btn:hover:not(:disabled) {
+  background: #2196F3;
+  border-color: #2196F3;
+}
+
+.reset-range-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Dual Range Slider - both thumbs on same track */
+.dual-range-slider {
+  position: relative;
+  width: 100%;
+  height: 40px;
+}
+
+.slider-track {
+  position: absolute;
+  top: 17px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #444;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.slider-range {
+  position: absolute;
+  height: 100%;
+  background: #2196F3;
+  border-radius: 3px;
+}
+
+.range-slider {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  background: transparent;
+  pointer-events: none;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  top: 17px;
+}
+
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 3px solid #2196F3;
+  pointer-events: all;
+  position: relative;
+  z-index: 3;
+}
+
+.range-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  cursor: pointer;
+  border-radius: 50%;
+  border: 3px solid #2196F3;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  pointer-events: all;
+  position: relative;
+  z-index: 3;
+}
+
+.range-slider.range-start::-webkit-slider-thumb {
+  border-color: #4caf50;
+}
+
+.range-slider.range-start::-moz-range-thumb {
+  border-color: #4caf50;
+}
+
+.range-slider.range-end {
+  z-index: 4;
+}
+
+.range-slider.range-end::-webkit-slider-thumb {
+  border-color: #f44336;
+}
+
+.range-slider.range-end::-moz-range-thumb {
+  border-color: #f44336;
+}
+
 /* Chart Container */
 .chart-container {
   margin: 20px 0;

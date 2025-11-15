@@ -13,7 +13,13 @@ const StockPriceChart = React.memo(({ ticker }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [period, setPeriod] = useState('1y');
-  const [chartType, setChartType] = useState('area'); // 'line' or 'area'
+  const [chartType, setChartType] = useState('line'); // 'line' or 'area'
+  const [dataRange, setDataRange] = useState([0, 100]); // Percentage range for slider
+
+  // Reset range when period changes
+  useEffect(() => {
+    setDataRange([0, 100]);
+  }, [period]);
 
   // Fetch stock price data
   useEffect(() => {
@@ -56,6 +62,16 @@ const StockPriceChart = React.memo(({ ticker }) => {
       volume: volume[index]
     }));
   }, [priceData]);
+
+  // Filter data based on range slider
+  const filteredChartData = useMemo(() => {
+    if (!chartData || chartData.length === 0) return [];
+    
+    const startIndex = Math.floor((dataRange[0] / 100) * chartData.length);
+    const endIndex = Math.ceil((dataRange[1] / 100) * chartData.length);
+    
+    return chartData.slice(startIndex, endIndex);
+  }, [chartData, dataRange]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }) => {
@@ -168,7 +184,7 @@ const StockPriceChart = React.memo(({ ticker }) => {
       <div className="chart-container">
         <ResponsiveContainer width="100%" height={400}>
           {chartType === 'area' ? (
-            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <AreaChart data={filteredChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#2196F3" stopOpacity={0.8} />
@@ -201,7 +217,7 @@ const StockPriceChart = React.memo(({ ticker }) => {
               />
             </AreaChart>
           ) : (
-            <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <LineChart data={filteredChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#444" />
               <XAxis
                 dataKey="date"
@@ -231,9 +247,62 @@ const StockPriceChart = React.memo(({ ticker }) => {
         </ResponsiveContainer>
       </div>
 
+      {/* Time Range Slider - Below Chart */}
+      {chartData && chartData.length > 0 && (
+        <div className="range-slider-container">
+          <div className="range-label">
+            <span>Zoom: {Math.round(dataRange[0])}% - {Math.round(dataRange[1])}% of data</span>
+            <button 
+              className="reset-range-btn"
+              onClick={() => setDataRange([0, 100])}
+              disabled={dataRange[0] === 0 && dataRange[1] === 100}
+            >
+              Reset Zoom
+            </button>
+          </div>
+          <div className="dual-range-slider">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={dataRange[0]}
+              onChange={(e) => {
+                const newStart = parseInt(e.target.value);
+                if (newStart < dataRange[1]) {
+                  setDataRange([newStart, dataRange[1]]);
+                }
+              }}
+              className="range-slider range-start"
+            />
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={dataRange[1]}
+              onChange={(e) => {
+                const newEnd = parseInt(e.target.value);
+                if (newEnd > dataRange[0]) {
+                  setDataRange([dataRange[0], newEnd]);
+                }
+              }}
+              className="range-slider range-end"
+            />
+            <div className="slider-track">
+              <div 
+                className="slider-range" 
+                style={{
+                  left: `${dataRange[0]}%`,
+                  width: `${dataRange[1] - dataRange[0]}%`
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Data summary */}
       <div className="chart-footer">
-        <span>Data points: {chartData.length}</span>
+        <span>Data points: {filteredChartData.length} of {chartData.length}</span>
         <span>Range: {priceData.historical.start_date} to {priceData.historical.end_date}</span>
         <span>Currency: {priceData.historical.currency}</span>
       </div>
