@@ -7,7 +7,9 @@ import json
 import numpy as np
 import pandas as pd
 import logging
-from .cache_manager import ai_cache
+# Cache removed: AI models now run fresh each time
+# Only yfinance data is cached (1 week) via cached_yfinance module
+# This allows script iteration without API rate limits
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,19 +28,15 @@ async def get_stock_forecast(ticker: str):
     Get ML-based stock price forecast using LSTM model.
     This endpoint calls the stock_ml_model.py script.
     Warning: This can take 30-60 seconds to run.
-    Results cached in .api_cache/AI/ for 30 days.
+    
+    Note: Model runs fresh each time to allow script development.
+    yfinance data is cached for 1 week via cached_yfinance module.
     """
     try:
         # Validate ticker
         ticker = ticker.upper().strip()
         if not ticker:
             raise HTTPException(status_code=400, detail="Ticker symbol is required")
-        
-        # Check cache first
-        cached_result = ai_cache.get('lstm_forecast', ticker=ticker)
-        if cached_result:
-            logger.info(f"Returning cached LSTM forecast for {ticker}")
-            return JSONResponse(content=cached_result)
         
         # Import here to avoid loading on startup
         from stock_ml_model import get_ml_model
@@ -71,10 +69,7 @@ async def get_stock_forecast(ticker: str):
             "forecast_data": forecast_df_clean.to_dict(orient='records')
         }
         
-        # Cache the result
-        ai_cache.set('lstm_forecast', response_data, ticker=ticker)
-        
-        logger.info(f"Response prepared and cached successfully for {ticker}")
+        logger.info(f"Response prepared successfully for {ticker}")
         return JSONResponse(content=response_data)
     except ValueError as e:
         logger.error(f"ValueError for {ticker}: {str(e)}")
@@ -91,19 +86,15 @@ async def get_volatility_forecast(ticker: str):
     """
     Get volatility forecast using GARCH model.
     This endpoint calls the predict_volatility.py script.
-    Results cached in .api_cache/AI/ for 30 days.
+    
+    Note: Model runs fresh each time to allow script development.
+    yfinance data is cached for 1 week via cached_yfinance module.
     """
     try:
         # Validate ticker
         ticker = ticker.upper().strip()
         if not ticker:
             raise HTTPException(status_code=400, detail="Ticker symbol is required")
-        
-        # Check cache first
-        cached_result = ai_cache.get('volatility_forecast', ticker=ticker)
-        if cached_result:
-            logger.info(f"Returning cached volatility forecast for {ticker}")
-            return JSONResponse(content=cached_result)
         
         # Import here to avoid loading on startup
         from predict_volatility import predict_volatility
@@ -122,10 +113,7 @@ async def get_volatility_forecast(ticker: str):
             "model_summary": str(model_summary)
         }
         
-        # Cache the result
-        ai_cache.set('volatility_forecast', response_data, ticker=ticker)
-        
-        logger.info(f"Volatility forecast cached successfully for {ticker}")
+        logger.info(f"Volatility forecast completed successfully for {ticker}")
         return JSONResponse(content=response_data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid ticker or no data available: {str(e)}")
