@@ -27,9 +27,78 @@ FINNHUB_API_KEY = "d4capm9r01qudf6helq0d4capm9r01qudf6helqg"
 FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
 
 
+def filter_data_by_period(hist: pd.DataFrame, period: str) -> pd.DataFrame:
+    """
+    Filter historical data by time period
+    
+    Args:
+        hist: Full historical DataFrame
+        period: Time period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+    
+    Returns:
+        Filtered DataFrame
+    """
+    if period == 'max':
+        return hist
+    
+    # Calculate cutoff date
+    end_date = hist.index[-1]
+    
+    if period == '1d':
+        cutoff_date = end_date - timedelta(days=1)
+    elif period == '5d':
+        cutoff_date = end_date - timedelta(days=5)
+    elif period == '1mo':
+        cutoff_date = end_date - timedelta(days=30)
+    elif period == '3mo':
+        cutoff_date = end_date - timedelta(days=90)
+    elif period == '6mo':
+        cutoff_date = end_date - timedelta(days=180)
+    elif period == '1y':
+        cutoff_date = end_date - timedelta(days=365)
+    elif period == '2y':
+        cutoff_date = end_date - timedelta(days=730)
+    elif period == '5y':
+        cutoff_date = end_date - timedelta(days=1825)
+    elif period == '10y':
+        cutoff_date = end_date - timedelta(days=3650)
+    elif period == 'ytd':
+        # Year to date - from Jan 1 of current year
+        cutoff_date = datetime(end_date.year, 1, 1)
+    else:
+        # Default to 1 year
+        cutoff_date = end_date - timedelta(days=365)
+    
+    # Filter data
+    filtered_hist = hist[hist.index >= cutoff_date]
+    return filtered_hist
+
+
+def get_max_historical_data(symbol: str) -> pd.DataFrame:
+    """
+    Fetch MAX historical data for a symbol (used for caching)
+    
+    Args:
+        symbol: Stock ticker symbol
+    
+    Returns:
+        DataFrame with full historical data
+    """
+    logger.info(f"Fetching MAX historical data for {symbol}")
+    ticker = yf.Ticker(symbol)
+    hist = ticker.history(period='max', timeout=10)
+    
+    if hist.empty:
+        logger.warning(f"No historical data found for {symbol}")
+        return None
+    
+    return hist
+
+
 def get_historical_prices_yfinance(symbol: str, period: str = "1y") -> dict:
     """
-    Fetch historical stock prices using yfinance
+    Fetch historical stock prices using yfinance.
+    Strategy: Fetch MAX data once and filter locally for different periods.
     
     Args:
         symbol: Stock ticker symbol
@@ -39,15 +108,57 @@ def get_historical_prices_yfinance(symbol: str, period: str = "1y") -> dict:
         Dictionary with dates, prices, and metadata
     """
     try:
-        logger.info(f"Fetching historical data for {symbol} (period: {period})")
+        logger.info(f"Getting historical data for {symbol} (period: {period})")
         
-        # Download historical data with timeout
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period=period, timeout=10)
+        # Try to get MAX data from cache first
+        cached_max_data = stock_cache.get('historical', symbol=symbol, period='max')
         
-        if hist.empty:
-            logger.warning(f"No historical data found for {symbol}")
-            return None
+        if cached_max_data:
+            logger.info(f"Found cached MAX data for {symbol}, filtering locally")
+            # Reconstruct DataFrame from cached data
+            hist = pd.DataFrame({
+                'Open': cached_max_data['open'],
+                'High': cached_max_data['high'],
+                'Low': cached_max_data['low'],
+                'Close': cached_max_data['close'],
+                'Volume': cached_max_data['volume']
+            })
+            hist.index = pd.to_datetime(cached_max_data['dates'])
+            currency = cached_max_data.get('currency', 'USD')
+        else:
+            # Fetch MAX data and cache it
+            logger.info(f"No cached MAX data found, fetching from API")
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period='max', timeout=10)
+            
+            if hist.empty:
+                logger.warning(f"No historical data found for {symbol}")
+                return None
+            
+            currency = ticker.info.get('currency', 'USD') if hasattr(ticker, 'info') else 'USD'
+            
+            # Cache the MAX data
+            max_data = {
+                'symbol': symbol,
+                'dates': hist.index.strftime('%Y-%m-%d').tolist(),
+                'timestamps': (hist.index.astype(int) // 10**9).tolist(),
+                'open': hist['Open'].round(2).tolist(),
+                'high': hist['High'].round(2).tolist(),
+                'low': hist['Low'].round(2).tolist(),
+                'close': hist['Close'].round(2).tolist(),
+                'volume': hist['Volume'].astype(int).tolist(),
+                'data_points': len(hist),
+                'start_date': hist.index[0].strftime('%Y-%m-%d'),
+                'end_date': hist.index[-1].strftime('%Y-%m-%d'),
+                'currency': currency
+            }
+            stock_cache.set('historical', max_data, symbol=symbol, period='max')
+            logger.info(f"Cached MAX data for {symbol} ({len(hist)} points)")
+        
+        # Filter data by requested period
+        if period != 'max':
+            hist = filter_data_by_period(hist, period)
+            logger.info(f"Filtered to {period}: {len(hist)} data points")
         
         # Sample data if too many points (for performance)
         max_points = 500
@@ -61,7 +172,7 @@ def get_historical_prices_yfinance(symbol: str, period: str = "1y") -> dict:
         data = {
             'symbol': symbol,
             'dates': hist.index.strftime('%Y-%m-%d').tolist(),
-            'timestamps': (hist.index.astype(int) // 10**9).tolist(),  # Convert to Unix timestamps
+            'timestamps': (hist.index.astype(int) // 10**9).tolist(),
             'open': hist['Open'].round(2).tolist(),
             'high': hist['High'].round(2).tolist(),
             'low': hist['Low'].round(2).tolist(),
@@ -70,10 +181,10 @@ def get_historical_prices_yfinance(symbol: str, period: str = "1y") -> dict:
             'data_points': len(hist),
             'start_date': hist.index[0].strftime('%Y-%m-%d'),
             'end_date': hist.index[-1].strftime('%Y-%m-%d'),
-            'currency': ticker.info.get('currency', 'USD') if hasattr(ticker, 'info') else 'USD'
+            'currency': currency
         }
         
-        logger.info(f"Retrieved {data['data_points']} data points for {symbol}")
+        logger.info(f"Returning {data['data_points']} data points for {symbol} ({period})")
         return data
         
     except Exception as e:
@@ -141,18 +252,14 @@ async def get_historical_prices(
     - period: Time period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
     
     Returns historical OHLC data with dates and volumes
+    
+    Note: This endpoint now fetches MAX data once and filters locally for better performance.
+    The MAX data is cached, so subsequent requests for different periods are served quickly.
     """
     try:
         symbol = symbol.upper()
         
-        # Check cache first
-        cached_data = stock_cache.get('historical', symbol=symbol, period=period)
-        
-        if cached_data:
-            logger.info(f"Returning cached historical data for {symbol}")
-            return cached_data
-        
-        # Fetch fresh data
+        # Get data (will use cached MAX data if available and filter locally)
         data = get_historical_prices_yfinance(symbol, period)
         
         if not data:
@@ -160,9 +267,6 @@ async def get_historical_prices(
                 status_code=404,
                 detail=f"No historical data found for symbol {symbol}"
             )
-        
-        # Cache the result
-        stock_cache.set('historical', data, symbol=symbol, period=period)
         
         return data
         
