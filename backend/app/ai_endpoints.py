@@ -7,6 +7,9 @@ import json
 import numpy as np
 import pandas as pd
 import logging
+# Cache removed: AI models now run fresh each time
+# Only yfinance data is cached (1 week) via cached_yfinance module
+# This allows script iteration without API rate limits
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +28,9 @@ async def get_stock_forecast(ticker: str):
     Get ML-based stock price forecast using LSTM model.
     This endpoint calls the stock_ml_model.py script.
     Warning: This can take 30-60 seconds to run.
+    
+    Note: Model runs fresh each time to allow script development.
+    yfinance data is cached for 1 week via cached_yfinance module.
     """
     try:
         # Validate ticker
@@ -80,6 +86,9 @@ async def get_volatility_forecast(ticker: str):
     """
     Get volatility forecast using GARCH model.
     This endpoint calls the predict_volatility.py script.
+    
+    Note: Model runs fresh each time to allow script development.
+    yfinance data is cached for 1 week via cached_yfinance module.
     """
     try:
         # Validate ticker
@@ -90,17 +99,22 @@ async def get_volatility_forecast(ticker: str):
         # Import here to avoid loading on startup
         from predict_volatility import predict_volatility
         
+        logger.info(f"Starting volatility model for ticker: {ticker}")
+        
         # Run volatility prediction
         returns_plot, model_summary, rolling_volatility_plot, forecast_plot = predict_volatility(ticker)
         
         # Convert Plotly figures to JSON
-        return JSONResponse(content={
+        response_data = {
             "ticker": ticker,
             "returns": json.loads(returns_plot.to_json()),
             "rolling_volatility": json.loads(rolling_volatility_plot.to_json()),
             "forecast": json.loads(forecast_plot.to_json()),
             "model_summary": str(model_summary)
-        })
+        }
+        
+        logger.info(f"Volatility forecast completed successfully for {ticker}")
+        return JSONResponse(content=response_data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid ticker or no data available: {str(e)}")
     except Exception as e:

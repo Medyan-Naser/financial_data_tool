@@ -25,7 +25,8 @@ def predict_volatility(ticker):
     returns = 100 * df["Close"].pct_change().dropna()
     returns_plot = px.line(returns,
                            title = f"{ticker} Returns over 2 Years",
-                           labels = {"value":"Pct Change (%)", "Date":"Time"}
+                           labels = {"value":"Pct Change (%)", "Date":"Time"},
+                           template='plotly_white'
                           )
     model = arch_model(returns, p=2, q=2)
     model_fit = model.fit(disp="off")
@@ -62,7 +63,8 @@ def predict_volatility(ticker):
     rolling_volatility_plot.update_layout(
         title_text = f"{ticker} Volatility Predictions Over Last 365 Days",
         xaxis = dict(title_text = "Last Year"),
-        yaxis = dict(title_text = 'Percent Change (%)')
+        yaxis = dict(title_text = 'Percent Change (%)'),
+        template='plotly_white'
     )
     
     # Forecasting next 7 days
@@ -81,7 +83,8 @@ def predict_volatility(ticker):
     forecast_plot.update_layout(
         title_text = f"{ticker} 7 Day Volatility Forecast",
         xaxis = dict(title_text = "Date"),
-        yaxis = dict(title_text = 'Percent Change (%)')
+        yaxis = dict(title_text = 'Percent Change (%)'),
+        template='plotly_white'
     )
     '''
     px.line(pred,

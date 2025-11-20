@@ -678,14 +678,22 @@ body {
 }
 
 .row-name-col {
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: #4a5568;
   max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
   position: sticky;
   left: 0;
-  background: white;
+  background: #f7fafc;
+  padding: 12px 16px;
+  border-right: 3px solid #e2e8f0;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.financial-table tbody tr:hover .row-name-col {
+  background: #edf2f7;
+  color: #2d3748;
 }
 
 /* Raw View Styling */
