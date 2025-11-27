@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Plot from 'react-plotly.js';
 import DraggableResizablePanel from './DraggableResizablePanel';
@@ -6,8 +6,8 @@ import AIModels from './AIModels';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-function AIView() {
-  const [ticker, setTicker] = useState('AAPL');
+function AIView({ selectedTicker }) {
+  const [ticker, setTicker] = useState(selectedTicker || 'AAPL');
   const [activeModel, setActiveModel] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,6 +19,13 @@ function AIView() {
   // Z-index management for panels
   const [activePanelId, setActivePanelId] = useState(null);
   const [panelZIndexes, setPanelZIndexes] = useState({});
+  
+  // Update ticker when selectedTicker prop changes
+  useEffect(() => {
+    if (selectedTicker) {
+      setTicker(selectedTicker);
+    }
+  }, [selectedTicker]);
   
   // Panel state for draggable/resizable charts
   const [chartPanels, setChartPanels] = useState({

@@ -515,7 +515,7 @@ function App() {
 
         {/* AI Predictions Tab */}
         {activeMainTab === 'ai' && (
-          <AIView />
+          <AIView selectedTicker={selectedTicker} />
         )}
       </main>
     </div>
