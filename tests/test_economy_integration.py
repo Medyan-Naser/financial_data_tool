@@ -110,7 +110,26 @@ def main():
         f"{API_BASE_URL}/api/economy/gdp/US",
         ['country', 'indicator', 'data', 'cached_at', 'cache_expires']
     )
-
+    
+    # Test 6: Inflation Data
+    results['inflation'] = test_endpoint(
+        "Inflation Data (US)",
+        f"{API_BASE_URL}/api/economy/inflation/US",
+        ['country', 'indicator', 'data', 'cached_at', 'cache_expires']
+    )
+    
+    # Test 7: Interest Rates
+    results['interest_rates'] = test_endpoint(
+        "Interest Rates",
+        f"{API_BASE_URL}/api/economy/interest-rates",
+        ['rates', 'cached_at', 'cache_expires']
+    )
+    
+    # Test 8: Cache Validation (re-request to test cache)
+    print(f"\n{'='*60}")
+    print("Testing Cache Functionality")
+    print(f"{'='*60}")
+    print("Re-requesting currency data to verify caching...")
     
     start_time = time.time()
     response1 = requests.get(f"{API_BASE_URL}/api/economy/currency")
