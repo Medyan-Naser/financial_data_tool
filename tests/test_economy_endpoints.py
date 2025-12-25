@@ -206,7 +206,40 @@ def test_endpoint(endpoint):
         return False
 
 
+def main():
+    """Run all endpoint tests"""
+    print("\n" + "="*60)
+    print("ECONOMY TAB ENDPOINT TESTING")
+    print("="*60)
+    print(f"Testing {len(ENDPOINTS)} endpoints...")
+    print(f"Base URL: {BASE_URL}")
+    
+    results = {}
+    
+    for endpoint in ENDPOINTS:
+        result = test_endpoint(endpoint)
+        results[endpoint] = result
+    
+    # Summary
+    print("\n" + "="*60)
+    print("TEST SUMMARY")
+    print("="*60)
+    
+    passed = sum(1 for v in results.values() if v)
+    failed = len(results) - passed
+    
+    print(f"\nTotal: {len(results)}")
+    print(f"Passed: {passed} ✅")
+    print(f"Failed: {failed} ❌")
+    
+    if failed > 0:
+        print(f"\n❌ Failed endpoints:")
+        for endpoint, result in results.items():
+            if not result:
+                print(f"   - {endpoint}")
+    else:
+        print(f"\n🎉 All endpoints passed!")
+    
+    # Exit code
+    sys.exit(0 if failed == 0 else 1)
 
-
-if __name__ == "__main__":
-    main()
