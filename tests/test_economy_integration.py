@@ -90,6 +90,26 @@ def main():
         ['base', 'date', 'rates', 'cached_at', 'cache_expires']
     )
     
+    # Test 3: Cryptocurrency
+    results['crypto'] = test_endpoint(
+        "Cryptocurrency Prices",
+        f"{API_BASE_URL}/api/economy/crypto",
+        ['cryptocurrencies', 'total_count', 'cached_at', 'cache_expires']
+    )
+    
+    # Test 4: Metals (Gold/Silver)
+    results['metals'] = test_endpoint(
+        "Precious Metals Prices",
+        f"{API_BASE_URL}/api/economy/metals",
+        ['gold', 'silver', 'date', 'cached_at', 'cache_expires']
+    )
+    
+    # Test 5: GDP Data
+    results['gdp'] = test_endpoint(
+        "GDP Data (US)",
+        f"{API_BASE_URL}/api/economy/gdp/US",
+        ['country', 'indicator', 'data', 'cached_at', 'cache_expires']
+    )
 
     
     start_time = time.time()
