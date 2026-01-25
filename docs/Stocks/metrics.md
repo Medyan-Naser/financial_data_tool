@@ -52,3 +52,43 @@ This document describes all financial metrics extracted and calculated from comp
 | **Stockholders' Equity** | Net worth = Total Assets - Total Liabilities |
 | **Total Equity** | Ownership value belonging to shareholders |
 
+## Cash Flow Metrics
+
+| Metric | Description |
+|--------|-------------|
+| **Operating Cash Flow** | Cash generated from core business operations |
+| **Investing Cash Flow** | Cash used for/from investments (CapEx, acquisitions) |
+| **Financing Cash Flow** | Cash from/to debt and equity financing |
+| **Free Cash Flow** | Operating Cash Flow - Capital Expenditures |
+
+## Health Score Components
+
+The Financial Health Score (0-100) is calculated from five categories:
+
+| Component | Weight | What It Measures |
+|-----------|--------|------------------|
+| **Profitability** | 25 pts | Net profit margins, ROE, ROA |
+| **Liquidity** | 20 pts | Ability to meet short-term obligations |
+| **Solvency** | 20 pts | Long-term debt sustainability |
+| **Efficiency** | 15 pts | Asset utilization effectiveness |
+| **Growth** | 20 pts | Revenue and earnings growth trends |
+
+### Health Score Ratings
+
+| Score Range | Rating | Interpretation |
+|-------------|--------|----------------|
+| 80-100 | Excellent | Strong financial position |
+| 60-79 | Good | Healthy with minor concerns |
+| 40-59 | Fair | Some financial stress indicators |
+| 20-39 | Poor | Significant financial challenges |
+| 0-19 | Critical | Severe financial distress |
+
+## Bankruptcy Risk (Altman Z-Score)
+
+The Z-Score predicts probability of bankruptcy within 2 years:
+
+| Z-Score | Zone | Risk Level |
+|---------|------|------------|
+| > 2.99 | Safe | Low bankruptcy risk (~5%) |
+| 1.81 - 2.99 | Grey | Moderate risk (~20%) |
+| < 1.81 | Distress | High bankruptcy risk (~80%) |
