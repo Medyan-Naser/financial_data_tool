@@ -109,3 +109,73 @@ Where:
 | 1.81 < Z < 2.99 | Grey Zone | ~20% within 2 years |
 | Z < 1.81 | Distress Zone | ~80% within 2 years |
 
+## Health Score Calculation
+
+The Financial Health Score is a weighted composite:
+
+```
+Health Score = Profitability + Liquidity + Solvency + Efficiency + Growth
+             = (0-25 pts)   + (0-20 pts) + (0-20 pts) + (0-15 pts) + (0-20 pts)
+```
+
+### Component Calculations
+
+**Profitability Score (0-25)**
+```
+Profitability = min(25, max(0, Net Profit Margin × 2.5))
+```
+
+**Liquidity Score (0-20)**
+```
+Liquidity = min(20, max(0, (Current Ratio - 1) × 10))
+```
+
+**Solvency Score (0-20)**
+```
+Solvency = min(20, max(0, 20 - (Debt-to-Equity × 5)))
+```
+
+**Efficiency Score (0-15)**
+```
+Efficiency = min(15, max(0, Asset Turnover × 7.5))
+```
+
+**Growth Score (0-20)**
+```
+Growth = min(20, max(0, 10 + Revenue Growth %))
+```
+
+## Growth Calculations
+
+### Revenue Growth Rate
+```
+Revenue Growth = ((Current Revenue - Previous Revenue) / |Previous Revenue|) × 100
+```
+
+### Earnings Growth Rate
+```
+Earnings Growth = ((Current Net Income - Previous Net Income) / |Previous Net Income|) × 100
+```
+
+## Cash Flow Equations
+
+### Free Cash Flow (FCF)
+```
+FCF = Operating Cash Flow - Capital Expenditures
+```
+
+### Operating Cash Flow Ratio
+```
+OCF Ratio = Operating Cash Flow / Current Liabilities
+```
+
+## Anomaly Detection
+
+Anomalies are detected using the Z-score statistical method:
+
+```
+Z-score = (Value - Mean) / Standard Deviation
+```
+
+- **|Z| > 2**: Medium severity anomaly
+- **|Z| > 3**: High severity anomaly
