@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 # Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend', 'app'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend', 'app'))
 
 def test_cache_expiry():
     """Test 1: Verify cache is set to 1 week (168 hours)"""
