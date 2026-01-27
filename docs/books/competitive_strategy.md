@@ -389,3 +389,242 @@ Early entry is risky:
 •	Early competition with small, newly started firms will be costly, but these firms will be replaced by more formidable competition later.
 •	Technological change will make early investments obsolete and allow firms entering later to have an advantage by having the newest products and processes.
 
+
+
+Chapter 11: The transition to industry maturity
+
+Many industries pass from periods of rapid growth to the more modest growth of what is commonly called industry maturity.
+In response to strategic breakthroughs, mature industries may regain thier rapid growth and thereby go through more than one transition to maturity.
+Maturity is always a critical period for companies in an industry, during which fundamental changes often take place in companies competitive environment.
+
+
+Industry Change during Transition:
+
+Changes in industry competitive environment:
+•	Slowing growth means more competition for market share
+•	Firms in the industry increasingly are selling to experienced, repeated buyers: buyer shift from deciding whether to buy the product at all to making choices among brands.
+•	Competition often shifts toward greater emphasis on cost and service
+•	There is a topping-out problem in adding industry capacity and personnel: as the industry growth slows down, the rate of capacity addition must slow down or overcapacity will occur.
+•	Manufacturing, marketing, distributing, selling,, and research methods are often undergoing change: due to increased competition for market share, technological maturity, and buyer sophistication.
+•	New products and application are harder to come by
+•	International competition increases
+•	industry profits often fall during the transition period, sometimes temporarily and sometimes permanently
+•	Dealers' margins fall, but their power increases
+
+
+Some Strategic Implications of Transition:
+
+Maturity may force companies to confront, often for the first time, the need to choose among the three generic strategies (Cost leadership, differentiate, focus); it becomes a matter of survival. 
+
+Sophisticated cost analysis:
+Cost analysis becomes important in maturity to rationalize the product mix and price correctly.:
+- Rationalizing the product mix: removing unprofitable items from the line and to focus attention on items either that have some distinctive advantage or whose buyers are good buyers.
+- Correct pricing: average cost pricing or pricing the line as a whole rather than individual items, may have been sufficient in the growth era (Average-cost pricing may have been desirable to develop the full product line and establish a market position), maturity often requires increased capability to measure costs on individual items and to price accordingly.
+
+Process innovation and design for manufacture:
+The relative importance for process innovations usually increases in maturity.
+
+Increased scope of purchases:
+Increasing purchases of existing customers may be more desirable than seeking new customers. It can be increased by supplying peripheral equipment and service, upgrading the product line, widening the line, and so on.
+In a mature industry, winning new customers means battling for market share with competitors.
+
+Buy cheap assets:
+Assets can be acquired very cheaply as a result of the company distress that is caused by transition to maturity. A strategy to acquiring distressed companies or buying liquidated assets.
+
+ Buyer selection:
+Identifying good buyers and locking them in.
+
+Different cost curves:
+The firm that is not the overall coat leader in a mature market can sometimes find new cost curves which may actually make it a lower cost producer for certain types of buyers, product varieties, or order size. This is the focus strategy.
+
+Competing internationally:
+A firm may escape maturity by competing internationally where the industry is more favorably structured. This may only postpone maturity rather than deal with it.
+
+
+
+Strategic Pitfalls in Transition:
+
+Some strategic pitfalls:
+•	A company's self-perceptions and its perception of the industry are inaccurate
+•	Caught in the middle between the 3 main strategies (Cost leadership, differentiate, focus)
+•	The cash trap - investments to build share in a mature market: cash should be invested in a business only with the expectation of being able to remove it later. Maturity of the industry works against increasing or maintaining margins long enough to recoup cash investments down the road, by making the present value of cash inflows justify the outflow. A pitfall is placing heavy attention on revenues instead of on profitability.
+•	Giving up market share too easily in favor of short run profits
+•	Resentment and irrational reaction to price competition: difficult for firms to accept the need for price competition after a period in which it has not been necessary.
+•	Resentment and irrational reaction to changes in industry practices
+•	Overemphasis on creative and new products rather then improving and aggressively selling existing one.
+•	Clinging to higher quality as an excuse for not meeting aggressive pricing and marketing moves of competitors: quality differentials have a tendency to erode as an industry matures.
+•	Overhanging excess capacity
+
+
+Organizational Implications of Maturity:
+
+Difficult problems for general management:
+•	Scaled down expectation for financial performance.
+•	More discipline from the organization.
+•	Scaled-down expectations for advancement.
+•	More attention on the human dimension.
+•	Recentralization.
+
+
+
+Chapter 12: Competitive Strategy in Declining Industries
+
+Declining industries are those that have experienced an absolute decline in unit sales over a sustained period.
+
+Structural Determinants of competition in decline:
+
+Competitive pressure erodes profitability depends on some key conditions:
+
+Conditions of demand:
+Major influence on competition:
+•	uncertainty: uncertainty perceived by competitors about whether demand will continue to decline.
+•	Rate and pattern of decline: the more slowly decline is proceeding, the more it may be masked by short run factors. The rate of decline is partly a function of the pattern in which firms actually decide to withdraw capacity from the business.
+•	Structure of remaining demand pockets (niche): the nature of the pockets of demand that remain plays a major role in determining profitability.
+•	Causes of decline: Technological substitution (technological innovation or shifts in relative costs and quality), Demographics, shifts in needs
+
+Exit barriers:
+Exit barriers fundamental sources:
+•	Durable and specialized assets: specialized assets diminished the liquidation value. Durable assets may have higher book value than liquidation value.
+•	Fixed costs of exit: like employees settlements
+•	Strategic exit barriers:
+o	Interrelatedness: the business may be part of a total strategy involving a group of businesses.
+o	Access to financial markets: exiting may reduce the confidence of the capital markets in the firm.
+o	Vertical integration: exit might effect the entire vertical chain.
+•	Information barriers: Businesses performing poorly can be hidden by the success of interrelated ones in a company.
+•	Managerial or emotional barriers
+•	Government and social barriers
+•	Mechanism for asset disposition: if assets in a declining industry are disposed of within the industry and not then retired, it is even worse for subsequent competition than if the original owners of the firms stayed in business.
+
+
+Strategic Alternatives in Decline:
+
+Four basic approaches to competing in decline:
+•	Leadership: Seek a leadership position in terms of market share
+•	Niche: create or defend a strong position in a particular segment
+•	Harvest: Manage a controlled disinvestment, taking advantage of strengths
+•	Divest quickly: Liquidate the investment as early in the decline phase as possible
+
+
+Leadership:
+The firm aim to be the only firm or one of few firms remaining, once this position is attained the firm switches to a holding position or controller harvest strategy.
+Aggressive investing is needed to take market shar and purchasing of competitors to reduce exit barriers.
+
+Niche:
+The objective of this strategy is to identify a segment of the declining industry that will not only maintain stable demand or decay slowly but also has structural characteristics allowing high returns. The firm invest in building its position in this segment.
+Ultimately the firm may either switch toa harvest or divest strategy.
+
+Harvest:
+The firm seeks to optimize cash flow from the business. Ultimately the business is sold or liquidated.
+
+Quick Divestment:
+Maximize its net investment recovery from the business by selling it early in decline.
+
+
+Pitfalls in decline:
+
+•	Failure to recognize decline
+•	A war of attrtion: warfare with competitiors having high exit barriers leads to disaster
+•	Harvesting without clear strengths
+
+
+Chapter 13: Competition in Global industries
+
+Sources and Impediments to Global Competition:
+Firms can participate in international activities through three basic mechanisms: licensing, export, and foreign direct investment.
+
+Sources of global competitive advantage:
+•	Comparative advantage: When a country or countries have a significant advantage in factor cost or factor quality used in producing a product, these countries will be the sites of production and exports will flow to the world.
+•	Production economies of scale:  if there are economies of scale in production that extend beyond the size of major national markets, the firm can potentially achieve a cost advantage through centralized production.
+•	Global experience: in technologies subject to significant cost declines due to proprietary experience, global experience can allow for faster learning.
+•	Logistical economies of scale: if an international logistics system inherently involves fixed costs that can be spread by supplying many national markets.
+•	Marketing economies of scale
+•	Economies of scale in purchasing: as a result of bargaining power or lower suppliers cost due to purchases which go beyond what is needed to compete in just one market.
+•	Product differentiation
+•	Proprietary product technology: global economies can result from the ability to apply proprietary technology in several national markets.
+•	Mobility of production: the production of a product or service is mobile. Fixed costs of creating and maintaining an organization and developing proprietary technology can be readily spread over operations in many national markets.
+
+
+Impediments to global competition:
+Economic impediments:
+•	Transportation and storage costs
+•	Differing product needs
+•	Established distribution channels: hard to access distribution channels in foreign country.
+•	Sales force: if the product requires a local manufacturer's direct sales force, the international competitor confronts a potential scale economy barrier.
+•	Local repair
+•	Sensitivity to lead time: time it takes to change or ship the product can effect industries that is sensitive to lead time.
+•	Complex segmentation within geographic markets
+•	Lack of world demand: the product is new or only fit the needs of an unusual customer group which only present in few national markets.
+
+Managerial impediments:
+•	Differing marketing tasks: marketing is different in each country
+•	Intensive local services
+•	Rapidly changing technology: rapidly changing technology requires frequent product and process redesign attuned to the local markets.
+
+Institutional impediments:
+•	Governmental impediments: most under the guise of protecting local firms or local employment.
+•	Perceptual or resource impediments
+
+
+Evolution to global industries:
+Few industries begin as global industries, but they tend to evolve into them over time.
+
+Environmental triggers to globalization:
+•	Increased scale economies
+•	Decreased transportation or storage costs
+•	Rationalized or changed distribution channel
+•	Changed factor costs: increases in the cost of labor, energy, and raw materials can shift the optimum production or distribution configuration.
+•	Narrowed national economic and social circumstances: if the market in different countries become similar in terms of the economic and social circumstances.
+•	Reduced government constraints
+
+
+Strategic innovations stimulating globalization:
+
+•	Product redefinition: redefine product to fit other markets
+•	Identification of market segments: there may be segments of the market that are common to many countries and that are being poorly served in many of them.
+•	Reduced costs of adaptations
+•	Design changes: design changes leading to more standardized components.
+•	Deintegration of production: sometimes there are some constraints on local production, so production can be in another country and assembly is done locally.
+•	Elimination of constraints from resources or perception
+
+
+Competition in global industries:
+The following issues must be confronted in some way by global competitors:
+•	Industrial policy and competitive behavior: the relationship between the government and competitors should be examined. Government can support some companies for various reasons, which could raise the exit barriers.
+•	Relationship with host governments in major markets
+•	Systemic competition: involves a coordinated worldwide pattern of market positions, facilities, and investments.
+•	Difficulty in competitor analysis
+
+
+Strategic alternatives in global industries:
+Compete globally or find a niches in one or few markets.
+
+The alternatives:
+•	Broad line global competition: compete worldwide in the full product line.
+•	Global focus: target a particular segment of the industry and compete worldwide.
+•	National focus: compete in national market in a global industry.
+•	Protected niche: compete in countries where governmental restraints exclude global competitors.
+
+
+Trends affecting global competition:
+•	Reduction in differences among countries
+•	More aggressive industrial policy
+
+Trends affecting global competition:
+•	Reduction in differences among countries
+•	More aggressive industrial policy
+•	National recognition and protection of distinctive assets
+•	Free flow of technology
+•	Gradual emergence of new large scale markets
+•	Non developed countries competition: industries most vulnerable to non developed countries with the lack of the following:
+o	Rapidly changing technology that can be kept proprietary
+o	Highly skilled labor
+o	Sensitivity to lead time
+o	Complex distribution and service
+o	High consumer marketing content
+o	Complex, technical selling task
+
+
+
+
+
+
