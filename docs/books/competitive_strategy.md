@@ -628,3 +628,162 @@ o	Complex, technical selling task
 
 
 
+
+
+Chapter 14: The strategic analysis of vertical integration
+
+Vertical integration is the combination of technologically distinct production, distribution, selling, and/or other economic processes within the confines of a single firm.
+
+Strategic benefits and costs of vertical integration:
+
+The upstream firm is the selling firm, and the downstream firm is the buying firm in the vertical chain.
+
+Volume of throughput versus efficient scale:
+The benefit depends on the volume of products or services the firm purchases from or sells to the adjacent stage relative to the size of the efficient production facility in that stage.
+
+Strategic benefits of integration:
+•	Economies of integration: if the volume of throughput is sufficient to reap available economies of scale.
+•	Economies of combines operations: reduce cost when operations are combines.
+•	Economies of internal control and coordination: better to have an operation internally since the firm have more control over it, like change in design.
+•	Economies of information: information flow more freely within the firm.
+•	Economies of avoiding the market: save costs on looking for outside party.
+•	Economies of stable relationships
+ 
+Characteristics of vertical integration economies:
+•	Tap into technology
+•	Assure supply and/or demand
+•	Offset bargaining power and input cost distortions
+•	Enhanced ability to differentiate
+•	Elevate entry and mobility barriers
+•	Enter a higher return business
+•	Defend against foreclosure
+
+
+Strategic costs of integration
+Involves entry cost, flexibility, balance, ability to manage the integrated firm, and the use of internal organizational incentives versus market incentives.
+
+•	Cost of overcoming the mobility barriers
+•	Increased operating leverage: exposing the firm to greater cyclical swings in the earnings. since it depends one two things, original and the integrated firm. It has greater effect when the integrated firm have high fixed costs.
+•	Reduced flexibility to change partners: raise the cost of changeover.
+•	High overall exit barriers
+•	Capital investment requirements: vertical integration must yield a return greater than or equal to the firms opportunity cost of capital.
+•	Foreclosure of access to supplier or consumer research and/or know-how: Integration usually means that a company must accept responsibility for developing its own technological capability rather than piggybacking on others.
+•	Maintaining balance: balance the capacity
+•	Dulled incentives
+•	Differing managerial requirements
+
+
+Particular Strategic benefits in Forward Integration:
+•	Improved ability to differentiate the product
+•	Access to distribution channels
+•	Better access to market information
+•	Higher price realization
+
+
+Particular strategic benefits/issues in Backward integration benefits:
+
+•	Improved ability to differentiate the product
+
+issues:
+•	Proprietary knowledge
+
+Long-term contracts and the economies of integration
+
+Tapered integration:
+Tapered integration is partial integration backward or forward, the firm purchasing the rest of its needs on the open market.
+•	Tapered integration and the costs of integration: cost can be adjusted to the degree of taper.
+•	Tapered integration and the benefits of integration: offset bargaining power of suppliers or customers
+
+
+Quasi integration:
+Quasi integration the establishment of a relationship between vertically related business that is somewhere in between long term contracts and full ownership. ex. loans.
+It removes a lot of the costs associated with integration.
+
+Illusions in vertical integration decisions:
+•	A strong market position in one stage can automatically be extended to the other
+•	It is always cheaper to do things internally
+•	It often makes sense to integrate into a competitive business
+•	Vertical integration can save a strategically sick business
+•	Experience in one part of the vertical chain automatically qualifies management to direct upstream of downstream units.
+
+
+
+Chapter 15: Capacity Expansion
+
+Capacity additions can involve lead times measured in years and capacity is often long lasting capacity decisions require the firm to commit resources based on expectations about conditions far into the future. 
+If all firms add extra capacity, it is not good for the industry. Thus capacity expansion involves all the classic problems of oligopoly, in which firms are mutually dependent.
+
+
+Elements of the capacity expansion decision:
+
+
+Determine the firms options for the size and type of capacity additions --> assess probable future demand and costs of inputs --> assess probable technological changes and probability of obsolescence --> predict capacity additions by each competitor based on the competitors expectations about the industry --> add these to determine industry supply and demand balance, and resulting industry prices and costs --> determine expected cash flows from capacity addition --> test the analysis for consistency
+
+
+Causes of overbuilding capacity:
+
+Risk of overbuilding is most severe in commodity businesses for two reasons:
+1)	Demand is generally cyclical. Cyclical demand not only guarantees overcapacity in downturns but also seems to lead to excessively optimistic expectations in upturns.
+2)	Products are not differentiated. This factor makes costs crucial to competition, since the buyers choice is heavily based on price. Also, the absence of brand loyalty mean the firms sales are closely ties to the amount of capacity they have. Thus, firms are under great pressure to have large, modern plants to be competitive and adequate capacity to achieve their target market share.
+
+Number of conditions lead to overbuilding which can be divided into the following categories:
+
+Technological:
+•	Adding capacity in large lumps
+•	Economies of scale or a significant learning curve: first one to do it will put pressure on competitors to do it because of cost advantage.
+•	Long lead times in adding capacity
+•	Increased minimum efficient scale (MES)
+•	Changes in production technology: new technology might attract investment, but the old one will stay in the industry, specially if the exit barriers are high.
+
+Structural:
+•	Significant exit barriers
+•	Forcing by suppliers
+•	Building credibility: for new products, buyers will not switch to the new product until sufficient capacity is on stream to meet their needs without making them vulnerable to a few suppliers.
+•	Integrated competitors
+•	Capacity share affects demand: the firm with the greatest capacity may get a disproportionate share of demand because buyers are prone to approach it first.
+•	Age and type of capacity affects demand
+
+Competitive:
+•	Large number of firms
+•	Lack of credible market leader
+•	New entry
+•	First mover advantages
+
+Information flow:
+•	Inflation of future expectations
+•	Divergent assumptions or perceptions
+•	Breakdown of market signalling: if signalling loses its credibility, this will cause overcapacity
+•	Structural change
+•	Financial community pressure
+
+Managerial:
+•	Production orientation of management
+•	Asymmetric aversion to risk
+
+Governmental:
+•	Reverse tax incentives
+•	Desire for indigenous industry
+•	Pressure to increase or maintain employment
+
+
+Limits to capacity expansion
+•	Financing constraints
+•	Company diversification
+•	Pollution control costs and other increased costs of new capacity
+
+
+Pre-emptive strategies
+
+Pre-emptive strategy in which the firm seeks to lock up a major portion of the market to discourage its competitors from expanding and to deter entry.
+Risky strategy because it involves the early commitment of major resources to a market before the market outcome is known. Also, if the other firms do not get discourages and also build extra capacity, this will lead to disaster since more than one firm committed to more capacity before the market outcome is known.
+
+The pre-emptive strategy is risky partly because all these conditions must be satisfied:
+•	Large capacity expansion relative to expected market size
+•	Large economies of scale relative to total market demand or significant experience curve
+•	Credibility of the pre-empting firm
+•	Ability to signal pre-emptive motive before competitors act
+•	Willingness of competitors to back down: it is risky against the following types of competitors:
+o	Competitors with goals other than purely economic
+o	Competitors for whom this business is a major strategic thrust or is related to others in their portfolio
+o	Competitor who have equal or better staying power, a longer time horizon, or a greater willingness to trade profits for market position
+
