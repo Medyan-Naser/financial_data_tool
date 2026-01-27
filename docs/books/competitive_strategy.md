@@ -171,3 +171,221 @@ The industries in which the followers’ rates of return were higher appear gene
 
 Low-cost position within the strategic group may well be crucial, but low-cost position overall is not necessarily important.
 
+Chapter 8:
+
+Basic concept in industry evolution:
+
+An industry passes through a number of stages: introduction, growth, maturity, and decline.
+
+
+Evolutionary processes:
+
+Industries evolve because some forces are in motion that create incentives or pressures for structural change, these can be called evolutionary processes.
+
+1/ long run changes in growth: 
+A force leading to structural change is a change in the long run industry growth rate. Industry growth is a key variable in determining the intensity of rivalry and it sets the pace of expansion required to maintains share.
+
+5 external reasons why long run industry growth change:
+I.	Demographics: demographic changes are one key determinant of the size of the buyer pool for a product and thereby the rate of growth in demand. Like age group, income level, education level, or geographic locations. Also, part of the effect is caused by income elasticity, which refers to the change in a buyers’ demand for a product as his income rises.
+II.	Trends in needs: Demand for an industry’s product is affected by changes in the lifestyle, tastes, philosophies, and social conditions. 
+III.	Change in the relative position of substitutes: Demand of a product is affected by the cost and quality of the substitute product.
+IV.	Change in the position of complementary products: Demand of a product to the buyer depends on the cost, quality, and availability of complementary products or products used jointly with them.
+V.	Penetration of the customer group: most high industry growth rates are the results of increasing penetration, or sales to new customers. Eventually, however, an industry must reach essentially complete penetration. Its growth rate is then determined by replacement demand. For durable goods, achieving penetration can lead to an abrupt drop in industry demand. The relation between the growth rate before penetration and after will be a function of how fast penetration has been reached and the average time before replacement.
+VI.	Product change: non-external force, product innovation can allow to serve new needs.
+
+2/ Changes in buyer segments served:
+Serving or no longer serving buyer segments.
+
+3/ Learning by buyers:
+Buyers accumulate knowledge, thus there is a natural force reducing product differentiation over time.
+
+4/ Reduction of uncertainty: 
+Most new industries are initially characterized by uncertainty about like potential size of the market, optimal product configuration, and potential buyers. Over time uncertainties will reduce which might attract new entrants, especially larger and well-established firms.
+
+5/ Diffusion of proprietary knowledge:
+Product developed by specific firms tend to become less proprietary. 
+Mobility barriers bult on proprietary knowledge tend to erode over time.
+
+6/ Accumulation of experience:
+Unit costs decline with experience.
+The significance of the learning curve for industry competition is dependent upon whether firms with more experience can establish significant and sustainable leads over others.
+The tendency for proprietary technology to diffuse works against the learning curve because you give away all the R&D for free to other firms.
+
+7/ Expansion or contraction in scale:
+Increasing scale tends to widen the set of available strategies in ways that often lead to increased economies of scale and capital requirements. Contraction of industry scale has the reverse effects.
+
+8/ Changes in input costs and exchange rates:
+The important classes of input costs subject to change are wage rates, material costs, cost of capital, communication costs, and transportation costs.
+Exchange rate fluctuation can also have a profound effect on industry competition.
+
+9/ Product innovation:
+Product innovation can widen the market and promote industry growth. 
+Product innovation can come from outside or inside the industry.
+
+10/ Marketing innovation:
+Can allow reaching new customers.
+
+11/ Process innovation:
+Innovation in manufacturing process or methods. Can make it more or less capital intensive, increase or decrease economies of scale, change the proportion of fixed costs, increase of decrease vertical integration and so on.
+
+12/ structural change in adjacent industries:
+Since the structure of suppliers’ and customers’ industries affects their bargaining power with an industry.
+
+13/ Government policy change:
+Regulations of key variables as entry into the industry, competitive practices, or profitability.
+
+14/ Entry and exit:
+Industry growth seems to be the most important signal to outsiders that there are future profits to be made, even though this can often be a poor assumption.
+
+
+
+Part II: Generic Industry Environments
+Chapter 9: competitive Strategy in Fragmented Industries:
+
+A fragmented industry is an industry in which no firm has a significant market share and can strongly influence the industry outcome.
+Usually, fragmented industries are populated by a large number of small and medium sized companies, many of them privately held.
+
+
+What makes an industry fragmented? (Most of the points give an advantage to being a small firm over a big firm)
+
+•	Low overall entry barriers
+•	Absence of economies of scale or experience curve
+•	high transportation costs: transportation costs balanced against economies of scale determine the radius of plant can economically service.
+•	High inventory costs or erratic sales fluctuations
+•	No advantages of size in dealing with buyers or suppliers
+•	Diseconomies of scale in some important aspect
+•	If maintaining a low overhead is crucial to success: this could favour the small firm
+•	A highly diverse product line required customization
+•	heavy creative content is required (there are exceptions)
+•	close local control and supervision of operations is essential
+•	personal service is the key to the business
+•	a local image and local contacts often are keys to the business
+•	Diverse market needs
+•	high product differentiation, particularly if based on image
+•	exit barriers: marginal firms will tend to stay in the industry and thereby hold back consolidation
+•	local regulation
+•	Government prohibition of concentration
+•	newness: an industry can be fragmented because it is new, and no firm or firms have a significant market share
+
+
+Overcoming fragmentation:
+
+An industry can be fragmented because of only one of the factors listed in the previous section. If this fundamental block to consolidation can be somehow overcome, this often triggers a process by which the entire structure of the industry changes.
+
+
+Common approaches to consolidation:
+
+•	Create economies of scale or experience curve
+•	Standardize diverse market needs
+•	Neutralize of split off aspects most responsible for fragmentation
+•	Make acquisitions for a critical mass
+•	Recognize industry trends early: sometimes industries consolidate naturally as they mature
+
+
+Industries that are stuck:
+Could be stuck for number of reasons:
+•	Existing firms lack resources or skills
+•	Existing firms are myopic or complacent: emotionally tied to traditional industry practices that support the fragmentation
+•	Lack of attention by outside firms
+
+If a firm can spot an industry in which the fragmented structure does not reflect the underlying economics of competition, this can provide a most significant strategic opportunity.
+
+Coping with fragmentation:
+
+In many situations, industry fragmentation is indeed the result of underlying economics that cannot be overcome.
+Fragmented industries are characterized by a weak bargaining position with suppliers and buyers.
+
+Strategies to cope with fragmentation:
+•	Tightly managed decentralization
+•	Formula facilities: this strategy involve designing a standard facility
+•	Increased value added: like providing more service
+•	specialisation by product type of product segment
+•	Specialisation by customer type
+•	Specialisation by type of order
+•	A focused geographic area
+•	Bare bones/no frills: that is low overhead, low-skilled employees, tight cost control, and attention to detail
+•	Backward integration
+
+
+Potential strategic traps in fragmented industries:
+
+•	Seeking dominance
+•	Lack of strategic discipline
+•	Over centralization: since in fragmented industries firms are subject to no economies of scale or even diseconomies
+•	Assumption that competitors have the same overhead and objectives 
+•	Overreactions to new products
+
+
+Chapter 10: Competitive Strategy in Emerging Industries
+
+Emerging industries are newly formed or re-formed industries.
+
+The structural Environment:
+
+Common structural characteristics:
+•	Technological uncertainty: what process or design is most efficient or the best
+•	Strategic uncertainty
+•	High initial costs but steep cost reduction
+•	Embryonic companies and spin-offs: the greatest proportion of newly formed companies to newly formed units of established firms that the industry will ever experience. Spin off are a common phenomenon in emerging industries.
+•	First time buyers: all buyers are new
+•	Short term horizon" bottlenecks and problems are dealt with  expediently rather than as a result of an analysis of future conditions.
+•	Subsidy: may come from government and nongovernment sources, it can be awarded through tax incentives, subsidizing buyers, and so on. Subsidies often add a great degree of instability to an industry because it is made dependent on political decisions.
+
+
+Early mobility barriers: in emerging industry, the configuration of mobility barriers is often different from that which will characterize the industry later in its development.
+
+
+Problems constraining industry development:
+
+limits or problems:
+•	Inability to obtain raw materials and components
+•	Period of rapid escalation of raw materials prices: supplier bargaining power
+•	Absence of infrastructure
+•	Absence of product or technological standardization: accentuates problems in the supply of raw materials or complementary products, and can impede cost improvements.
+•	Perceived likelihood of obsolescence: buyers will wait for the pace of technological progress and cost reduction to slow down.
+•	Customers confusion
+•	Erratic product quality: even if caused by few firms, it can negatively affect the image and credibility of the entire industry.
+•	Image and credibility with the financial community: ability of firms to secure low-cost financing and the ability of buyers to obtain credit is low.
+•	Regulatory approval
+•	High costs
+•	Response of threatened entities: some entity is almost always threatened by an emerging industry, and they will fight back.
+
+
+Early and Late Markets:
+
+The assessment of which markets will open up early and which will come later.
+Number of criteria in determining:
+•	Nature of the benefit: performance or cost, usually in emerging industries performance is favoured due to uncertainty.
+•	State of the art required to yield significant benefits
+•	cost of product failure: customers with high cost product failure will be slower in adopting new products.
+•	Introduction of switching costs
+•	Support services: product require some support services by the customer, so it will be adopted first by buyers which have such resources.
+•	Cost of obsolescence: different customers are satisfied by different generation of the product.
+•	Asymmetric government, regulatory, or labor barriers: some industries are monitored more closely than others.
+•	Resources to change
+•	Perception of technological change
+•	Personal risk to the decision maker
+
+
+Strategic Choices:
+
+Strategic choices:
+•	Shaping industry structure
+•	Externalities in industry development: firms depend on each other to make the industry image good. dilemma to benefit the industry or just your own firm.
+•	Changing role of suppliers and channels
+•	Shifting mobility barriers: early mobility barriers may erode quickly in an emerging industry, often to be replaced by different ones as industry grow.
+
+
+Timing entry:
+Early entry is appropriate:
+•	Image and reputation are important to the buyer
+•	Early entry can initiate the learning process in a business in which the learning curve is important, experience is difficult to imitate, and it will not be nullified by successive technological generations.
+•	Customer loyalty will be great
+•	Absolute cost advantages can be gained by early commitment to supplies of raw materials, distribution channels, and so on.
+
+Early entry is risky:
+•	Early competition and market segmentation are on a basis different to that which will be important later in industry development. firm build the wrong skills
+•	Costs of opening up the market are great, including such things as customer education, regulatory approvals, and technological pioneering.
+•	Early competition with small, newly started firms will be costly, but these firms will be replaced by more formidable competition later.
+•	Technological change will make early investments obsolete and allow firms entering later to have an advantage by having the newest products and processes.
+
