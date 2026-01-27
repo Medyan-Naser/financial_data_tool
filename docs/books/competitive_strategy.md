@@ -787,3 +787,158 @@ o	Competitors with goals other than purely economic
 o	Competitors for whom this business is a major strategic thrust or is related to others in their portfolio
 o	Competitor who have equal or better staying power, a longer time horizon, or a greater willingness to trade profits for market position
 
+
+
+Chapter 16: Entry into new businesses
+
+When market forces work perfectly, in the economist's sense, then no entry decision can ever yield an above average return on investment.
+
+Entry through internal development
+
+The two sources of entry barriers into an industry are structural entry barriers and the expected reaction of incumbent firms.
+The structural barriers involve up front investments and start-up losses. The risk of reaction from competitors can be viewed as an additional cost of entry.
+
+New entry capacity will have an effect on the supply demand balance in the industry.
+ 
+Will retaliation occur?
+It will happen in the following kinds of industries:
+•	Slow growth
+•	Commodity or commodity like products
+•	High fixed costs
+•	High industry concentration: in fragmented industry, the entrant may affect many firms but have only marginal impact.
+•	Incumbents who attach high strategic importance to their position in the business
+•	Attitudes of incumbent management
+
+
+Identifying target industries for internal entry:
+
+If an industry is stable, or in equilibrium, the expected profits off entrants should just reflect the height of structural barriers to entry and the legitimate expectations of entrant about retaliation.
+New entry must overcome structural entry barriers and bear the risk of reaction from going firms, it faces higher costs than the successful firm in the industry, and this eliminate its above average profits.
+Thus it will rarely pay to enter an industry in equilibrium unless the firm has special advantages.
+
+Prime targets for internal entry:
+•	The industry is in disequilibrium
+o	New industries
+o	Rising entry barriers
+o	Poor information: industries which do not come to the attention of many established firms
+•	Slow or ineffectual retaliation from incumbents may be expected
+o	Incumbents cost of effective retaliation outweighs the benefits
+o	There is a paternal dominant firm or tight group of longstanding leaders
+o	Incumbents costs of responding are great given the need to protect their existing businesses
+o	The entrant can exploit conventional wisdom
+•	The firm has lower entry costs than other firms
+o	If many other potential entrant have the same advantages, then these advantages will probably already be reflected in the balance between the cost of entry and the benefits of entry
+•	The firm has distinctive ability to influence the industry structure
+o	Specially if it can increase mobility barriers
+o	Entry into a fragmented market can sometimes stat in motion a process that greatly increases mobility barriers
+•	There will be positive effects on a firms existing businesses
+
+
+Generic concepts for entry:
+
+Some common approaches to entry, which rest on various concepts for overcoming entry barriers more cheaply than other firms:
+•	Reduce product costs
+•	Buy in with low price
+•	Offer a superior product, broadly defined
+•	Discover a new niche
+•	Introduce a marketing innovation
+•	Use piggybacked distribution
+
+
+
+Entry through acquisition
+
+Acquisition is different to internal development because acquisition does not add a new firm to the industry.
+The seller of the firm will ask for a premium over book value, which can lower the potential profit of the buyer
+The expected present value puts a floor under the price for the business.
+
+Acquisitions will not likely be profitable if:
+•	The flow price created by the sellers’ alternative of keeping the business is low
+•	The market for companies is imperfect and does not eliminate above average returns through the bidding process
+•	The buyer has a unique ability to operate the acquired business
+
+
+The height of the floor price:
+
+The floor price depends on the seller and their perceptions.
+The floor price will be the lowest when:
+•	The seller has estate problems
+•	The seller needs capital quickly
+•	The seller has lost key management or sees no successors for existing management
+•	The seller perceives capital constraints to growth
+•	The seller recognizes its managerial weaknesses
+
+Imperfections in the market for companies:
+•	The buyer has superior information
+•	The number of bidders is low
+•	The condition of the economy is bad
+•	The selling company is sick
+•	The seller has objectives besides maximizing the price received for the businesses
+
+Unique ability to operate the seller:
+•	The buyer has a distinctive ability to improve the operations of the seller
+•	The firm buys into an industry that meets the criteria for internal development
+•	The acquisition will uniquely help a buyer's position in its existing businesses
+
+Irrational bidders:
+Should examine the motives and situation of other bidders.
+Bidding will usually stop once above average returns are eliminated, but some competitors will not stop, this might happen for number of reasons:
+•	The bidder sees a unique way to improve the acquisition target
+•	The acquisition will help the bidder's existing business
+•	The bidder has goals or motives other than the maximization of profit
+
+
+Sequenced Entry
+
+Any decision to enter an industry must include a target strategic group. However, a firm can adopt a subsequent mobility from group to group.
+
+
+
+Appendix A: Portfolio techniques in competitor analysis
+
+Displaying a diversified firm operations as a portfolio has two methods: growth/share matrix and company position/industry attractiveness screen
+
+The growth/share matrix
+
+The growth/share matrix is based on the use of industry growth and relative market share (relative market share is the market share of the firm relative to that of the largest competitor in the industry) as proxies for the competitive position of a firm's business unit in its industry and the resulting net cash flow required to operate the business unit.
+This formula reflects the underlying assumption that the experience curve is operating and that the firm with the largest relative share will thereby be the lowest cost producer.
+
+The growth/share portfolio is divided into:
+1)	cash cows: businesses with high relative share in low growth markets will produce healthy cash flow, which can be used to fund other, developing businesses.
+2)	Dogs: businesses with low relative share in low growth market will often be modest cash users. They will be cash traps because of their weak competitive position.
+3)	Stars: businesses with high relative share in high growth markets usually will require large amounts of cash to sustain growth but have a strong market position that will yield high reported profits. They may be nearly in cash balance.
+4)	Question marks (wildcats): businesses with low relative share in rapidly growing markets require large cash inflows to finance growth and are weak cash generators because of their poor competitive position.
+
+Ideally, cash cows are used to make question marks into stars.
+
+Limitations:
+
+•	The market has been defined properly to account for important shared experience and other interdependencies with other markets.
+•	The structure of the industry and within the industry are such that relative market share is a good proxy for competitive position and relative costs.
+•	Market growth is a good proxy for required cash investment.
+
+The company position/industry attractiveness screen:
+
+A 3 by 3 matrix, the two axes are the attractiveness of the industry and the strength or competitive position of the business unit.
+The broad strategic mandate is either to invest capital to build position, to hold by balancing cash generation and selective cash use, or to harvest or divest.
+
+[include Figure A-2 page 365]
+
+
+
+Appendix B: How to conduct an industry analysis
+
+Industry analysis strategy:
+
+There are two important aspects in developing a strategy: first is to determine just what it is one is looking for, and how sequentially to develop data.
+It is better to get an overview first.
+
+Steps that can be useful in obtaining an overview:
+•	Who is in the industry: SIC code can get two digit (overly board) to five digit (too narrow) industries.
+•	Industry studies
+•	Annual reports
+
+Get into the field early and do not waste time on studies, instead do it simultaneously.
+The morale of researchers in an industry study often goes through a U shaped cycle as the study proceeds.
+
+
