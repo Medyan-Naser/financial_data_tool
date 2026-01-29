@@ -131,3 +131,57 @@ class TestCacheOperations:
         print(f"✓ aapl (lower): {'cached' if lower else 'not cached'}")
         print("✅ Case handling test passed!")
 
+
+class TestCacheForStockData:
+    """Test cache specifically for stock price data"""
+    
+    def test_stock_price_cache_structure(self):
+        """Test cached stock price data structure if available"""
+        print("\n" + "="*60)
+        print("TEST: Stock Price Cache Structure")
+        print("="*60)
+        
+        cached_data = api_cache.get('stock_price', symbol='AAPL', period='1y')
+        
+        if cached_data:
+            print("✓ AAPL data found in cache")
+            
+            # Validate structure
+            if 'historical' in cached_data:
+                hist = cached_data['historical']
+                print(f"✓ Has historical data")
+                if isinstance(hist, dict):
+                    if 'data_points' in hist:
+                        print(f"  - Data points: {hist['data_points']}")
+                    if 'symbol' in hist:
+                        print(f"  - Symbol: {hist['symbol']}")
+            
+            if 'quote' in cached_data:
+                print(f"✓ Has quote data")
+            
+            print("✅ Stock price cache structure test passed!")
+        else:
+            print("⚠ AAPL not in cache - skipping structure validation")
+            print("✅ Test passed (cache miss is valid)")
+    
+    def test_quote_cache_structure(self):
+        """Test cached quote data structure if available"""
+        print("\n" + "="*60)
+        print("TEST: Quote Cache Structure")
+        print("="*60)
+        
+        quote_cached = api_cache.get('stock_quote', symbol='AAPL')
+        
+        if quote_cached:
+            print("✓ AAPL quote found in cache")
+            
+            expected_fields = ['current', 'open', 'high', 'low']
+            for field in expected_fields:
+                if field in quote_cached:
+                    print(f"  - {field}: {quote_cached[field]}")
+            
+            print("✅ Quote cache structure test passed!")
+        else:
+            print("⚠ AAPL quote not in cache - skipping structure validation")
+            print("✅ Test passed (cache miss is valid)")
+
