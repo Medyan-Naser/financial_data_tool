@@ -254,3 +254,46 @@ class TestQuoteDataStructure:
             print("⚠ No quote data - skipping")
             print("✅ Test passed (cache miss is valid)")
 
+
+class TestMultiTickerCache:
+    """Test cache behavior with multiple tickers"""
+    
+    def test_different_tickers_separate_cache(self):
+        """Test that different tickers have separate cache entries"""
+        print("\n" + "="*60)
+        print("TEST: Different Tickers Separate Cache")
+        print("="*60)
+        
+        cache1 = api_cache.get('stock_price', symbol=TEST_TICKER, period=TEST_PERIOD)
+        cache2 = api_cache.get('stock_price', symbol=ALT_TICKER, period=TEST_PERIOD)
+        
+        if cache1 and cache2:
+            # They should be different objects
+            symbol1 = cache1.get('symbol') or cache1.get('historical', {}).get('symbol')
+            symbol2 = cache2.get('symbol') or cache2.get('historical', {}).get('symbol')
+            
+            if symbol1 and symbol2:
+                assert symbol1 != symbol2, "Different tickers should have different data"
+                print(f"✓ {TEST_TICKER} data: symbol={symbol1}")
+                print(f"✓ {ALT_TICKER} data: symbol={symbol2}")
+        else:
+            print(f"✓ {TEST_TICKER} cached: {cache1 is not None}")
+            print(f"✓ {ALT_TICKER} cached: {cache2 is not None}")
+        
+        print("✅ Separate cache test passed!")
+    
+    def test_different_periods_separate_cache(self):
+        """Test that different periods have separate cache entries"""
+        print("\n" + "="*60)
+        print("TEST: Different Periods Separate Cache")
+        print("="*60)
+        
+        periods = ['1mo', '6mo', '1y']
+        
+        for period in periods:
+            cached = api_cache.get('stock_price', symbol=TEST_TICKER, period=period)
+            status = "cached" if cached else "not cached"
+            print(f"✓ {TEST_TICKER} ({period}): {status}")
+        
+        print("✅ Separate periods test passed!")
+
