@@ -50,3 +50,40 @@ class TestCacheDirectory:
         except Exception as e:
             pytest.fail(f"Cache directory not writable: {e}")
 
+
+class TestCacheInfo:
+    """Test cache info operations"""
+    
+    def test_get_cache_info_returns_dict(self):
+        """Test that get_cache_info returns expected structure"""
+        print("\n" + "="*60)
+        print("TEST: Cache Info Structure")
+        print("="*60)
+        
+        info = api_cache.get_cache_info()
+        
+        assert isinstance(info, dict), "Cache info should be a dict"
+        assert 'total_entries' in info, "Should have total_entries"
+        assert 'expiry_hours' in info, "Should have expiry_hours"
+        
+        print(f"✓ Total entries: {info['total_entries']}")
+        print(f"✓ Expiry hours: {info['expiry_hours']}")
+        print("✅ Cache info test passed!")
+    
+    def test_cache_info_values_are_valid(self):
+        """Test that cache info values are reasonable"""
+        print("\n" + "="*60)
+        print("TEST: Cache Info Values")
+        print("="*60)
+        
+        info = api_cache.get_cache_info()
+        
+        assert info['total_entries'] >= 0, "Total entries should be non-negative"
+        assert info['expiry_hours'] > 0, "Expiry hours should be positive"
+        
+        if 'total_size_mb' in info:
+            assert info['total_size_mb'] >= 0, "Size should be non-negative"
+            print(f"✓ Total size: {info['total_size_mb']:.2f} MB")
+        
+        print("✅ Cache info values test passed!")
+
