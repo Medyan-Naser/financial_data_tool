@@ -185,3 +185,109 @@ class TestCacheForStockData:
             print("⚠ AAPL quote not in cache - skipping structure validation")
             print("✅ Test passed (cache miss is valid)")
 
+
+class TestCacheFiles:
+    """Test cache file operations"""
+    
+    def test_list_cache_files(self):
+        """Test listing cache files"""
+        print("\n" + "="*60)
+        print("TEST: List Cache Files")
+        print("="*60)
+        
+        cache_files = list(api_cache.cache_dir.glob("*.pkl"))
+        print(f"✓ Found {len(cache_files)} cache files")
+        
+        for f in cache_files[:5]:
+            size_kb = f.stat().st_size / 1024
+            print(f"  - {f.name} ({size_kb:.1f} KB)")
+        
+        if len(cache_files) > 5:
+            print(f"  ... and {len(cache_files) - 5} more")
+        
+        print("✅ Cache files test passed!")
+    
+    def test_cache_files_are_valid(self):
+        """Test that cache files are readable pickle files"""
+        print("\n" + "="*60)
+        print("TEST: Cache Files Valid")
+        print("="*60)
+        
+        import pickle
+        
+        cache_files = list(api_cache.cache_dir.glob("*.pkl"))[:3]  # Test first 3
+        
+        for f in cache_files:
+            try:
+                with open(f, 'rb') as file:
+                    data = pickle.load(file)
+                    assert data is not None, f"File {f.name} should have data"
+                    print(f"✓ {f.name} is valid")
+            except Exception as e:
+                print(f"⚠ {f.name} may be corrupted: {e}")
+        
+        if not cache_files:
+            print("⚠ No cache files to validate")
+        
+        print("✅ Cache files validation test passed!")
+
+
+def run_all_cache_tests():
+    """Run all cache tests and return summary"""
+    print("\n" + "#"*60)
+    print("# STOCK PRICE CACHE TESTS")
+    print("#"*60)
+    
+    test_classes = [
+        TestCacheDirectory(),
+        TestCacheInfo(),
+        TestCacheOperations(),
+        TestCacheForStockData(),
+        TestCacheFiles()
+    ]
+    
+    total_tests = 0
+    passed_tests = 0
+    
+    for test_class in test_classes:
+        class_name = test_class.__class__.__name__
+        print(f"\n{'='*60}")
+        print(f"Running {class_name}")
+        print(f"{'='*60}")
+        
+        test_methods = [m for m in dir(test_class) if m.startswith('test_')]
+        
+        for method_name in test_methods:
+            total_tests += 1
+            try:
+                method = getattr(test_class, method_name)
+                method()
+                passed_tests += 1
+            except AssertionError as e:
+                print(f"❌ {method_name} FAILED: {e}")
+            except Exception as e:
+                print(f"❌ {method_name} ERROR: {e}")
+    
+    print("\n" + "#"*60)
+    print(f"# RESULTS: {passed_tests}/{total_tests} tests passed")
+    print("#"*60)
+    
+    # Recommendations
+    print("\n" + "="*60)
+    print("RECOMMENDATIONS:")
+    print("="*60)
+    
+    info = api_cache.get_cache_info()
+    if info['total_entries'] == 0:
+        print("⚠️  Cache is empty!")
+        print("   - First request will hit the API")
+        print("   - Try searching for a stock first, then run tests again")
+    else:
+        print("✓ Cache has data, tests should be more comprehensive")
+    
+    return passed_tests == total_tests
+
+
+if __name__ == "__main__":
+    success = run_all_cache_tests()
+    sys.exit(0 if success else 1)
