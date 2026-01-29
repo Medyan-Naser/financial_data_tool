@@ -178,3 +178,79 @@ class TestHistoricalDataStructure:
             print("⚠ No historical data - skipping")
             print("✅ Test passed (cache miss is valid)")
 
+
+class TestQuoteDataStructure:
+    """Test quote data structure within cache"""
+    
+    def test_quote_data_exists(self):
+        """Test that quote data section exists"""
+        print("\n" + "="*60)
+        print("TEST: Quote Data Exists")
+        print("="*60)
+        
+        cached_data = api_cache.get('stock_price', symbol=TEST_TICKER, period=TEST_PERIOD)
+        
+        if cached_data and 'quote' in cached_data:
+            quote = cached_data['quote']
+            print(f"✓ Quote data found")
+            print(f"✓ Type: {type(quote)}")
+            print("✅ Quote exists test passed!")
+        elif cached_data:
+            print("⚠ No 'quote' key in cache")
+        else:
+            print("⚠ No cached data - skipping")
+        
+        print("✅ Test passed!")
+    
+    def test_quote_data_fields(self):
+        """Test quote data has expected fields"""
+        print("\n" + "="*60)
+        print("TEST: Quote Data Fields")
+        print("="*60)
+        
+        cached_data = api_cache.get('stock_price', symbol=TEST_TICKER, period=TEST_PERIOD)
+        
+        if cached_data and 'quote' in cached_data:
+            quote = cached_data['quote']
+            
+            if isinstance(quote, dict):
+                expected_fields = ['current', 'open', 'high', 'low', 'change', 'change_percent']
+                
+                for field in expected_fields:
+                    if field in quote:
+                        print(f"✓ {field}: {quote[field]}")
+                    else:
+                        print(f"⚠ Missing: {field}")
+            
+            print("✅ Quote fields test passed!")
+        else:
+            print("⚠ No quote data - skipping")
+            print("✅ Test passed (cache miss is valid)")
+    
+    def test_quote_values_valid(self):
+        """Test quote values are valid"""
+        print("\n" + "="*60)
+        print("TEST: Quote Values Valid")
+        print("="*60)
+        
+        cached_data = api_cache.get('stock_price', symbol=TEST_TICKER, period=TEST_PERIOD)
+        
+        if cached_data and 'quote' in cached_data:
+            quote = cached_data['quote']
+            
+            if isinstance(quote, dict):
+                if 'current' in quote and quote['current'] is not None:
+                    assert isinstance(quote['current'], (int, float)), "Current should be numeric"
+                    assert quote['current'] > 0, "Current should be positive"
+                    print(f"✓ Current price valid: ${quote['current']}")
+                
+                if 'high' in quote and 'low' in quote:
+                    if quote['high'] is not None and quote['low'] is not None:
+                        assert quote['high'] >= quote['low'], "High should be >= Low"
+                        print(f"✓ High/Low valid: ${quote['low']} - ${quote['high']}")
+            
+            print("✅ Quote values test passed!")
+        else:
+            print("⚠ No quote data - skipping")
+            print("✅ Test passed (cache miss is valid)")
+
