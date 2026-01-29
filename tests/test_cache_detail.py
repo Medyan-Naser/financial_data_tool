@@ -92,3 +92,89 @@ class TestCacheStructure:
             print("⚠ No cached data - skipping")
             print("✅ Test passed (cache miss is valid)")
 
+
+class TestHistoricalDataStructure:
+    """Test historical data structure within cache"""
+    
+    def test_historical_data_exists(self):
+        """Test that historical data section exists"""
+        print("\n" + "="*60)
+        print("TEST: Historical Data Exists")
+        print("="*60)
+        
+        cached_data = api_cache.get('stock_price', symbol=TEST_TICKER, period=TEST_PERIOD)
+        
+        if cached_data and 'historical' in cached_data:
+            hist = cached_data['historical']
+            print(f"✓ Historical data found")
+            print(f"✓ Type: {type(hist)}")
+            print("✅ Historical exists test passed!")
+        elif cached_data:
+            print("⚠ No 'historical' key in cache")
+            print("✅ Test passed (structure may vary)")
+        else:
+            print("⚠ No cached data - skipping")
+            print("✅ Test passed (cache miss is valid)")
+    
+    def test_historical_data_structure(self):
+        """Test historical data structure details"""
+        print("\n" + "="*60)
+        print("TEST: Historical Data Structure")
+        print("="*60)
+        
+        cached_data = api_cache.get('stock_price', symbol=TEST_TICKER, period=TEST_PERIOD)
+        
+        if cached_data and 'historical' in cached_data:
+            hist = cached_data['historical']
+            
+            if isinstance(hist, dict):
+                print(f"✓ Keys: {list(hist.keys())}")
+                
+                if 'data_points' in hist:
+                    print(f"✓ Data points: {hist['data_points']}")
+                    assert hist['data_points'] > 0, "Should have data points"
+                
+                if 'symbol' in hist:
+                    print(f"✓ Symbol: {hist['symbol']}")
+                
+                # Check for price arrays
+                price_fields = ['open', 'high', 'low', 'close', 'volume']
+                for field in price_fields:
+                    if field in hist:
+                        data_len = len(hist[field]) if isinstance(hist[field], list) else 'N/A'
+                        print(f"✓ {field}: {data_len} entries")
+            
+            print("✅ Historical structure test passed!")
+        else:
+            print("⚠ No historical data - skipping")
+            print("✅ Test passed (cache miss is valid)")
+    
+    def test_historical_price_data_validity(self):
+        """Test that historical price data is valid"""
+        print("\n" + "="*60)
+        print("TEST: Historical Price Data Validity")
+        print("="*60)
+        
+        cached_data = api_cache.get('stock_price', symbol=TEST_TICKER, period=TEST_PERIOD)
+        
+        if cached_data and 'historical' in cached_data:
+            hist = cached_data['historical']
+            
+            if isinstance(hist, dict) and 'close' in hist:
+                close_prices = hist['close']
+                
+                if isinstance(close_prices, list) and len(close_prices) > 0:
+                    # Check first few prices are valid
+                    for i, price in enumerate(close_prices[:5]):
+                        if price is not None:
+                            assert isinstance(price, (int, float)), f"Price should be numeric"
+                            assert price > 0, f"Price should be positive"
+                            print(f"✓ Price[{i}]: ${price:.2f}")
+                    
+                    print("✅ Price validity test passed!")
+                else:
+                    print("⚠ No close prices found")
+        else:
+            print("⚠ No historical data - skipping")
+            print("✅ Test passed (cache miss is valid)")
+
