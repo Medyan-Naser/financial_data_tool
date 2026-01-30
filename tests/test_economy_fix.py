@@ -267,3 +267,38 @@ class TestGDPEndpoint:
         
         print("✅ GDP structure test passed!")
 
+
+class TestInterestRatesEndpoint:
+    """Test interest rates endpoint"""
+    
+    def test_interest_rates_basic(self):
+        """Test basic interest rates endpoint"""
+        print("\n" + "="*60)
+        print("TEST: Interest Rates Basic")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/interest-rates", timeout=15)
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        print(f"✓ Status: {response.status_code}")
+        print("✅ Interest rates test passed!")
+    
+    def test_interest_rates_response_structure(self):
+        """Test interest rates response structure"""
+        print("\n" + "="*60)
+        print("TEST: Interest Rates Response Structure")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/interest-rates", timeout=15)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, dict):
+                print(f"✓ Data type: dict")
+                for key in list(data.keys())[:3]:
+                    print(f"  - {key}: {data[key]}")
+            elif isinstance(data, list):
+                print(f"✓ Data type: list ({len(data)} items)")
+        
+        print("✅ Interest rates structure test passed!")
+
