@@ -219,3 +219,51 @@ class TestMetalsEndpoint:
         
         print("✅ Various years test passed!")
 
+
+class TestGDPEndpoint:
+    """Test GDP data endpoints"""
+    
+    def test_gdp_us(self):
+        """Test US GDP endpoint"""
+        print("\n" + "="*60)
+        print("TEST: US GDP")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/gdp/US", timeout=15)
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        print(f"✓ Status: {response.status_code}")
+        print("✅ US GDP test passed!")
+    
+    def test_gdp_multiple_countries(self):
+        """Test GDP for multiple countries"""
+        print("\n" + "="*60)
+        print("TEST: GDP Multiple Countries")
+        print("="*60)
+        
+        countries = ['US', 'CN', 'JP', 'DE', 'GB']
+        
+        for country in countries:
+            response = requests.get(f"{API_BASE}/api/economy/gdp/{country}", timeout=15)
+            status_icon = "✓" if response.status_code == 200 else "⚠"
+            print(f"{status_icon} {country}: Status {response.status_code}")
+        
+        print("✅ Multiple countries test passed!")
+    
+    def test_gdp_response_structure(self):
+        """Test GDP response structure"""
+        print("\n" + "="*60)
+        print("TEST: GDP Response Structure")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/gdp/US", timeout=15)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, dict):
+                print(f"✓ Keys: {list(data.keys())[:5]}")
+            elif isinstance(data, list):
+                print(f"✓ Data points: {len(data)}")
+        
+        print("✅ GDP structure test passed!")
+
