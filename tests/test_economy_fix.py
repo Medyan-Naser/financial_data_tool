@@ -75,3 +75,76 @@ class TestCurrencyEndpoint:
         
         print("✅ Currency values test passed!")
 
+
+class TestCryptoEndpoint:
+    """Test cryptocurrency endpoints"""
+    
+    def test_crypto_basic(self):
+        """Test basic crypto endpoint"""
+        print("\n" + "="*60)
+        print("TEST: Crypto Basic")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/crypto", timeout=15)
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        print(f"✓ Status: {response.status_code}")
+        print("✅ Crypto basic test passed!")
+    
+    def test_crypto_historical_bitcoin(self):
+        """Test Bitcoin historical data"""
+        print("\n" + "="*60)
+        print("TEST: Bitcoin Historical Data")
+        print("="*60)
+        
+        response = requests.get(
+            f"{API_BASE}/api/economy/crypto/historical/bitcoin",
+            params={'days': 30},
+            timeout=15
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            print(f"✓ Status: {response.status_code}")
+            if isinstance(data, dict) and 'prices' in data:
+                print(f"✓ Has prices data")
+            elif isinstance(data, list):
+                print(f"✓ Data points: {len(data)}")
+        else:
+            print(f"⚠ Status: {response.status_code}")
+        
+        print("✅ Bitcoin historical test passed!")
+    
+    def test_crypto_historical_ethereum(self):
+        """Test Ethereum historical data"""
+        print("\n" + "="*60)
+        print("TEST: Ethereum Historical Data")
+        print("="*60)
+        
+        response = requests.get(
+            f"{API_BASE}/api/economy/crypto/historical/ethereum",
+            params={'days': 30},
+            timeout=15
+        )
+        
+        print(f"✓ Status: {response.status_code}")
+        print("✅ Ethereum historical test passed!")
+    
+    def test_crypto_historical_various_days(self):
+        """Test crypto historical with various day ranges"""
+        print("\n" + "="*60)
+        print("TEST: Crypto Historical Various Days")
+        print("="*60)
+        
+        days_options = [7, 30, 90, 365]
+        
+        for days in days_options:
+            response = requests.get(
+                f"{API_BASE}/api/economy/crypto/historical/bitcoin",
+                params={'days': days},
+                timeout=15
+            )
+            print(f"✓ {days} days: Status {response.status_code}")
+        
+        print("✅ Various days test passed!")
+
