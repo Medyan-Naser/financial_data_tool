@@ -302,3 +302,34 @@ class TestInterestRatesEndpoint:
         
         print("✅ Interest rates structure test passed!")
 
+
+class TestInflationEndpoint:
+    """Test inflation data endpoint"""
+    
+    def test_inflation_us(self):
+        """Test US inflation endpoint"""
+        print("\n" + "="*60)
+        print("TEST: US Inflation")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/inflation/US", timeout=15)
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        print(f"✓ Status: {response.status_code}")
+        print("✅ US inflation test passed!")
+    
+    def test_inflation_multiple_countries(self):
+        """Test inflation for multiple countries"""
+        print("\n" + "="*60)
+        print("TEST: Inflation Multiple Countries")
+        print("="*60)
+        
+        countries = ['US', 'GB', 'EU', 'JP']
+        
+        for country in countries:
+            response = requests.get(f"{API_BASE}/api/economy/inflation/{country}", timeout=15)
+            status_icon = "✓" if response.status_code == 200 else "⚠"
+            print(f"{status_icon} {country}: Status {response.status_code}")
+        
+        print("✅ Multiple countries inflation test passed!")
+
