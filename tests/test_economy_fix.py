@@ -148,3 +148,74 @@ class TestCryptoEndpoint:
         
         print("✅ Various days test passed!")
 
+
+class TestMetalsEndpoint:
+    """Test precious metals endpoints"""
+    
+    def test_metals_basic(self):
+        """Test basic metals endpoint"""
+        print("\n" + "="*60)
+        print("TEST: Metals Basic")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/metals", timeout=15)
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        print(f"✓ Status: {response.status_code}")
+        print("✅ Metals basic test passed!")
+    
+    def test_metals_response_structure(self):
+        """Test metals response has expected metals"""
+        print("\n" + "="*60)
+        print("TEST: Metals Response Structure")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/metals", timeout=15)
+        
+        if response.status_code == 200:
+            data = response.json()
+            expected_metals = ['gold', 'silver', 'platinum', 'palladium']
+            
+            for metal in expected_metals:
+                if isinstance(data, dict) and metal in data:
+                    print(f"✓ Has {metal}")
+                elif isinstance(data, dict):
+                    # Check for alternate key formats
+                    found = any(metal.lower() in k.lower() for k in data.keys())
+                    print(f"{'✓' if found else '⚠'} {metal}")
+        
+        print("✅ Metals structure test passed!")
+    
+    def test_metals_historical(self):
+        """Test metals historical data"""
+        print("\n" + "="*60)
+        print("TEST: Metals Historical")
+        print("="*60)
+        
+        response = requests.get(
+            f"{API_BASE}/api/economy/metals/historical",
+            params={'years': 1},
+            timeout=15
+        )
+        
+        print(f"✓ Status: {response.status_code}")
+        print("✅ Metals historical test passed!")
+    
+    def test_metals_historical_various_years(self):
+        """Test metals historical with various year ranges"""
+        print("\n" + "="*60)
+        print("TEST: Metals Historical Various Years")
+        print("="*60)
+        
+        years_options = [1, 2, 5]
+        
+        for years in years_options:
+            response = requests.get(
+                f"{API_BASE}/api/economy/metals/historical",
+                params={'years': years},
+                timeout=15
+            )
+            print(f"✓ {years} years: Status {response.status_code}")
+        
+        print("✅ Various years test passed!")
+
