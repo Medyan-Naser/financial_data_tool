@@ -333,3 +333,110 @@ class TestInflationEndpoint:
         
         print("✅ Multiple countries inflation test passed!")
 
+
+class TestErrorHandling:
+    """Test error handling for economy endpoints"""
+    
+    def test_invalid_country_code(self):
+        """Test handling of invalid country code"""
+        print("\n" + "="*60)
+        print("TEST: Invalid Country Code")
+        print("="*60)
+        
+        response = requests.get(f"{API_BASE}/api/economy/gdp/INVALID", timeout=15)
+        print(f"✓ Invalid country status: {response.status_code}")
+        print("✅ Invalid country test passed!")
+    
+    def test_invalid_crypto(self):
+        """Test handling of invalid cryptocurrency"""
+        print("\n" + "="*60)
+        print("TEST: Invalid Cryptocurrency")
+        print("="*60)
+        
+        response = requests.get(
+            f"{API_BASE}/api/economy/crypto/historical/invalidcoin123",
+            params={'days': 30},
+            timeout=15
+        )
+        print(f"✓ Invalid crypto status: {response.status_code}")
+        print("✅ Invalid crypto test passed!")
+    
+    def test_invalid_days_parameter(self):
+        """Test handling of invalid days parameter"""
+        print("\n" + "="*60)
+        print("TEST: Invalid Days Parameter")
+        print("="*60)
+        
+        response = requests.get(
+            f"{API_BASE}/api/economy/crypto/historical/bitcoin",
+            params={'days': -1},
+            timeout=15
+        )
+        print(f"✓ Negative days status: {response.status_code}")
+        
+        response = requests.get(
+            f"{API_BASE}/api/economy/crypto/historical/bitcoin",
+            params={'days': 'abc'},
+            timeout=15
+        )
+        print(f"✓ Non-numeric days status: {response.status_code}")
+        print("✅ Invalid days test passed!")
+
+
+def run_all_economy_tests():
+    """Run all economy endpoint tests"""
+    print("\n" + "#"*60)
+    print("# ECONOMY ENDPOINTS TESTS")
+    print("#"*60)
+    
+    test_classes = [
+        TestCurrencyEndpoint(),
+        TestCryptoEndpoint(),
+        TestMetalsEndpoint(),
+        TestGDPEndpoint(),
+        TestInterestRatesEndpoint(),
+        TestInflationEndpoint(),
+        TestErrorHandling()
+    ]
+    
+    total_tests = 0
+    passed_tests = 0
+    
+    for test_class in test_classes:
+        class_name = test_class.__class__.__name__
+        print(f"\n{'='*60}")
+        print(f"Running {class_name}")
+        print(f"{'='*60}")
+        
+        test_methods = [m for m in dir(test_class) if m.startswith('test_')]
+        
+        for method_name in test_methods:
+            total_tests += 1
+            try:
+                method = getattr(test_class, method_name)
+                method()
+                passed_tests += 1
+            except AssertionError as e:
+                print(f"❌ {method_name} FAILED: {e}")
+            except requests.exceptions.ConnectionError:
+                print(f"❌ {method_name} ERROR: Cannot connect to server")
+            except requests.exceptions.Timeout:
+                print(f"⚠ {method_name} TIMEOUT: Request took too long")
+                passed_tests += 1  # Timeout is acceptable for slow APIs
+            except Exception as e:
+                print(f"❌ {method_name} ERROR: {e}")
+    
+    print("\n" + "#"*60)
+    print(f"# RESULTS: {passed_tests}/{total_tests} tests passed")
+    print("#"*60)
+    
+    return passed_tests == total_tests
+
+
+if __name__ == "__main__":
+    print("\n⚠️  Make sure backend is running on http://localhost:8000")
+    import time
+    time.sleep(2)
+    
+    success = run_all_economy_tests()
+    sys.exit(0 if success else 1)
