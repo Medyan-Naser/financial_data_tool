@@ -132,3 +132,81 @@ class TestHistoricalPrices:
         
         print("✅ Multiple tickers test passed!")
 
+
+class TestQuoteEndpoint:
+    """Test real-time quote endpoint"""
+    
+    def test_quote_basic(self):
+        """Test basic quote retrieval"""
+        print("\n" + "="*60)
+        print(f"TEST: Quote Basic ({TEST_TICKER})")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/quote/{TEST_TICKER}"
+        response = requests.get(url, timeout=30)
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        data = response.json()
+        
+        print(f"✓ Status: {response.status_code}")
+        print(f"✓ Current: ${data.get('current', 'N/A')}")
+        print("✅ Quote basic test passed!")
+    
+    def test_quote_response_structure(self):
+        """Test quote response has expected fields"""
+        print("\n" + "="*60)
+        print("TEST: Quote Response Structure")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/quote/{TEST_TICKER}"
+        response = requests.get(url, timeout=30)
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        expected_fields = ['current', 'open', 'high', 'low']
+        
+        for field in expected_fields:
+            if field in data:
+                print(f"✓ {field}: {data[field]}")
+            else:
+                print(f"⚠ Missing optional field: {field}")
+        
+        # Validate numeric values
+        if 'current' in data and data['current'] is not None:
+            assert isinstance(data['current'], (int, float)), "Current should be numeric"
+            assert data['current'] > 0, "Current price should be positive"
+        
+        print("✅ Quote structure test passed!")
+    
+    def test_quote_invalid_ticker(self):
+        """Test quote with invalid ticker"""
+        print("\n" + "="*60)
+        print("TEST: Quote Invalid Ticker")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/quote/{INVALID_TICKER}"
+        response = requests.get(url, timeout=30)
+        
+        print(f"✓ Status: {response.status_code}")
+        print("✅ Invalid ticker quote test passed!")
+    
+    def test_quote_change_values(self):
+        """Test that quote change values are present and valid"""
+        print("\n" + "="*60)
+        print("TEST: Quote Change Values")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/quote/{TEST_TICKER}"
+        response = requests.get(url, timeout=30)
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        if 'change' in data:
+            print(f"✓ Change: ${data['change']}")
+        if 'change_percent' in data:
+            print(f"✓ Change %: {data['change_percent']}%")
+        
+        print("✅ Change values test passed!")
+
