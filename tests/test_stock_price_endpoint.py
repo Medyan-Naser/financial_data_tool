@@ -210,3 +210,86 @@ class TestQuoteEndpoint:
         
         print("✅ Change values test passed!")
 
+
+class TestCombinedEndpoint:
+    """Test combined data endpoint"""
+    
+    def test_combined_basic(self):
+        """Test combined endpoint returns both historical and quote"""
+        print("\n" + "="*60)
+        print(f"TEST: Combined Basic ({TEST_TICKER})")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/combined/{TEST_TICKER}"
+        response = requests.get(url, params={'period': '1mo'}, timeout=30)
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        data = response.json()
+        
+        assert 'historical' in data, "Should have historical data"
+        assert 'quote' in data, "Should have quote data"
+        
+        print(f"✓ Has historical: {type(data['historical'])}")
+        print(f"✓ Has quote: {type(data['quote'])}")
+        print("✅ Combined basic test passed!")
+    
+    def test_combined_historical_content(self):
+        """Test combined endpoint historical data content"""
+        print("\n" + "="*60)
+        print("TEST: Combined Historical Content")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/combined/{TEST_TICKER}"
+        response = requests.get(url, params={'period': '3mo'}, timeout=30)
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        hist = data.get('historical', {})
+        if isinstance(hist, dict):
+            print(f"✓ Data points: {hist.get('data_points', 'N/A')}")
+            print(f"✓ Symbol: {hist.get('symbol', 'N/A')}")
+        
+        print("✅ Combined historical content test passed!")
+    
+    def test_combined_quote_content(self):
+        """Test combined endpoint quote data content"""
+        print("\n" + "="*60)
+        print("TEST: Combined Quote Content")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/combined/{TEST_TICKER}"
+        response = requests.get(url, params={'period': '1mo'}, timeout=30)
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        quote = data.get('quote', {})
+        if isinstance(quote, dict):
+            print(f"✓ Current: ${quote.get('current', 'N/A')}")
+            print(f"✓ Open: ${quote.get('open', 'N/A')}")
+        
+        print("✅ Combined quote content test passed!")
+    
+    def test_combined_different_periods(self):
+        """Test combined endpoint with different periods"""
+        print("\n" + "="*60)
+        print("TEST: Combined Different Periods")
+        print("="*60)
+        
+        periods = ['1mo', '6mo', '1y']
+        
+        for period in periods:
+            url = f"{BASE_URL}/api/stock-price/combined/{TEST_TICKER}"
+            response = requests.get(url, params={'period': period}, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                hist = data.get('historical', {})
+                points = hist.get('data_points', 0) if isinstance(hist, dict) else 0
+                print(f"✓ {period}: {points} data points")
+            else:
+                print(f"⚠ {period}: Status {response.status_code}")
+        
+        print("✅ Combined periods test passed!")
+
