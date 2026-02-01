@@ -341,3 +341,57 @@ class TestEdgeCases:
         
         print("✅ Timeout handling test passed!")
 
+
+def run_all_stock_price_tests():
+    """Run all stock price endpoint tests"""
+    print("\n" + "#"*60)
+    print("# STOCK PRICE API ENDPOINT TESTS")
+    print("#"*60)
+    
+    test_classes = [
+        TestHistoricalPrices(),
+        TestQuoteEndpoint(),
+        TestCombinedEndpoint(),
+        TestEdgeCases()
+    ]
+    
+    total_tests = 0
+    passed_tests = 0
+    
+    for test_class in test_classes:
+        class_name = test_class.__class__.__name__
+        print(f"\n{'='*60}")
+        print(f"Running {class_name}")
+        print(f"{'='*60}")
+        
+        test_methods = [m for m in dir(test_class) if m.startswith('test_')]
+        
+        for method_name in test_methods:
+            total_tests += 1
+            try:
+                method = getattr(test_class, method_name)
+                method()
+                passed_tests += 1
+            except AssertionError as e:
+                print(f"❌ {method_name} FAILED: {e}")
+            except requests.exceptions.ConnectionError:
+                print(f"❌ {method_name} ERROR: Cannot connect to server")
+            except Exception as e:
+                print(f"❌ {method_name} ERROR: {e}")
+    
+    print("\n" + "#"*60)
+    print(f"# RESULTS: {passed_tests}/{total_tests} tests passed")
+    print("#"*60)
+    
+    return passed_tests == total_tests
+
+
+if __name__ == "__main__":
+    print("\n⚠️  Make sure the backend server is running on http://localhost:8000")
+    print("Starting tests in 2 seconds...")
+    
+    import time
+    time.sleep(2)
+    
+    success = run_all_stock_price_tests()
+    sys.exit(0 if success else 1)
