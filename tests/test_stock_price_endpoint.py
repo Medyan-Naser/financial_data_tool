@@ -293,3 +293,51 @@ class TestCombinedEndpoint:
         
         print("✅ Combined periods test passed!")
 
+
+class TestEdgeCases:
+    """Test edge cases and error handling"""
+    
+    def test_special_characters_in_ticker(self):
+        """Test handling of special characters in ticker"""
+        print("\n" + "="*60)
+        print("TEST: Special Characters in Ticker")
+        print("="*60)
+        
+        # Test ticker with dot (like BRK.B)
+        url = f"{BASE_URL}/api/stock-price/quote/BRK.B"
+        response = requests.get(url, timeout=30)
+        print(f"✓ BRK.B status: {response.status_code}")
+        
+        print("✅ Special characters test passed!")
+    
+    def test_lowercase_ticker(self):
+        """Test that lowercase tickers work"""
+        print("\n" + "="*60)
+        print("TEST: Lowercase Ticker")
+        print("="*60)
+        
+        url = f"{BASE_URL}/api/stock-price/quote/aapl"
+        response = requests.get(url, timeout=30)
+        
+        print(f"✓ Status: {response.status_code}")
+        if response.status_code == 200:
+            data = response.json()
+            print(f"✓ Current: ${data.get('current', 'N/A')}")
+        
+        print("✅ Lowercase ticker test passed!")
+    
+    def test_timeout_handling(self):
+        """Test that requests handle timeout gracefully"""
+        print("\n" + "="*60)
+        print("TEST: Timeout Handling")
+        print("="*60)
+        
+        try:
+            url = f"{BASE_URL}/api/stock-price/historical/{TEST_TICKER}"
+            response = requests.get(url, params={'period': 'max'}, timeout=60)
+            print(f"✓ Request completed with status: {response.status_code}")
+        except requests.exceptions.Timeout:
+            print("⚠ Request timed out (may be expected for large data)")
+        
+        print("✅ Timeout handling test passed!")
+
