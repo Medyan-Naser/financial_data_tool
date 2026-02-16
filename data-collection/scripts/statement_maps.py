@@ -169,7 +169,29 @@ class IncomeStatementMap:
                 r"(?i)\bgeneral\s+and\s+administrative\b",  # Google: "General and administrative"
                 r"(?i)\bsg&a\b",
                 r"(?i)^SG&A\b",
-                r"(?i)^sales\s+and\s+marketing\b",  # Google: "Sales and marketing"
+            ]
+        )
+        
+        self.GeneralAndAdministrative = MapFact(
+            fact="General and administrative",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)GeneralAndAdministrativeExpense\b",
+            ],
+            human_pattern=[
+                r"(?i)^general\s+and\s+administrative\b",
+            ]
+        )
+        
+        self.SellingAndMarketing = MapFact(
+            fact="Sales and marketing",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)SellingAndMarketingExpense\b",
+                r"(?i)MarketingExpense\b",
+            ],
+            human_pattern=[
+                r"(?i)^sales\s+and\s+marketing\b",
                 r"(?i)^selling\s+and\s+marketing\b",
             ]
         )
@@ -177,7 +199,10 @@ class IncomeStatementMap:
         self.RnD = MapFact(
             fact=RnD,
             priority=7,
-            gaap_pattern=[r"(?i)ResearchAndDevelopmentExpense\b"],
+            gaap_pattern=[
+                r"(?i)ResearchAndDevelopmentExpense\b",
+                r"(?i)ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost\b",
+            ],
             human_pattern=[
                 r"(?i)\bresearch\s+and\s+development\b",
                 r"(?i)\br\s*&\s*d\b",
@@ -200,7 +225,10 @@ class IncomeStatementMap:
         self.OtherOperatingExpense = MapFact(
             fact=OtherOperatingExpense,
             priority=5,
-            gaap_pattern=[r"(?i)OtherOperatingIncomeExpense\w*"],
+            gaap_pattern=[
+                r"(?i)OtherOperatingIncomeExpense\w*",
+                r"(?i)OtherOperatingIncomeExpenseNet\b",
+            ],
             human_pattern=[r"(?i)\bother\s+operating\s+expenses?\b"]
         )
         
@@ -225,8 +253,7 @@ class IncomeStatementMap:
             fact=OperatingIncome,
             priority=8,
             gaap_pattern=[
-                r"(?i)OperatingIncome(Loss)?\b",
-                *GAAP_INCOME_PATTERNS
+                r"(?i)OperatingIncomeLoss\b",
             ],
             human_pattern=[
                 r"(?i)^operating\s+income\b",
@@ -258,6 +285,7 @@ class IncomeStatementMap:
                 r"(?i)NonoperatingIncomeExpense\b",  # Apple uses this
                 r"(?i)OtherNonoperatingIncomeExpense\b",
                 r"(?i)InterestIncomeExpenseNet\b",
+                r"(?i)InterestIncomeExpenseNonoperatingNet\b",
                 r"(?i)IncomeLossFromEquityMethodInvestments\b",
             ],
             human_pattern=[
@@ -289,16 +317,46 @@ class IncomeStatementMap:
         )
         
         # ==================== NET INCOME ====================
+        self.IncomeBeforeTax = MapFact(
+            fact="Income before tax",
+            priority=7,
+            gaap_pattern=[
+                r"(?i)IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest\b",
+                r"(?i)IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments\b",
+                r"(?i)IncomeLossFromContinuingOperationsBeforeIncomeTaxes\w*",
+            ],
+            human_pattern=[
+                r"(?i)^income\s+before\s+(income\s+)?taxes?\b",
+                r"(?i)^(earnings|income)\s+before\s+tax\b",
+                r"(?i)^pre-?tax\s+(income|earnings)\b",
+            ]
+        )
+        
         self.NetIncome = MapFact(
             fact=NetIncome,
             priority=10,
             gaap_pattern=[
-                r"(?i)NetIncomeLoss\w*",
-                *GAAP_INCOME_PATTERNS
+                r"(?i)NetIncomeLoss\b",
+                r"(?i)NetIncomeLossAvailableToCommonStockholdersBasic\b",
+                r"(?i)NetIncomeLossAttributableToParent\b",
+                r"(?i)ProfitLoss\b",
             ],
             human_pattern=[
                 r"(?i)^net\s+(income|earnings|profit)\b",
                 r"(?i)^net\s+income\s+attributable\b",
+            ]
+        )
+        
+        self.NonoperatingIncomeExpense = MapFact(
+            fact="Nonoperating income expense",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)NonoperatingIncomeExpense\b",
+                r"(?i)OtherNonoperatingIncomeExpense\b",
+            ],
+            human_pattern=[
+                r"(?i)^total\s+other\s+(income|expense)\b",
+                r"(?i)^other\s+(income|expense).*net\b",
             ]
         )
         
@@ -524,6 +582,7 @@ class BalanceSheetMap:
             priority=8,
             gaap_pattern=[
                 r"(?i)PropertyPlantAndEquipmentNet\b",
+                r"(?i)PropertyPlantAndEquipmentAndFinanceLeaseRightOfUseAsset\w*",
                 r"(?i)PropertyPlantAndEquipment\w*",
             ],
             human_pattern=[
@@ -556,6 +615,18 @@ class BalanceSheetMap:
             ]
         )
         
+        self.DeferredIncomeTaxAssetsNet = MapFact(
+            fact="Deferred Income Tax Assets",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)DeferredIncomeTaxAssetsNet\b",
+                r"(?i)DeferredTaxAssetsNet\w*",
+            ],
+            human_pattern=[
+                r"(?i)^deferred\s+(income\s+)?tax\s+assets?\b",
+            ]
+        )
+        
         self.OtherNoncurrentAssets = MapFact(
             fact="Other Noncurrent Assets",
             priority=6,
@@ -567,6 +638,7 @@ class BalanceSheetMap:
             ],
             human_pattern=[
                 r"(?i)^other\s+non-?current\s+assets\b",
+                r"(?i)^other\s+assets\b",
             ]
         )
         
@@ -619,8 +691,8 @@ class BalanceSheetMap:
             ]
         )
         
-        self.OtherCurrentLiabilities = MapFact(
-            fact="Other Current Liabilities",
+        self.AccruedLiabilities = MapFact(
+            fact="Accrued Liabilities",
             priority=6,
             gaap_pattern=[
                 r"(?i)OtherLiabilitiesCurrent\b",
@@ -629,10 +701,33 @@ class BalanceSheetMap:
                 r"(?i)AccruedIncomeTaxesCurrent\b",
                 r"(?i)Other\w*Current\w*Liabilities\b",
                 r"(?i)Accrued\w*And\w*Other\w*Current\w*Liabilities\b",
+                r"(?i)EmployeeRelatedLiabilitiesCurrent\b",
+            ],
+            human_pattern=[
+                r"(?i)^accrued\s+(liabilities|expenses)\b",
+            ]
+        )
+        
+        self.OtherCurrentLiabilities = MapFact(
+            fact="Other Current Liabilities",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)OtherLiabilitiesCurrent\b",
+                r"(?i)Other\w*Current\w*Liabilities\b",
             ],
             human_pattern=[
                 r"(?i)^other\s+current\s+liabilities\b",
-                r"(?i)^accrued\s+liabilities\b",
+            ]
+        )
+        
+        self.OperatingLeaseLiabilityCurrent = MapFact(
+            fact="Operating Lease Liability Current",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)OperatingLeaseLiabilityCurrent\b",
+            ],
+            human_pattern=[
+                r"(?i)^operating\s+lease.*current\b",
             ]
         )
         
@@ -707,14 +802,34 @@ class BalanceSheetMap:
             ]
         )
         
-        self.OtherNoncurrentLiabilities = MapFact(
-            fact="Other Noncurrent Liabilities",
+        self.OperatingLeaseLiabilityNoncurrent = MapFact(
+            fact="Operating Lease Liability Noncurrent",
             priority=6,
             gaap_pattern=[
-                r"(?i)OtherLiabilitiesNoncurrent\b",
+                r"(?i)OperatingLeaseLiabilityNoncurrent\b",
+            ],
+            human_pattern=[
+                r"(?i)^operating\s+lease.*non-?current\b",
+            ]
+        )
+        
+        self.DeferredTaxLiabilitiesNoncurrent = MapFact(
+            fact="Deferred Tax Liabilities Noncurrent",
+            priority=6,
+            gaap_pattern=[
                 r"(?i)DeferredTaxLiabilitiesNoncurrent\b",
                 r"(?i)DeferredIncomeTaxLiabilitiesNet\b",
-                r"(?i)OperatingLeaseLiability(?!Current)\w*",
+            ],
+            human_pattern=[
+                r"(?i)^deferred\s+(income\s+)?tax\s+liabilities?\b",
+            ]
+        )
+        
+        self.OtherNoncurrentLiabilities = MapFact(
+            fact="Other Noncurrent Liabilities",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)OtherLiabilitiesNoncurrent\b",
                 r"(?i)Other\w*Noncurrent\w*Liabilities\b",
                 r"(?i)Other\w*LongTerm\w*Liabilities\b",
             ],
@@ -748,23 +863,6 @@ class BalanceSheetMap:
         )
         
         # ==================== EQUITY ====================
-        self.CommonStock = MapFact(
-            fact="Common Stock",
-            priority=6,
-            gaap_pattern=[
-                r"(?i)CommonStocksIncludingAdditionalPaidInCapital\b",
-                r"(?i)CommonStockValue\b",
-                r"(?i)AdditionalPaidInCapital\w*",
-                r"(?i)PreferredStockValue\b",
-                r"(?i)TreasuryStockValue\b",
-            ],
-            human_pattern=[
-                r"(?i)^common\s+stock\s+and\s+additional\s+paid-?in\s+capital\b",
-                r"(?i)^common\s+stock\b",
-                r"(?i)^Common Stock\b",
-            ]
-        )
-        
         self.RetainedEarnings = MapFact(
             fact=RetainedEarnings,
             priority=7,
@@ -790,15 +888,92 @@ class BalanceSheetMap:
             ]
         )
         
+        self.CommitmentsAndContingencies = MapFact(
+            fact="Commitments and Contingencies",
+            priority=4,
+            gaap_pattern=[
+                r"(?i)CommitmentsAndContingencies\b",
+            ],
+            human_pattern=[
+                r"(?i)^commitments\s+and\s+contingencies\b",
+            ]
+        )
+        
+        self.CommonStock = MapFact(
+            fact="Common Stock",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)CommonStocksIncludingAdditionalPaidInCapital\b",
+                r"(?i)CommonStockValue\b",
+                r"(?i)CommonStockValueOutstanding\b",
+            ],
+            human_pattern=[
+                r"(?i)^common\s+stock\s+and\s+additional\s+paid-?in\s+capital\b",
+                r"(?i)^common\s+stock\b",
+                r"(?i)^Common Stock\b",
+            ]
+        )
+        
+        self.AdditionalPaidInCapital = MapFact(
+            fact="Additional Paid-In Capital",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)AdditionalPaidInCapitalCommonStock\b",
+                r"(?i)AdditionalPaidInCapital\b",
+            ],
+            human_pattern=[
+                r"(?i)^additional\s+paid-?in\s+capital\b",
+            ]
+        )
+        
+        self.TreasuryStock = MapFact(
+            fact="Treasury Stock",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)TreasuryStockValue\b",
+                r"(?i)TreasuryStockCommonValue\b",
+            ],
+            human_pattern=[
+                r"(?i)^treasury\s+stock\b",
+            ]
+        )
+        
+        self.PreferredStock = MapFact(
+            fact="Preferred Stock",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)PreferredStockValue\b",
+                r"(?i)PreferredStockValueOutstanding\b",
+            ],
+            human_pattern=[
+                r"(?i)^preferred\s+stock\b",
+            ]
+        )
+        
+        self.MinorityInterest = MapFact(
+            fact="Minority Interest",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)MinorityInterest\b",
+                r"(?i)MinorityInterestInNetIncome\w*",
+                r"(?i)NetIncomeLossAttributableToNoncontrollingInterest\b",
+            ],
+            human_pattern=[
+                r"(?i)^(minority|noncontrolling)\s+interest\b",
+            ]
+        )
+        
         self.StockholdersEquity = MapFact(
             fact=StockholdersEquity,
             priority=9,
             gaap_pattern=[
                 r"(?i)StockholdersEquity\b",
+                r"(?i)StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest\b",
                 r"(?i)ShareholdersEquity\b",
             ],
             human_pattern=[
                 r"(?i)^(total\s+)?(shareholders?|stockholders?)\s+equity\b",
+                r"(?i)^total\s+equity\b",
             ]
         )
         
@@ -869,6 +1044,19 @@ class CashFlowMap:
             ]
         )
         
+        self.DeferredIncomeTax = MapFact(
+            fact="Deferred income taxes",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)DeferredIncomeTaxExpenseBenefit\b",
+                r"(?i)DeferredIncomeTaxesAndTaxCredits\b",
+            ],
+            human_pattern=[
+                r"(?i)^deferred\s+income\s+tax\b",
+                r"(?i)^deferred\s+tax\b",
+            ]
+        )
+        
         self.OtherNoncashItems = MapFact(
             fact="Other noncash items",
             priority=5,
@@ -878,7 +1066,8 @@ class CashFlowMap:
                 r"(?i)DeferredIncomeTaxExpenseBenefit\b",
             ],
             human_pattern=[
-                r"(?i)^other\b",
+                r"(?i)^other\s+non-?cash\b",
+                r"(?i)^other\s+operating\b",
                 r"(?i)^Other noncash items\b",
             ]
         )
@@ -936,6 +1125,8 @@ class CashFlowMap:
             priority=4,
             gaap_pattern=[
                 r"(?i)IncreaseDecreaseInOtherOperatingLiabilities\b",
+                r"(?i)IncreaseDecreaseInOtherCurrentLiabilities\b",
+                r"(?i)IncreaseDecreaseInOtherNoncurrentLiabilities\b",
                 r"(?i)IncreaseDecreaseInAccruedLiabilities\w*",
                 r"(?i)IncreaseDecreaseInContractWithCustomerLiability\b",
             ],
@@ -944,11 +1135,26 @@ class CashFlowMap:
             ]
         )
         
+        self.ChangeInOtherWorkingCapital = MapFact(
+            fact="Change in other working capital",
+            priority=4,
+            gaap_pattern=[
+                r"(?i)IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities\b",
+                r"(?i)IncreaseDecreaseInContractWithCustomerLiability\b",
+                r"(?i)IncreaseDecreaseInOtherOperatingCapitalNet\b",
+            ],
+            human_pattern=[
+                r"(?i)^changes?\s+in\s+other\s+(working\s+capital|operating)\b",
+                r"(?i)^other\s+working\s+capital\b",
+            ]
+        )
+        
         self.CashFromOperations = MapFact(
             fact="Net cash from operating activities",
             priority=10,
             gaap_pattern=[
                 r"(?i)NetCashProvidedByUsedInOperatingActivities\b",
+                r"(?i)NetCashProvidedByUsedInOperatingActivitiesContinuingOperations\b",
             ],
             human_pattern=[
                 r"(?i)^net\s+cash\s+(provided\s+by|from)\s+operating\s+activities\b",
@@ -992,6 +1198,9 @@ class CashFlowMap:
                 r"(?i)PaymentsToAcquirePropertyPlantAndEquipment\b",
                 r"(?i)PaymentsForCapitalImprovements\b",
                 r"(?i)PaymentsToAcquire\w*PlantAndEquipment\b",
+                r"(?i)PaymentsToAcquireProductiveAssets\b",
+                r"(?i)PaymentsToAcquireOtherProductiveAssets\b",
+                r"(?i)PaymentsToAcquireIntangibleAssets\b",
             ],
             human_pattern=[
                 r"(?i)\bcapital\s+expenditures?\b",
@@ -1012,12 +1221,24 @@ class CashFlowMap:
             ]
         )
         
+        self.OtherInvestingActivities = MapFact(
+            fact="Other investing activities",
+            priority=4,
+            gaap_pattern=[
+                r"(?i)PaymentsForProceedsFromOtherInvestingActivities\b",
+                r"(?i)OtherInvestingActivities\w*",
+            ],
+            human_pattern=[
+                r"(?i)^other\s+investing\s+activities\b",
+            ]
+        )
+        
         self.CashFromInvesting = MapFact(
             fact="Net cash from investing activities",
             priority=10,
             gaap_pattern=[
                 r"(?i)NetCashProvidedByUsedInInvestingActivities\b",
-                r"(?i)PaymentsForProceedsFromOtherInvestingActivities\b",
+                r"(?i)NetCashProvidedByUsedInInvestingActivitiesContinuingOperations\b",
             ],
             human_pattern=[
                 r"(?i)^net\s+cash\s+(used\s+in|from|generated.*by)\s+investing\s+activities\b",
@@ -1106,13 +1327,38 @@ class CashFlowMap:
             ]
         )
         
+        self.ProceedsFromIssuanceOfCommonStock = MapFact(
+            fact="Proceeds from issuance of common stock",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)ProceedsFromIssuanceOfCommonStock\b",
+                r"(?i)ProceedsFromStockOptionsExercised\b",
+            ],
+            human_pattern=[
+                r"(?i)proceeds\s+from\s+issuance.*common\s+stock\b",
+                r"(?i)issuance.*common\s+stock\b",
+            ]
+        )
+        
+        self.OtherFinancingActivities = MapFact(
+            fact="Other financing activities",
+            priority=4,
+            gaap_pattern=[
+                r"(?i)ProceedsFromPaymentsForOtherFinancingActivities\b",
+                r"(?i)PaymentsForProceedsFromOtherFinancingActivities\b",
+                r"(?i)OtherFinancingActivities\w*",
+            ],
+            human_pattern=[
+                r"(?i)^other\s+financing\s+activities\b",
+            ]
+        )
+        
         self.CashFromFinancing = MapFact(
             fact="Net cash from financing activities",
             priority=10,
             gaap_pattern=[
                 r"(?i)NetCashProvidedByUsedInFinancingActivities\b",
-                r"(?i)PaymentsForProceedsFromOtherFinancingActivities\b",
-                r"(?i)ProceedsFromPaymentsForOtherFinancingActivities\b",
+                r"(?i)NetCashProvidedByUsedInFinancingActivitiesContinuingOperations\b",
             ],
             human_pattern=[
                 r"(?i)^net\s+cash\s+(provided\s+by|used\s+in|from)\s+financing\s+activities\b",
@@ -1122,19 +1368,63 @@ class CashFlowMap:
         )
         
         # ==================== NET CHANGE ====================
+        self.EffectOfExchangeRate = MapFact(
+            fact="Effect of exchange rate on cash",
+            priority=6,
+            gaap_pattern=[
+                r"(?i)EffectOfExchangeRateOnCash\w*",
+            ],
+            human_pattern=[
+                r"(?i)^effect\s+of\s+(foreign\s+)?exchange\s+rate\b",
+            ]
+        )
+        
         self.NetChangeInCash = MapFact(
             fact="Net change in cash",
             priority=9,
             gaap_pattern=[
                 r"(?i)CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecrease\w*",
-                r"(?i)CashAndCashEquivalentsPeriodIncreaseDecrease\b",
-                r"(?i)CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents\b",
-                r"(?i)CashAndCashEquivalentsAtCarryingValue\b",
-                r"(?i)EffectOfExchangeRateOnCash\w*",
-                r"(?i)IncomeTaxesPaidNet\b",
+                r"(?i)CashAndCashEquivalentsPeriodIncreaseDecrease\w*",
             ],
             human_pattern=[
                 r"(?i)^net\s+(increase|decrease|change).*cash\b",
                 r"(?i)^Net change in cash\b",
+            ]
+        )
+        
+        self.CashAtBeginningOfPeriod = MapFact(
+            fact="Cash at beginning of period",
+            priority=7,
+            gaap_pattern=[
+                r"(?i)CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents\b",
+                r"(?i)CashAndCashEquivalentsAtCarryingValue\b",
+            ],
+            human_pattern=[
+                r"(?i)^cash.*beginning\s+of\s+(period|year)\b",
+                r"(?i)^cash.*end\s+of\s+(period|year)\b",
+            ]
+        )
+        
+        self.InterestPaidNet = MapFact(
+            fact="Interest paid",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)InterestPaidNet\b",
+                r"(?i)InterestPaid\b",
+            ],
+            human_pattern=[
+                r"(?i)^interest\s+paid\b",
+            ]
+        )
+        
+        self.IncomeTaxesPaidNet = MapFact(
+            fact="Income taxes paid",
+            priority=5,
+            gaap_pattern=[
+                r"(?i)IncomeTaxesPaidNet\b",
+                r"(?i)IncomeTaxesPaid\b",
+            ],
+            human_pattern=[
+                r"(?i)^income\s+taxes\s+paid\b",
             ]
         )
