@@ -1,0 +1,180 @@
+# enhance logging and fix AAPL stuck
+# why AAPL get stuck from frontend, but not from script?
+# add more agent logging to backend?
+# where does the script logging get captured usually when running from frontend?
+# save logs to file?
+
+## when requesting collection from frontedn for AAPL last 10 years:
+
+INFO:     Application startup complete.
+INFO:app.financials_cached:Collection request for AAPL (years=10, force_refresh=True)
+INFO:     127.0.0.1:36090 - "GET /api/financials/collect/AAPL?years=10&force_refresh=true&quarterly=false HTTP/1.1" 200 OK
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000079/R5.htm
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000032019324000123/R8.htm
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000032019322000108/aapl-20220924_cal.xml
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000032019321000105/R2.htm
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000032019320000096/R4.htm
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000032019319000119/R7.htm
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000032019317000070/aapl-20170930_cal.xml
+INFO:app.data_collection_service:[AAPL] https://www.sec.gov/Archives/edgar/data/0000320193/000162828016020309/R2.htm
+
+
+## when using the script directly:
+
+
+medy@medy-AI:~/projects/financial_data_tool/backend$ cd /home/medy/projects/financial_data_tool/data-collection/scripts && python3 -u main.py --ticker AAPL --years 10 --output output
+2026-02-16 12:07:00,036 - INFO - Fetching financial data for AAPL...
+https://data.sec.gov/submissions/CIK0000320193.json
+https://data.sec.gov/submissions/CIK0000320193-submissions-001.json
+facts url :
+https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json
+2026-02-16 12:07:01,392 - INFO - Company CIK: 0000320193
+2026-02-16 12:07:01,392 - INFO - Found 30 filings
+2026-02-16 12:07:01,392 - INFO - Collecting 10 filings (10 years)
+2026-02-16 12:07:01,392 - INFO - 
+Processing filing 1/10: 2025-09-27
+2026-02-16 12:07:01,392 - INFO - Accession number: 0000320193-25-000079
+https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000079
+https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000079/aapl-20250927_cal.xml
+2026-02-16 12:07:01,827 - INFO - Processing Income Statement...
+https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000079
+https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000079/R3.htm
+2026-02-16 12:07:02,083 - WARNING - Scale verification failed: ratio=1355560.04 is not a clean power of 10
+2026-02-16 12:07:02,084 - INFO - Unusual scale factor detected: 1000000
+2026-02-16 12:07:02,086 - WARNING - Scale verification failed: ratio=3812464.50 is not a clean power of 10
+2026-02-16 12:07:02,087 - INFO - Unusual scale factor detected: 10000000
+2026-02-16 12:07:02,099 - WARNING - Table header scale (thousands) appears incorrect. 11/15 (73.3%) rows verified as millions. Using millions as default for unverified rows.
+2026-02-16 12:07:02,101 - INFO - Created raw statement with 19 rows (from 19 original rows)
+2026-02-16 12:07:02,101 - WARNING - Mapped DataFrame not yet created. Attempting to map...
+2026-02-16 12:07:02,102 - INFO - Using full parsing pipeline (with temporal/sum/LLM)
+2026-02-16 12:07:02,102 - INFO - [Pipeline] Starting income_statement (19 rows, 0 historical filings)
+2026-02-16 12:07:02,102 - INFO - [Pipeline] Step 2: Generating regex candidates...
+2026-02-16 12:07:02,106 - INFO - [Pipeline] Step 3: Temporal validation skipped (no historical data)
+2026-02-16 12:07:02,107 - INFO - [Pipeline] Step 4: Summation verification (5 sum-marked rows)
+2026-02-16 12:07:02,108 - INFO - [Pipeline] Step 5: Selecting best matches...
+2026-02-16 12:07:02,108 - INFO - [Pipeline] LLM tie-break needed for 'us-gaap_SellingGeneralAndAdministrativeExpense': ambiguous: 'SG&A' (59.0) vs 'General and administrative' (58.0), gap=1.0
+2026-02-16 12:07:02,110 - INFO - [Agent] === Resolving ambiguous match for 'us-gaap_SellingGeneralAndAdministrativeExpense' ===
+2026-02-16 12:07:02,110 - INFO - [Agent:Auditor] Analyzing 'us-gaap_SellingGeneralAndAdministrativeExpense' (label='Selling, general and administrative') with 2 candidates
+2026-02-16 12:07:02,110 - INFO - [Agent:Auditor]   Candidate 1: 'SG&A' (score=59.0, type=GAAP)
+2026-02-16 12:07:02,110 - INFO - [Agent:Auditor]   Candidate 2: 'General and administrative' (score=58.0, type=GAAP)
+2026-02-16 12:07:02,133 - INFO - [Agent:Auditor] Calling model 'llama3.2'...
+2026-02-16 12:07:02,733 - INFO - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-16 12:07:04,766 - INFO - [Agent:Auditor] Response received from 'llama3.2' (2.6s, 438 chars)
+2026-02-16 12:07:04,766 - INFO - [Agent:Auditor] Decision: 'SG&A' (conf=0.99) - Candidate 1 matches the GAAP tag 'us-gaap_SellingGeneralAndAdministrativeExpense' which is a standard term for SG&A expenses, and its numerical values ($27,601,000,000 in 2025) are consistent with historical filings (e.g., $24,932,000,000 in 2023). The surrounding rows also support this match, as the total operating expenses include both SG&A and R&D expenses.
+2026-02-16 12:07:04,766 - INFO - [Agent] Auditor confidence 0.99 >= 0.9, skipping Finalizer
+2026-02-16 12:07:04,767 - INFO - [Pipeline] LLM tie-break needed for 'us-gaap_NonoperatingIncomeExpense': ambiguous: 'Nonoperating income expense' (42.0) vs 'Interest and investment income' (32.0), gap=10.0
+2026-02-16 12:07:04,767 - INFO - [Agent] === Resolving ambiguous match for 'us-gaap_NonoperatingIncomeExpense' ===
+2026-02-16 12:07:04,767 - INFO - [Agent:Auditor] Analyzing 'us-gaap_NonoperatingIncomeExpense' (label='Other income/(expense), net') with 2 candidates
+2026-02-16 12:07:04,767 - INFO - [Agent:Auditor]   Candidate 1: 'Nonoperating income expense' (score=52.0, type=GAAP)
+2026-02-16 12:07:04,767 - INFO - [Agent:Auditor]   Candidate 2: 'Interest and investment income' (score=32.0, type=Human)
+2026-02-16 12:07:04,767 - INFO - [Agent:Auditor] Calling model 'llama3.2'...
+2026-02-16 12:07:04,922 - INFO - HTTP Request: POST http://localhost:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-16 12:07:06,712 - INFO - [Agent:Auditor] Response received from 'llama3.2' (1.9s, 407 chars)
+2026-02-16 12:07:06,712 - INFO - [Agent:Auditor] Decision: 'Nonoperating income expense' (conf=0.99) - Matches GAAP tag 'us-gaap_NonoperatingIncomeExpense' with human label 'Other income/(expense), net'. Numerical values are consistent across years and aligns with surrounding rows (e.g., 'Selling, general and administrative' and 'Operating IncomeLoss'). Summation score is -10.0, indicating a total line item.
+2026-02-16 12:07:06,712 - INFO - [Agent] Auditor confidence 0.99 >= 0.9, skipping Finalizer
+2026-02-16 12:07:06,712 - INFO - [Pipeline] Step 6: Discovery skipped (no missing items or disabled)
+2026-02-16 12:07:06,713 - INFO - [Pipeline] === income_statement Results ===
+2026-02-16 12:07:06,713 - INFO - [Pipeline] Matched 15/19 rows (78.9%)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   SG&A                                     <- us-gaap_SellingGeneralAndAdministrativeExpense     (score=  88.7, GAAP) [LLM]
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Total operating expense                  <- us-gaap_OperatingExpenses                          (score=  84.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Nonoperating income expense              <- us-gaap_NonoperatingIncomeExpense                  (score=  71.7, GAAP) [LLM]
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Gross profit                             <- us-gaap_GrossProfit                                (score=  70.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Operating income                         <- us-gaap_OperatingIncomeLoss                        (score=  70.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Income before tax                        <- us-gaap_IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest (score=  59.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   COGS                                     <- us-gaap_CostOfGoodsAndServicesSold                 (score=  56.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Weighted Average Number Of Shares Outstanding Basic <- us-gaap_WeightedAverageNumberOfSharesOutstandingBasic (score=  56.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Income Tax Expense                       <- us-gaap_IncomeTaxExpenseBenefit                    (score=  55.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   R&D                                      <- us-gaap_ResearchAndDevelopmentExpense              (score=  54.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Earnings Per Share Basic                 <- us-gaap_EarningsPerShareBasic                      (score=  52.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Weighted Average Number Of Shares Outstanding Diluted <- us-gaap_WeightedAverageNumberOfDilutedSharesOutstanding (score=  51.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Total revenue                            <- us-gaap_RevenueFromContractWithCustomerExcludingAssessedTax (score=  50.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Net income                               <- us-gaap_NetIncomeLoss                              (score=  47.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline]   Earnings Per Share Diluted               <- us-gaap_EarningsPerShareDiluted                    (score=  47.0, GAAP)
+2026-02-16 12:07:06,713 - INFO - [Pipeline] LLM agent invocations: 2
+2026-02-16 12:07:06,713 - INFO - Pipeline: 15/19 rows mapped (78.9%)
+2026-02-16 12:07:06,714 - INFO - Processing Balance Sheet...
+https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000079
+https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000079/R5.htm
+2026-02-16 12:07:46,420 - INFO - Processing Income Statement...
+https://www.sec.gov/Archives/edgar/data/0000320193/000162828016020309
+https://www.sec.gov/Archives/edgar/data/0000320193/000162828016020309/R2.htm
+2026-02-16 12:07:46,590 - WARNING - Table header scale (thousands) appears incorrect. 11/16 (68.8%) rows verified as millions. Using millions as default for unverified rows.
+2026-02-16 12:07:46,591 - INFO - Created raw statement with 16 rows (from 16 original rows)
+2026-02-16 12:07:46,591 - WARNING - Mapped DataFrame not yet created. Attempting to map...
+2026-02-16 12:07:46,591 - INFO - Using full parsing pipeline (with temporal/sum/LLM)
+2026-02-16 12:07:46,591 - INFO - [Pipeline] Starting income_statement (16 rows, 9 historical filings)
+2026-02-16 12:07:46,591 - INFO - [Pipeline] Step 2: Generating regex candidates...
+2026-02-16 12:07:46,593 - INFO - [Pipeline] Step 3: Temporal cross-year validation (9 historical filings)
+2026-02-16 12:07:46,596 - INFO - [Pipeline] Step 4: Summation verification (5 sum-marked rows)
+2026-02-16 12:07:46,597 - INFO - [Pipeline] Step 5: Selecting best matches...
+2026-02-16 12:07:46,598 - INFO - [Pipeline] Step 6: Discovery skipped (no missing items or disabled)
+2026-02-16 12:07:46,598 - INFO - [Pipeline] === income_statement Results ===
+2026-02-16 12:07:46,598 - INFO - [Pipeline] Matched 16/16 rows (100.0%)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Total operating expense                  <- us-gaap_OperatingExpenses                          (score= 129.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Gross profit                             <- us-gaap_GrossProfit                                (score= 115.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Operating income                         <- us-gaap_OperatingIncomeLoss                        (score= 115.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   SG&A                                     <- us-gaap_SellingGeneralAndAdministrativeExpense     (score= 104.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Income before tax                        <- us-gaap_IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest (score= 104.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   COGS                                     <- us-gaap_CostOfGoodsAndServicesSold                 (score= 101.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Weighted Average Number Of Shares Outstanding Basic <- us-gaap_WeightedAverageNumberOfSharesOutstandingBasic (score= 101.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Income Tax Expense                       <- us-gaap_IncomeTaxExpenseBenefit                    (score= 100.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   R&D                                      <- us-gaap_ResearchAndDevelopmentExpense              (score=  99.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Earnings Per Share Basic                 <- us-gaap_EarningsPerShareBasic                      (score=  97.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Total revenue                            <- us-gaap_SalesRevenueNet                            (score=  96.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Weighted Average Number Of Shares Outstanding Diluted <- us-gaap_WeightedAverageNumberOfDilutedSharesOutstanding (score=  96.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Net income                               <- us-gaap_NetIncomeLoss                              (score=  92.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Earnings Per Share Diluted               <- us-gaap_EarningsPerShareDiluted                    (score=  92.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Nonoperating income expense              <- us-gaap_NonoperatingIncomeExpense                  (score=  87.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - [Pipeline]   Dividends Per Share                      <- us-gaap_CommonStockDividendsPerShareDeclared       (score=  81.0, GAAP)
+2026-02-16 12:07:46,598 - INFO - Pipeline: 16/16 rows mapped (100.0%)
+2026-02-16 12:07:46,598 - INFO - Processing Balance Sheet...
+https://www.sec.gov/Archives/edgar/data/0000320193/000162828016020309
+https://www.sec.gov/Archives/edgar/data/0000320193/000162828016020309/R5.htm
+2026-02-16 12:07:46,784 - WARNING - Table header scale (thousands) appears incorrect. 28/28 (100.0%) rows verified as millions. Using millions as default for unverified rows.
+2026-02-16 12:07:46,786 - INFO - Created raw statement with 29 rows (from 29 original rows)
+2026-02-16 12:07:46,786 - WARNING - Mapped DataFrame not yet created. Attempting to map...
+2026-02-16 12:07:46,786 - INFO - Using full parsing pipeline (with temporal/sum/LLM)
+2026-02-16 12:07:46,786 - INFO - [Pipeline] Starting balance_sheet (29 rows, 9 historical filings)
+2026-02-16 12:07:46,786 - INFO - [Pipeline] Step 2: Generating regex candidates...
+2026-02-16 12:07:46,789 - INFO - [Pipeline] Step 3: Temporal cross-year validation (9 historical filings)
+2026-02-16 12:07:46,794 - INFO - [Pipeline] Step 4: Summation verification (6 sum-marked rows)
+2026-02-16 12:07:46,796 - INFO - [Pipeline] Step 5: Selecting best matches...
+2026-02-16 12:07:46,796 - INFO - [Pipeline] Step 6: Discovery skipped (no missing items or disabled)
+2026-02-16 12:07:46,797 - INFO - [Pipeline] === balance_sheet Results ===
+2026-02-16 12:07:46,797 - INFO - [Pipeline] Matched 28/29 rows (96.6%)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Total Liabilities And Equity             <- us-gaap_LiabilitiesAndStockholdersEquity           (score= 117.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Current Assets                           <- us-gaap_AssetsCurrent                              (score= 111.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Current Liabilities                      <- us-gaap_LiabilitiesCurrent                         (score= 111.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Total Liabilities                        <- us-gaap_Liabilities                                (score= 111.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Stockholders Equity                      <- us-gaap_StockholdersEquity                         (score= 111.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Other Noncurrent Assets                  <- us-gaap_OtherAssetsNoncurrent                      (score= 110.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Total Assets                             <- us-gaap_Assets                                     (score= 106.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Cash And Cash Equivalen                  <- us-gaap_CashAndCashEquivalentsAtCarryingValue      (score=  86.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Property Plant And Equipment             <- us-gaap_PropertyPlantAndEquipmentNet               (score=  85.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Long Term Debt                           <- us-gaap_LongTermDebtNoncurrent                     (score=  85.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Intangible Assets                        <- us-gaap_IntangibleAssetsNetExcludingGoodwill       (score=  84.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Retained Earnings                        <- us-gaap_RetainedEarningsAccumulatedDeficit         (score=  84.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Marketable Securities Current            <- us-gaap_AvailableForSaleSecuritiesCurrent          (score=  83.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Marketable Securities Noncurrent         <- us-gaap_AvailableForSaleSecuritiesNoncurrent       (score=  83.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Common Stock                             <- us-gaap_CommonStocksIncludingAdditionalPaidInCapital (score=  83.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Accumulated Other Comprehensive Income   <- us-gaap_AccumulatedOtherComprehensiveIncomeLossNetOfTax (score=  83.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Accounts Receivable                      <- us-gaap_AccountsReceivableNetCurrent               (score=  80.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Accounts Payable                         <- us-gaap_AccountsPayableCurrent                     (score=  80.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Short Term Debt Current                  <- us-gaap_LongTermDebtCurrent                        (score=  79.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Vendor Non-Trade Receivables             <- us-gaap_NontradeReceivablesCurrent                 (score=  78.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Accrued Liabilities                      <- us-gaap_AccruedLiabilitiesCurrent                  (score=  78.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Deferred Revenue                         <- us-gaap_DeferredRevenueCurrent                     (score=  77.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Inventory                                <- us-gaap_InventoryNet                               (score=  75.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Goodwill                                 <- us-gaap_Goodwill                                   (score=  69.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Commercial Paper                         <- us-gaap_CommercialPaper                            (score=  68.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Other Noncurrent Liabilities             <- us-gaap_OtherLiabilitiesNoncurrent                 (score=  67.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Other Current Assets                     <- us-gaap_OtherAssetsCurrent                         (score=  63.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - [Pipeline]   Commitments and Contingencies            <- us-gaap_CommitmentsAndContingencies                (score=  51.0, GAAP)
+2026-02-16 12:07:46,797 - INFO - Pipeline: 28/29 rows mapped (96.6%)
+
+
+
+
+# I can not trust an LLM with numbers
+# I need to provide in text if like stuff are matching or not, like report what the number tell us, but without providing number to LLM
+# Add tools to enable LLM to understand numbers, greateer, less, compare
