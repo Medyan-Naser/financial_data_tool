@@ -586,3 +586,202 @@ class AgentOrchestrator:
 
         return "\n".join(lines)
 
+    # ─── DISCOVERER AGENT ──────────────────────────────────────────────────
+
+    def run_discoverer(self, unmatched_rows: List[Dict],
+                       expected_items: List[str],
+                       statement_type: str) -> List[DiscoveryResult]:
+        """
+        Agent 3: The Discoverer.
+        
+        When expected financial items are missing, examines unmatched rows
+        to find them under non-standard names.
+        
+        Args:
+            unmatched_rows: List of dicts with keys: idx, human_label, values, camelcase_words
+            expected_items: List of standardized fact names that are missing
+            statement_type: 'income_statement', 'balance_sheet', or 'cash_flow_statement'
+        
+        Returns:
+            List of DiscoveryResult with suggested mappings
+        """
+        if not self.enabled or not unmatched_rows or not expected_items:
+            if not self.enabled:
+                logger.info(f"[Agent:Discoverer] SKIPPED - agents disabled. Missing items: {expected_items}")
+            return []
+
+        logger.info(
+            f"[Agent:Discoverer] Searching {len(unmatched_rows)} unmatched rows "
+            f"for {len(expected_items)} missing items in {statement_type}: {expected_items}"
+        )
+
+        results = []
+        
+        # Process in batches of 5 unmatched rows
+        num_batches = (len(unmatched_rows) + 4) // 5
+        for i in range(0, len(unmatched_rows), 5):
+            batch = unmatched_rows[i:i+5]
+            batch_num = i // 5 + 1
+            batch_tags = [r.get('idx', '?') for r in batch]
+            logger.info(f"[Agent:Discoverer] Batch {batch_num}/{num_batches}: {batch_tags}")
+            
+            prompt = self._build_discoverer_prompt(batch, expected_items, statement_type)
+            
+            response = self._invoke_llm(
+                DISCOVERER_SYSTEM_PROMPT, prompt,
+                model=self.analysis_model,
+                agent_name="Discoverer"
+            )
+            
+            # The response should be a JSON array, but might be a single object
+            parsed = self._parse_json_response(response)
+            if parsed:
+                # Handle single vs array response
+                if isinstance(parsed, list):
+                    for item in parsed:
+                        dr = DiscoveryResult(
+                            row_idx=item.get('row_idx', ''),
+                            suggested_fact=item.get('suggested_fact'),
+                            confidence=float(item.get('confidence', 0.0)),
+                            reasoning=item.get('reasoning', ''),
+                            raw_response=response or "",
+                        )
+                        results.append(dr)
+                        if dr.suggested_fact:
+                            logger.info(f"[Agent:Discoverer] Found: '{dr.row_idx}' -> '{dr.suggested_fact}' (conf={dr.confidence:.2f})")
+                else:
+                    dr = DiscoveryResult(
+                        row_idx=parsed.get('row_idx', batch[0].get('idx', '')),
+                        suggested_fact=parsed.get('suggested_fact'),
+                        confidence=float(parsed.get('confidence', 0.0)),
+                        reasoning=parsed.get('reasoning', ''),
+                        raw_response=response or "",
+                    )
+                    results.append(dr)
+                    if dr.suggested_fact:
+                        logger.info(f"[Agent:Discoverer] Found: '{dr.row_idx}' -> '{dr.suggested_fact}' (conf={dr.confidence:.2f})")
+
+        logger.info(f"[Agent:Discoverer] Complete: {len([r for r in results if r.suggested_fact])} discoveries from {len(unmatched_rows)} rows")
+        return results
+
+    def _build_discoverer_prompt(self, unmatched_rows, expected_items,
+                                  statement_type) -> str:
+        """Build prompt for the Discoverer agent."""
+        lines = [
+            f"## Statement Type: {statement_type}",
+            f"\n## Missing Expected Items (not yet matched):",
+        ]
+        for item in expected_items:
+            lines.append(f"  - `{item}`")
+
+        lines.append("\n## Unmatched Rows to Examine:")
+        for row in unmatched_rows:
+            lines.append(f"\n### Row: `{row.get('idx', '')}`")
+            lines.append(f"  - Human Label: `{row.get('human_label', '')}`")
+            lines.append(f"  - CamelCase Words: `{row.get('camelcase_words', '')}`")
+            if row.get('values'):
+                lines.append(f"  - Values: {self._format_values(row['values'])}")
+
+        lines.append("\n## Your Task:")
+        lines.append("For each unmatched row, determine if it could be one of the ")
+        lines.append("missing expected items under a non-standard name. ")
+        lines.append("Return the most likely match, or null if no match is plausible.")
+
+        return "\n".join(lines)
+
+    # ─── FULL RESOLUTION PIPELINE ──────────────────────────────────────────
+
+    def resolve_ambiguous_match(self, row_idx: str, human_label: str,
+                                 candidates: list, row_data,
+                                 surrounding_rows: List[Dict],
+                                 temporal_info: Optional[Dict] = None,
+                                 sum_check_info: Optional[Dict] = None,
+                                 historical_trend: Optional[Dict] = None) -> AgentDecision:
+        """
+        Full resolution pipeline: Auditor → Finalizer.
+        
+        Only invoked when there's genuine ambiguity (multiple high-scoring candidates).
+        
+        Returns:
+            Final AgentDecision
+        """
+        logger.info(
+            f"[Agent] === Resolving ambiguous match for '{row_idx}' ==="
+        )
+        
+        # Extract row values as dict for the prompt
+        row_values = {}
+        if hasattr(row_data, 'to_dict'):
+            row_values = {str(k): float(v) for k, v in row_data.to_dict().items()
+                         if not (hasattr(v, '__float__') and v == 0)}
+        
+        # Step 1: Auditor
+        auditor_result = self.run_auditor(
+            row_idx=row_idx,
+            human_label=human_label,
+            candidates=candidates,
+            row_values=row_values,
+            surrounding_rows=surrounding_rows,
+            temporal_info=temporal_info,
+            sum_check_info=sum_check_info,
+        )
+
+        # Step 2: Finalizer (only if auditor confidence < 0.9)
+        if auditor_result.confidence < 0.9:
+            logger.info(f"[Agent] Auditor confidence {auditor_result.confidence:.2f} < 0.9, escalating to Finalizer")
+            final_result = self.run_finalizer(
+                auditor_decision=auditor_result,
+                row_idx=row_idx,
+                human_label=human_label,
+                row_values=row_values,
+                historical_trend=historical_trend,
+            )
+            return final_result
+        else:
+            logger.info(f"[Agent] Auditor confidence {auditor_result.confidence:.2f} >= 0.9, skipping Finalizer")
+
+        return auditor_result
+
+    def discover_missing_items(self, og_df, rows_text: Dict,
+                                mapped_facts: set,
+                                expected_items: List[str],
+                                statement_type: str) -> List[DiscoveryResult]:
+        """
+        High-level method: find missing expected items among unmatched rows.
+        
+        Args:
+            og_df: Original DataFrame
+            rows_text: Dict mapping row_idx -> human label
+            mapped_facts: Set of row indices already mapped
+            expected_items: Fact names that should be present
+            statement_type: Type of financial statement
+        
+        Returns:
+            List of DiscoveryResult
+        """
+        from hybrid_matcher import decompose_gaap_tag
+        
+        unmatched_rows = []
+        for idx in og_df.index:
+            if idx in mapped_facts:
+                continue
+            decomposed = decompose_gaap_tag(idx)
+            row_values = {}
+            for col in og_df.columns:
+                val = og_df.loc[idx, col]
+                if not (hasattr(val, '__float__') and float(val) == 0):
+                    row_values[str(col)] = float(val) if not isinstance(val, float) else val
+            
+            unmatched_rows.append({
+                'idx': idx,
+                'human_label': rows_text.get(idx, ''),
+                'camelcase_words': decomposed['words'],
+                'values': row_values,
+            })
+
+        if not unmatched_rows:
+            return []
+
+        return self.run_discoverer(unmatched_rows, expected_items, statement_type)
+
+ 
