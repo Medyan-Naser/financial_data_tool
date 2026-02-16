@@ -203,4 +203,199 @@ Respond with exactly this JSON format:
     "reasoning": "brief explanation"
 }"""
 
-\
+SUM_ROW_VALIDATOR_PROMPT = """You are a Financial Data Validator specializing in identifying sum/total rows.
+Your job is to determine if a row represents a summation of other rows.
+
+IMPORTANT RULES:
+1. Sum rows typically have labels like "Total", "Total operating expenses", "Net cash from operating activities".
+2. HTML class 'reu' or 'rou' indicates a sum row, but not always reliable.
+3. Look at the numerical values - sum rows should approximately equal the sum of component rows.
+4. Consider the position in the statement structure.
+5. You MUST respond with valid JSON only.
+
+Respond with exactly this JSON format:
+{
+    "is_sum_row": true,
+    "confidence": 0.85,
+    "component_rows": ["row1", "row2"],
+    "reasoning": "brief explanation"
+}"""
+
+DATE_COLUMN_VALIDATOR_PROMPT = """You are a Financial Data Validator specializing in date column selection.
+Your job is to identify which columns represent valid fiscal period dates and which should be excluded.
+
+IMPORTANT RULES:
+1. Valid date columns are fiscal year-end dates like '2024-09-28', '2023-12-31'.
+2. Exclude non-date columns like 'Shares', 'Per Share', ratio columns, or descriptive text.
+3. Exclude duplicate date columns or columns with identical data.
+4. Financial statements should have 2-4 year comparative periods.
+5. You MUST respond with valid JSON only.
+
+Respond with exactly this JSON format:
+{
+    "selected_columns": ["2024-09-28", "2023-09-30"],
+    "rejected_columns": ["Shares", "12 Months Ended"],
+    "confidence": 0.90,
+    "reasoning": "brief explanation"
+}"""
+
+ROW_CLASSIFIER_PROMPT = """You are a Financial Row Classifier.
+Your job is to classify unmapped rows to determine if they represent important financial concepts that regex missed.
+
+IMPORTANT RULES:
+1. Examine the GAAP tag, human label, and CamelCase decomposition.
+2. Determine if this row represents a standard financial concept (Revenue, COGS, etc.).
+3. Some rows are metadata, headers, or irrelevant - classify these as not relevant.
+4. Consider the magnitude of values (large positive = likely revenue, large negative = likely expense).
+5. You MUST respond with valid JSON only.
+
+Respond with exactly this JSON format:
+{
+    "financial_concept": "Total revenue",
+    "is_relevant": true,
+    "confidence": 0.75,
+    "reasoning": "brief explanation"
+}"""
+
+
+# ─── Agent Implementation ──────────────────────────────────────────────────────
+
+class AgentOrchestrator:
+    """
+    Orchestrates the multi-agent LLM system for financial statement parsing.
+    
+    Models:
+    - Primary: llama3 (good general reasoning)
+    - Fallback: mistral (faster, lighter)
+    - Analysis: deepseek-r1 (strong at numerical reasoning) if available
+    """
+
+    def __init__(self, model_name: str = "llama3.2",
+                 fallback_model: str = "mistral",
+                 analysis_model: str = "deepseek-r1",
+                 base_url: str = "http://localhost:11434",
+                 temperature: float = 0.1,
+                 timeout: int = 120):
+        """
+        Args:
+            model_name: Primary Ollama model for Auditor/Finalizer
+            fallback_model: Fallback model if primary fails
+            analysis_model: Model for numerical analysis (Discoverer)
+            base_url: Ollama server URL
+            temperature: LLM temperature (low = more deterministic)
+            timeout: Request timeout in seconds
+        """
+        self.model_name = model_name
+        self.fallback_model = fallback_model
+        self.analysis_model = analysis_model
+        self.base_url = base_url
+        self.temperature = temperature
+        self.timeout = timeout
+        self._llm_cache = {}
+        self.enabled = LANGCHAIN_AVAILABLE
+
+        if not self.enabled:
+            logger.warning("LLM agents disabled - langchain not available")
+
+    def _get_llm(self, model: str):
+        """Get or create a ChatOllama instance."""
+        if model not in self._llm_cache:
+            try:
+                self._llm_cache[model] = ChatOllama(
+                    model=model,
+                    base_url=self.base_url,
+                    temperature=self.temperature,
+                    timeout=self.timeout,
+                    format="json",
+                )
+            except Exception as e:
+                logger.error(f"Failed to create LLM for model '{model}': {e}")
+                return None
+        return self._llm_cache[model]
+
+    def _invoke_llm(self, system_prompt: str, user_prompt: str,
+                    model: Optional[str] = None,
+                    agent_name: str = "unknown") -> Optional[str]:
+        """
+        Invoke an LLM with system + user prompts.
+        Falls back to fallback_model if primary fails.
+        Logs every call to terminal (INFO) and to the JSONL file.
+        """
+        if not self.enabled:
+            logger.info(f"[Agent:{agent_name}] SKIPPED - LLM agents disabled")
+            return None
+
+        model = model or self.model_name
+        
+        for attempt_model in [model, self.fallback_model]:
+            llm = self._get_llm(attempt_model)
+            if llm is None:
+                continue
+            try:
+                logger.info(f"[Agent:{agent_name}] Calling model '{attempt_model}'...")
+                t0 = time.time()
+                messages = [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_prompt),
+                ]
+                response = llm.invoke(messages)
+                duration = time.time() - t0
+                content = response.content
+                
+                # Terminal logging
+                logger.info(
+                    f"[Agent:{agent_name}] Response received from '{attempt_model}' "
+                    f"({duration:.1f}s, {len(content)} chars)"
+                )
+                
+                # File logging - full prompt/response for review
+                log_llm_interaction(
+                    agent_name=agent_name,
+                    model=attempt_model,
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    response=content,
+                    duration_seconds=duration,
+                )
+                
+                return content
+            except Exception as e:
+                duration = time.time() - t0 if 't0' in dir() else 0
+                logger.warning(f"[Agent:{agent_name}] FAILED with model '{attempt_model}': {e}")
+                
+                # Log the failure too
+                log_llm_interaction(
+                    agent_name=agent_name,
+                    model=attempt_model,
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    response=None,
+                    duration_seconds=duration,
+                    error=str(e),
+                )
+                
+                if attempt_model == self.fallback_model:
+                    logger.error(f"[Agent:{agent_name}] All LLM models failed")
+                    return None
+
+        return None
+
+    def _parse_json_response(self, response: str) -> Optional[Dict]:
+        """Parse JSON from LLM response, handling common issues."""
+        if not response:
+            return None
+        try:
+            # Try direct parse
+            return json.loads(response)
+        except json.JSONDecodeError:
+            # Try to extract JSON from markdown code blocks
+            import re
+            json_match = re.search(r'\{[^{}]*\}', response, re.DOTALL)
+            if json_match:
+                try:
+                    return json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+            logger.warning(f"Could not parse LLM response as JSON: {response[:200]}")
+            return None
+
