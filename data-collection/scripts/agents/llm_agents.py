@@ -399,3 +399,190 @@ class AgentOrchestrator:
             logger.warning(f"Could not parse LLM response as JSON: {response[:200]}")
             return None
 
+    # ─── AUDITOR AGENT ─────────────────────────────────────────────────────
+
+    def run_auditor(self, row_idx: str, human_label: str,
+                    candidates: list, row_values: Dict,
+                    surrounding_rows: List[Dict],
+                    temporal_info: Optional[Dict] = None,
+                    sum_check_info: Optional[Dict] = None) -> AgentDecision:
+        """
+        Agent 1: The Auditor.
+        
+        Analyzes top candidates and recommends the best match.
+        
+        Args:
+            row_idx: Raw taxonomy tag (e.g., 'us-gaap_CostOfRevenue')
+            human_label: Human-readable label from filing
+            candidates: Top 3 MatchCandidate objects
+            row_values: Dict of {period: value} for this row
+            surrounding_rows: List of neighboring rows for context
+            temporal_info: Cross-year validation results
+            sum_check_info: Summation check results
+        """
+        if not self.enabled or not candidates:
+            logger.info(f"[Agent:Auditor] SKIPPED for '{row_idx}' - agents disabled, using top regex candidate")
+            return AgentDecision(
+                selected_fact=candidates[0].map_fact.fact if candidates else None,
+                confidence=0.5,
+                reasoning="LLM agents disabled, using top regex candidate",
+                agent_name="Auditor (fallback)",
+            )
+
+        logger.info(f"[Agent:Auditor] Analyzing '{row_idx}' (label='{human_label}') with {len(candidates)} candidates")
+        for i, c in enumerate(candidates[:3]):
+            logger.info(f"[Agent:Auditor]   Candidate {i+1}: '{c.map_fact.fact}' (score={c.regex_score:.1f}, type={c.pattern_type})")
+
+        # Build the prompt with ALL numerical context
+        prompt = self._build_auditor_prompt(
+            row_idx, human_label, candidates, row_values,
+            surrounding_rows, temporal_info, sum_check_info
+        )
+
+        response = self._invoke_llm(AUDITOR_SYSTEM_PROMPT, prompt, agent_name="Auditor")
+        parsed = self._parse_json_response(response)
+
+        if parsed:
+            decision = AgentDecision(
+                selected_fact=parsed.get('selected_fact'),
+                confidence=float(parsed.get('confidence', 0.5)),
+                reasoning=parsed.get('reasoning', ''),
+                agent_name="Auditor",
+                raw_response=response or "",
+            )
+            logger.info(f"[Agent:Auditor] Decision: '{decision.selected_fact}' (conf={decision.confidence:.2f}) - {decision.reasoning}")
+            return decision
+
+        # Fallback to top candidate
+        logger.warning(f"[Agent:Auditor] Failed to parse response for '{row_idx}', falling back to top regex candidate")
+        return AgentDecision(
+            selected_fact=candidates[0].map_fact.fact if candidates else None,
+            confidence=0.4,
+            reasoning="Auditor LLM failed, using top regex candidate",
+            agent_name="Auditor (error fallback)",
+            error=f"LLM response: {response[:200] if response else 'None'}",
+        )
+
+    def _build_auditor_prompt(self, row_idx, human_label, candidates,
+                               row_values, surrounding_rows,
+                               temporal_info, sum_check_info) -> str:
+        """Build a detailed prompt for the Auditor agent."""
+        lines = [
+            f"## Row to Match",
+            f"- **Raw GAAP Tag**: `{row_idx}`",
+            f"- **Human Label**: `{human_label}`",
+            f"- **Values**: {self._format_values(row_values)}",
+            "",
+            "## Top Candidates (from regex engine):",
+        ]
+
+        for i, c in enumerate(candidates[:3]):
+            lines.append(f"\n### Candidate {i+1}: `{c.map_fact.fact}`")
+            lines.append(f"  - Match type: {c.pattern_type}")
+            lines.append(f"  - Regex score: {c.regex_score:.1f}")
+            lines.append(f"  - Priority: {c.priority}")
+            if c.temporal_score != 0:
+                lines.append(f"  - Temporal (cross-year) score: {c.temporal_score:.1f}")
+            if c.summation_score != 0:
+                lines.append(f"  - Summation score: {c.summation_score:.1f}")
+            if c.is_total_row:
+                lines.append(f"  - **This row appears to be a TOTAL/SUM row**")
+
+        if surrounding_rows:
+            lines.append("\n## Surrounding Rows (context):")
+            for sr in surrounding_rows[:5]:
+                lines.append(f"  - `{sr.get('idx', '')}` ({sr.get('label', '')}): {sr.get('value', '')}")
+
+        if temporal_info:
+            lines.append("\n## Cross-Year Validation:")
+            lines.append(f"  - Matched years: {temporal_info.get('matched_years', [])}")
+            lines.append(f"  - Total comparisons: {temporal_info.get('total_comparisons', 0)}")
+
+        if sum_check_info:
+            lines.append("\n## Summation Check:")
+            lines.append(f"  - Is sum row: {sum_check_info.get('is_sum_row', False)}")
+            lines.append(f"  - Sum type: {sum_check_info.get('sum_type', 'none')}")
+            lines.append(f"  - Components: {sum_check_info.get('component_rows', [])}")
+
+        lines.append("\n## Your Task:")
+        lines.append("Select the best candidate. Consider the GAAP tag semantics, ")
+        lines.append("numerical values, cross-year consistency, and summation logic.")
+
+        return "\n".join(lines)
+
+    # ─── FINALIZER AGENT ───────────────────────────────────────────────────
+
+    def run_finalizer(self, auditor_decision: AgentDecision,
+                      row_idx: str, human_label: str,
+                      row_values: Dict,
+                      historical_trend: Optional[Dict] = None) -> AgentDecision:
+        """
+        Agent 2: The Finalizer.
+        
+        Reviews the Auditor's recommendation and makes the final call.
+        Checks if the 10-year trend looks economically rational.
+        """
+        if not self.enabled:
+            logger.info(f"[Agent:Finalizer] SKIPPED for '{row_idx}' - agents disabled, keeping Auditor decision")
+            return auditor_decision
+
+        logger.info(
+            f"[Agent:Finalizer] Reviewing Auditor decision for '{row_idx}': "
+            f"'{auditor_decision.selected_fact}' (conf={auditor_decision.confidence:.2f})"
+        )
+
+        prompt = self._build_finalizer_prompt(
+            auditor_decision, row_idx, human_label,
+            row_values, historical_trend
+        )
+
+        response = self._invoke_llm(FINALIZER_SYSTEM_PROMPT, prompt, agent_name="Finalizer")
+        parsed = self._parse_json_response(response)
+
+        if parsed:
+            final_fact = parsed.get('final_fact', auditor_decision.selected_fact)
+            agrees = parsed.get('agrees_with_auditor', True)
+            decision = AgentDecision(
+                selected_fact=final_fact,
+                confidence=float(parsed.get('confidence', auditor_decision.confidence)),
+                reasoning=parsed.get('reasoning', ''),
+                agent_name="Finalizer",
+                raw_response=response or "",
+            )
+            if agrees:
+                logger.info(f"[Agent:Finalizer] CONFIRMED Auditor: '{final_fact}' (conf={decision.confidence:.2f})")
+            else:
+                logger.info(f"[Agent:Finalizer] OVERRODE Auditor: '{auditor_decision.selected_fact}' -> '{final_fact}' (conf={decision.confidence:.2f})")
+            return decision
+
+        # Fallback to auditor's decision
+        logger.warning(f"[Agent:Finalizer] Failed to parse response for '{row_idx}', keeping Auditor decision")
+        return auditor_decision
+
+    def _build_finalizer_prompt(self, auditor_decision, row_idx, human_label,
+                                 row_values, historical_trend) -> str:
+        """Build prompt for the Finalizer agent."""
+        lines = [
+            "## Auditor's Recommendation",
+            f"- **Selected Fact**: `{auditor_decision.selected_fact}`",
+            f"- **Confidence**: {auditor_decision.confidence:.2f}",
+            f"- **Reasoning**: {auditor_decision.reasoning}",
+            "",
+            f"## Row Details",
+            f"- **Raw Tag**: `{row_idx}`",
+            f"- **Human Label**: `{human_label}`",
+            f"- **Current Values**: {self._format_values(row_values)}",
+        ]
+
+        if historical_trend:
+            lines.append("\n## 10-Year Historical Trend for this fact:")
+            for year, value in sorted(historical_trend.items()):
+                lines.append(f"  - {year}: {value:,.0f}" if isinstance(value, (int, float)) else f"  - {year}: {value}")
+
+        lines.append("\n## Your Task:")
+        lines.append("Confirm or override the Auditor's recommendation. ")
+        lines.append("Check if the values make economic sense for the suggested concept. ")
+        lines.append("Revenue should generally be large and positive. Expenses negative. etc.")
+
+        return "\n".join(lines)
+
