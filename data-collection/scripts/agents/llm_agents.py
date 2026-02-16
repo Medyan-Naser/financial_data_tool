@@ -784,4 +784,216 @@ class AgentOrchestrator:
 
         return self.run_discoverer(unmatched_rows, expected_items, statement_type)
 
- 
+    # ─── NEW AGENT METHODS ─────────────────────────────────────────────────
+
+    def validate_sum_row(self, row_idx: str, human_label: str,
+                         row_values: Dict, html_class: str,
+                         potential_components: List[str]) -> SumRowValidation:
+        """
+        Agent 4: SumRowValidator.
+        
+        Validates whether a row should be treated as a sum/total row.
+        More dynamic than just checking HTML class.
+        """
+        if not self.enabled:
+            # Fallback to HTML class only
+            is_sum = html_class in ['reu', 'rou']
+            logger.info(f"[Agent:SumRowValidator] SKIPPED for '{row_idx}' - using HTML class: {is_sum}")
+            return SumRowValidation(
+                row_idx=row_idx,
+                is_sum_row=is_sum,
+                confidence=0.6 if is_sum else 0.4,
+                reasoning=f"HTML class '{html_class}' indicates sum row" if is_sum else "Not a sum row based on HTML class",
+            )
+
+        logger.info(f"[Agent:SumRowValidator] Validating '{row_idx}' (label='{human_label}', class='{html_class}')")
+        
+        prompt = f"""## Row to Validate
+- **GAAP Tag**: `{row_idx}`
+- **Human Label**: `{human_label}`
+- **HTML Class**: `{html_class}` (reu/rou often indicates sum)
+- **Values**: {self._format_values(row_values)}
+
+## Potential Component Rows:
+{chr(10).join([f'  - {c}' for c in potential_components[:10]])}
+
+## Your Task:
+Determine if this row represents a summation/total."""
+
+        response = self._invoke_llm(SUM_ROW_VALIDATOR_PROMPT, prompt, agent_name="SumRowValidator")
+        parsed = self._parse_json_response(response)
+
+        if parsed:
+            result = SumRowValidation(
+                row_idx=row_idx,
+                is_sum_row=parsed.get('is_sum_row', False),
+                confidence=float(parsed.get('confidence', 0.5)),
+                reasoning=parsed.get('reasoning', ''),
+                component_rows=parsed.get('component_rows', []),
+                raw_response=response or "",
+            )
+            logger.info(f"[Agent:SumRowValidator] Result: is_sum={result.is_sum_row} (conf={result.confidence:.2f})")
+            return result
+
+        # Fallback
+        logger.warning(f"[Agent:SumRowValidator] Failed to parse response, using HTML class")
+        is_sum = html_class in ['reu', 'rou']
+        return SumRowValidation(
+            row_idx=row_idx,
+            is_sum_row=is_sum,
+            confidence=0.5,
+            reasoning=f"LLM failed, fallback to HTML class: {html_class}",
+        )
+
+    def validate_date_columns(self, all_columns: List[str],
+                              sample_values: Dict[str, List]) -> DateColumnValidation:
+        """
+        Agent 5: DateColumnValidator.
+        
+        Validates which columns are actual fiscal period dates vs. metadata columns.
+        """
+        if not self.enabled:
+            # Fallback: accept all columns that look like dates
+            import re
+            date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+            selected = [c for c in all_columns if date_pattern.match(str(c))]
+            logger.info(f"[Agent:DateColumnValidator] SKIPPED - using regex: {len(selected)}/{len(all_columns)} columns")
+            return DateColumnValidation(
+                selected_columns=selected,
+                confidence=0.7,
+                reasoning="Regex-based date matching (agents disabled)",
+            )
+
+        logger.info(f"[Agent:DateColumnValidator] Validating {len(all_columns)} columns")
+        
+        sample_str = "\n".join([
+            f"  - Column '{col}': {sample_values.get(col, [])[:3]}"
+            for col in all_columns[:15]
+        ])
+        
+        prompt = f"""## Columns to Validate
+{sample_str}
+
+## Your Task:
+Select columns that represent fiscal period dates. Exclude ratio columns, share counts, or metadata."""
+
+        response = self._invoke_llm(DATE_COLUMN_VALIDATOR_PROMPT, prompt, agent_name="DateColumnValidator")
+        parsed = self._parse_json_response(response)
+
+        if parsed:
+            result = DateColumnValidation(
+                selected_columns=parsed.get('selected_columns', []),
+                confidence=float(parsed.get('confidence', 0.5)),
+                reasoning=parsed.get('reasoning', ''),
+                rejected_columns=parsed.get('rejected_columns', []),
+                raw_response=response or "",
+            )
+            logger.info(
+                f"[Agent:DateColumnValidator] Selected {len(result.selected_columns)}/{len(all_columns)} columns "
+                f"(conf={result.confidence:.2f})"
+            )
+            return result
+
+        # Fallback
+        logger.warning(f"[Agent:DateColumnValidator] Failed to parse, using regex fallback")
+        import re
+        date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+        selected = [c for c in all_columns if date_pattern.match(str(c))]
+        return DateColumnValidation(
+            selected_columns=selected,
+            confidence=0.6,
+            reasoning="LLM failed, fallback to regex",
+        )
+
+    def classify_row(self, row_idx: str, human_label: str,
+                     row_values: Dict, camelcase_words: str) -> RowClassification:
+        """
+        Agent 6: RowClassifier.
+        
+        Classifies unmapped rows to determine if they're important financial concepts.
+        """
+        if not self.enabled:
+            logger.info(f"[Agent:RowClassifier] SKIPPED for '{row_idx}' - agents disabled")
+            return RowClassification(
+                row_idx=row_idx,
+                financial_concept=None,
+                is_relevant=False,
+                confidence=0.3,
+                reasoning="Agents disabled, cannot classify",
+            )
+
+        logger.info(f"[Agent:RowClassifier] Classifying '{row_idx}' (label='{human_label}')")
+        
+        prompt = f"""## Row to Classify
+- **GAAP Tag**: `{row_idx}`
+- **Human Label**: `{human_label}`
+- **CamelCase Words**: `{camelcase_words}`
+- **Values**: {self._format_values(row_values)}
+
+## Your Task:
+Determine if this row represents an important financial concept that should be mapped."""
+
+        response = self._invoke_llm(ROW_CLASSIFIER_PROMPT, prompt, agent_name="RowClassifier")
+        parsed = self._parse_json_response(response)
+
+        if parsed:
+            result = RowClassification(
+                row_idx=row_idx,
+                financial_concept=parsed.get('financial_concept'),
+                is_relevant=parsed.get('is_relevant', False),
+                confidence=float(parsed.get('confidence', 0.0)),
+                reasoning=parsed.get('reasoning', ''),
+                raw_response=response or "",
+            )
+            if result.is_relevant:
+                logger.info(
+                    f"[Agent:RowClassifier] Classified as '{result.financial_concept}' "
+                    f"(conf={result.confidence:.2f})"
+                )
+            return result
+
+        # Fallback
+        logger.warning(f"[Agent:RowClassifier] Failed to parse response")
+        return RowClassification(
+            row_idx=row_idx,
+            financial_concept=None,
+            is_relevant=False,
+            confidence=0.3,
+            reasoning="LLM failed to classify",
+        )
+
+    @staticmethod
+    def _format_values(values: Dict) -> str:
+        """Format a dict of values for display in prompts."""
+        if not values:
+            return "N/A"
+        parts = []
+        for k, v in list(values.items())[:5]:
+            if isinstance(v, (int, float)):
+                parts.append(f"{k}: {v:,.0f}")
+            else:
+                parts.append(f"{k}: {v}")
+        return ", ".join(parts)
+
+
+def check_ollama_available(base_url: str = "http://localhost:11434") -> bool:
+    """Check if Ollama server is running."""
+    try:
+        import requests
+        resp = requests.get(f"{base_url}/api/tags", timeout=5)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def list_ollama_models(base_url: str = "http://localhost:11434") -> List[str]:
+    """List available Ollama models."""
+    try:
+        import requests
+        resp = requests.get(f"{base_url}/api/tags", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            return [m['name'] for m in data.get('models', [])]
+    except Exception:
+        pass
+    return []
