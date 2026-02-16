@@ -374,9 +374,15 @@ class Filling():
                     continue
                 if row_title in columns and inside_section:
                     row_title = row_section_name + ":" + row_title
+                    duplicate_counter = 0
                     while (row_title in columns):
                         # TODO: fix when multiple valuea are the same even when they are inside the section
-                        row_title = "D1:" + row_title # str(random.randint(1, 10))
+                        # Prevent infinite loop by limiting iterations
+                        duplicate_counter += 1
+                        if duplicate_counter > 50:
+                            logger.warning(f"Too many duplicate row titles for '{row_title}', skipping")
+                            break
+                        row_title = "D1:" + row_title
                 
                 # Add the fact to the corresponding section in the dictionary
 
@@ -621,12 +627,13 @@ class Filling():
         return df
     
 
-    def process_one_statement(self, statement_name):
+    def process_one_statement(self, statement_name, historical_statements=None):
         """
         Processes a single financial statement identified by ticker, accession number, and statement name.
         Args:
-            accession_number (str): The SEC accession number.
             statement_name (str): Name of the financial statement.
+            historical_statements (dict, optional): Dict of {year: mapped_df} from previously
+                parsed filings for the same company. Used for temporal cross-validation.
         Returns:
             pd.DataFrame or None: DataFrame of the processed statement or None if an error occurs.
         """
@@ -660,16 +667,17 @@ class Filling():
                 #     df = last_three_columns
                 df = df.round(2)
                 
-                # Create the statement object with unit information
+                # Create the statement object with unit information and historical data
+                hist = historical_statements or {}
                 statement_obj = None
                 if statement_name == 'income_statement':
-                    self.income_statement = IncomeStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict)
+                    self.income_statement = IncomeStatement(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict, historical_statements=hist)
                     statement_obj = self.income_statement
                 elif statement_name == 'balance_sheet':
-                    self.balance_sheet = BalanceSheet(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict)
+                    self.balance_sheet = BalanceSheet(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict, historical_statements=hist)
                     statement_obj = self.balance_sheet
                 elif statement_name == 'cash_flow_statement':
-                    self.cash_flow = CashFlow(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict)
+                    self.cash_flow = CashFlow(df, rows_that_are_sum, rows_text, self.xml_equations, sections_dict, units_dict, historical_statements=hist)
                     statement_obj = self.cash_flow
                 
                 # Log patterns for regex improvement (deduplicates automatically)
