@@ -182,6 +182,18 @@ class DataCollectionService:
                 cwd=str(self.collection_script.parent)
             )
             
+            # Enhanced: Add timeout detection and stderr monitoring
+            stderr_lines = []
+            async def read_stderr():
+                async for line in process.stderr:
+                    stderr_text = line.decode().strip()
+                    stderr_lines.append(stderr_text)
+                    if any(kw in stderr_text.lower() for kw in ['error', 'exception', 'traceback', 'failed']):
+                        logger.error(f"[{ticker}] STDERR: {stderr_text}")
+            
+            # Start stderr monitoring task
+            stderr_task = asyncio.create_task(read_stderr())
+            
             # Track progress - REWRITTEN for accurate updates
             current_progress = 15
             current_filing = 0
@@ -200,11 +212,39 @@ class DataCollectionService:
             
             step_counter = 0
             
-            # Read output line by line
+            # Read output line by line with enhanced logging and heartbeat
             line_count = 0
+            last_heartbeat_time = asyncio.get_event_loop().time()
+            last_progress_update = 0
+            
             async for line in process.stdout:
                 line_text = line.decode().strip()
                 line_count += 1
+                current_time = asyncio.get_event_loop().time()
+                
+                # Enhanced: Log ALL lines that contain key pipeline information
+                if any(keyword in line_text for keyword in [
+                    'Processing filing', 'Processing Income Statement', 'Processing Balance Sheet', 'Processing Cash Flow',
+                    'Pipeline', 'Agent', 'LLM', 'Starting', 'Step', 'Results', 'Matched', 'ERROR', 'WARNING',
+                    '=== ENVIRONMENT', '=== STATEMENT', 'Using full parsing'
+                ]):
+                    logger.info(f"[{ticker}] {line_text}")
+                    last_heartbeat_time = current_time  # Update heartbeat on important lines
+                    
+                    # Force immediate progress update for pipeline steps
+                    if 'Pipeline' in line_text or 'Agent' in line_text:
+                        current_progress = min(80, 15 + int(step_counter * progress_per_step))
+                        yield f"data: {json.dumps({'status': 'collecting', 'message': line_text, 'progress': current_progress})}\n\n"
+                        await asyncio.sleep(0.01)
+                
+                # Debug: Log first 20 lines to see what we're getting
+                if line_count <= 20:
+                    logger.info(f"[{ticker}] DEBUG LINE {line_count}: {line_text}")
+                
+                # Heartbeat check: if no important logs for 60 seconds, log something
+                if current_time - last_heartbeat_time > 60:
+                    logger.warning(f"[{ticker}] No pipeline activity for {int(current_time - last_heartbeat_time)}s (line {line_count}). Last line: {line_text[:100]}...")
+                    last_heartbeat_time = current_time
                 
                 # Check for filing start
                 filing_match = filing_pattern.search(line_text)
@@ -248,18 +288,39 @@ class DataCollectionService:
                     await asyncio.sleep(0.02)
                 
                 # Log important lines (but less frequently to avoid spam)
-                if line_count % 10 == 0 or any(kw in line_text.lower() for kw in ['error', 'warning', 'saved', 'complete']):
+                if line_count % 20 == 0 or any(kw in line_text.lower() for kw in ['error', 'warning', 'saved', 'complete']):
                     logger.info(f"[{ticker}] {line_text}")
             
-            # Wait for process to complete
-            await process.wait()
+            # Enhanced: Add timeout protection
+            try:
+                # Wait for process with timeout (30 minutes for large datasets)
+                await asyncio.wait_for(process.wait(), timeout=1800)  # 30 minutes
+            except asyncio.TimeoutError:
+                logger.error(f"[{ticker}] Process timed out after 30 minutes - killing process")
+                process.kill()
+                await process.wait()  # Clean up
+                
+                # Capture any remaining output
+                remaining_stderr = '\n'.join(stderr_lines) if stderr_lines else "No stderr captured"
+                error_msg = f"Process timed out after 30 minutes. Last activity: {line_count} lines processed. STDERR: {remaining_stderr}"
+                yield f"data: {json.dumps({'status': 'error', 'message': error_msg})}\n\n"
+                return
+            
+            await stderr_task  # Ensure stderr reading completes
             
             if process.returncode != 0:
-                stderr = await process.stderr.read()
-                error_msg = stderr.decode().strip()
+                stderr_output = '\n'.join(stderr_lines) if stderr_lines else "No stderr captured"
+                error_msg = f"Process exited with code {process.returncode}\nSTDERR: {stderr_output}"
                 logger.error(f"Data collection failed for {ticker}: {error_msg}")
                 yield f"data: {json.dumps({'status': 'error', 'message': f'Collection failed: {error_msg}'})}\n\n"
                 return
+            
+            # Enhanced: Log if stderr had content even with success
+            if stderr_lines:
+                logger.warning(f"[{ticker}] Process succeeded but had stderr output: {len(stderr_lines)} lines")
+                for line in stderr_lines[:3]:  # Log first 3 lines as sample
+                    if any(kw in line.lower() for kw in ['warning', 'deprecated']):
+                        logger.warning(f"[{ticker}] STDERR: {line}")
             
             yield f"data: {json.dumps({'status': 'processing', 'message': 'Processing and formatting data...', 'progress': 85})}\n\n"
             await asyncio.sleep(0.5)
