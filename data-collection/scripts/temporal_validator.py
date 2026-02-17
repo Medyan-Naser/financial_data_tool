@@ -203,3 +203,50 @@ class TemporalValidator:
 
         return result
 
+    def validate_all_candidates(self, candidates_by_row: Dict[str, list]) -> Dict[str, list]:
+        """
+        Apply temporal validation to all candidates for all rows.
+        
+        Modifies each MatchCandidate's temporal_score in-place.
+        
+        Args:
+            candidates_by_row: Dict mapping row_idx -> List[MatchCandidate]
+        
+        Returns:
+            Same dict (candidates modified in-place)
+        """
+        if not self.historical_statements:
+            logger.debug("No historical statements available for temporal validation")
+            return candidates_by_row
+
+        for row_idx, candidates in candidates_by_row.items():
+            for candidate in candidates:
+                # Get the row data for this candidate
+                # The row_data should be attached to the candidate's context
+                row_data = candidate.context.get('row_data')
+                if row_data is None:
+                    continue
+
+                result = self.validate_candidate(
+                    candidate.map_fact.fact,
+                    row_data,
+                )
+                candidate.temporal_score = result.score
+                candidate.context['temporal_result'] = result
+
+        return candidates_by_row
+
+    def get_cross_year_summary(self) -> Dict:
+        """
+        Get a summary of available cross-year data for debugging.
+        """
+        summary = {
+            'num_historical_filings': len(self.historical_statements),
+            'filing_years': list(self.historical_statements.keys()),
+            'facts_per_filing': {},
+        }
+        for year, df in self.historical_statements.items():
+            non_zero_facts = df.index[(df != 0).any(axis=1)].tolist()
+            summary['facts_per_filing'][year] = len(non_zero_facts)
+        
+        return summary
