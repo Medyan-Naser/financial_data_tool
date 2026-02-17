@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import sys
+import os
 import pandas as pd
 from typing import Optional
 import logging
@@ -24,12 +25,48 @@ from healpers import save_dataframe_to_csv
 from merge_utils import merge_all_statements, format_merged_output
 from pattern_logger import get_pattern_logger
 
-# Configure logging
+# Configure logging to ensure subprocess output
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,  # Force logging to stdout
+    force=True  # Override any existing configuration
 )
 logger = logging.getLogger(__name__)
+
+# Ensure logger level is set correctly
+logger.setLevel(logging.INFO)
+
+# Also add a console handler to be extra sure
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+# Debug: Check Python environment and imports
+logger.info(f"=== PYTHON ENVIRONMENT DEBUG ===")
+logger.info(f"Python executable: {sys.executable}")
+logger.info(f"Python version: {sys.version}")
+logger.info(f"Virtual environment: {os.environ.get('VIRTUAL_ENV', 'None')}")
+logger.info(f"Python path: {sys.path[:3]}...")  # First 3 entries
+
+# Debug: Test langchain imports
+try:
+    from langchain_ollama import ChatOllama
+    from langchain_core.messages import HumanMessage, SystemMessage
+    logger.info("✅ langchain_ollama imported successfully")
+except ImportError as e:
+    logger.error(f"❌ langchain_ollama import failed: {e}")
+    try:
+        from langchain_community.chat_models import ChatOllama
+        from langchain_core.messages import HumanMessage, SystemMessage
+        logger.info("✅ langchain_community imported successfully")
+    except ImportError as e2:
+        logger.error(f"❌ langchain_community import failed: {e2}")
+        logger.error("❌ LLM agents will be disabled!")
+
+logger.info(f"===================================")
 
 
 def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = False, enable_pattern_logging: bool = True, statement_filter: str = 'all'):
