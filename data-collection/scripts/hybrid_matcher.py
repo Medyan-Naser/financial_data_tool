@@ -84,3 +84,93 @@ class MatchCandidate:
                 f"sum={self.summation_score:.1f}, total={self.total_score:.1f})")
 
 
+# ─── Dimensional row detection ─────────────────────────────────────────────────
+
+# Prefixes added by Filling.py for duplicate row_titles within sections
+_DIMENSIONAL_PREFIX_RE = re.compile(r'^(?:D\d+:)+|^[^:]+::', re.IGNORECASE)
+
+def is_dimensional_row(row_idx: str) -> bool:
+    """
+    Detect SEC HTML dimensional breakdown rows.
+    
+    These are rows like:
+      'Revenue::us-gaap_RevenueFromContract...'   (section prefix)
+      'D1:Revenue::us-gaap_RevenueFromContract...' (D1 duplicate prefix)
+      'Cost of revenue::us-gaap_CostOfGoods...'    (section prefix)
+    
+    They represent sub-breakdowns (e.g., product vs service revenue),
+    NOT the actual total row. The real total row has no prefix.
+    """
+    if '::' in row_idx:
+        return True
+    if row_idx.startswith('D1:') or row_idx.startswith('D2:'):
+        return True
+    return False
+
+
+def strip_dimensional_prefix(row_idx: str) -> str:
+    """Strip dimensional prefixes to get the underlying GAAP tag."""
+    return _DIMENSIONAL_PREFIX_RE.sub('', row_idx)
+
+
+# ─── Scoring weights ───────────────────────────────────────────────────────────
+
+# Penalty applied to dimensional/prefixed rows so the real total row always wins
+DIMENSIONAL_ROW_PENALTY = -50.0
+
+REGEX_SCORING = {
+    'pattern_type': {'GAAP': 30, 'IFRS': 20, 'Human': 10, 'CamelCase': 5},
+    'pattern_count_bonus': {1: 0, 2: 5, 3: 10, 4: 15},
+    'specificity_thresholds': {30: 20, 20: 15, 10: 10, 0: 5},
+    'priority_multiplier': 1.0,
+    'pattern_position_bonus': {0: 2, 1: 1, 2: 0},
+}
+
+
+# ─── CamelCase decomposition ───────────────────────────────────────────────────
+
+def camel_to_words(tag: str) -> str:
+    """
+    Convert a CamelCase GAAP tag to space-separated words.
+    
+    Examples:
+        'RevenueFromContractWithCustomerExcludingAssessedTax' 
+        -> 'Revenue From Contract With Customer Excluding Assessed Tax'
+        
+        'CostOfGoodsAndServicesSold' -> 'Cost Of Goods And Services Sold'
+    """
+    # Remove namespace prefix (us-gaap_, ifrs-full_, ticker_)
+    if '_' in tag:
+        tag = tag.split('_', 1)[-1]
+    
+    # Split CamelCase
+    words = re.sub(r'([A-Z])', r' \1', tag).strip()
+    return words
+
+
+def decompose_gaap_tag(raw_label: str) -> Dict[str, str]:
+    """
+    Decompose a raw GAAP label into its components.
+    
+    Returns:
+        Dict with keys: 'namespace', 'tag', 'words', 'is_us_gaap', 'is_custom'
+    """
+    result = {
+        'namespace': '',
+        'tag': raw_label,
+        'words': '',
+        'is_us_gaap': False,
+        'is_custom': False,
+    }
+    
+    if '_' in raw_label:
+        parts = raw_label.split('_', 1)
+        result['namespace'] = parts[0]
+        result['tag'] = parts[1]
+        result['is_us_gaap'] = parts[0] == 'us-gaap'
+        result['is_custom'] = not result['is_us_gaap'] and parts[0] != 'ifrs-full'
+    
+    result['words'] = camel_to_words(result['tag'])
+    return result
+
+
