@@ -174,3 +174,80 @@ def decompose_gaap_tag(raw_label: str) -> Dict[str, str]:
     return result
 
 
+# ─── Pattern matching ──────────────────────────────────────────────────────────
+
+def find_pattern_matches(search_string: str, patterns: List[str], pattern_type: str) -> List[PatternMatch]:
+    """
+    Find all patterns that match the search string.
+    
+    Args:
+        search_string: String to search in
+        patterns: List of regex patterns
+        pattern_type: 'GAAP', 'IFRS', or 'Human'
+    
+    Returns:
+        List of PatternMatch objects
+    """
+    matches = []
+    if not patterns or not search_string:
+        return matches
+
+    for idx, pattern in enumerate(patterns):
+        if not pattern:
+            continue
+        try:
+            match = re.search(pattern, search_string, re.IGNORECASE)
+            if match:
+                matches.append(PatternMatch(
+                    pattern=pattern,
+                    match_string=match.group(0),
+                    pattern_index=idx,
+                ))
+        except Exception as e:
+            logger.error(f"Error matching {pattern_type} pattern '{pattern}': {e}")
+
+    return matches
+
+
+def compute_regex_score(candidate: MatchCandidate) -> float:
+    """
+    Compute the regex-based score for a candidate.
+    
+    Criteria:
+    1. Pattern type (GAAP > IFRS > Human > CamelCase)
+    2. Number of matched patterns
+    3. Specificity (match length)
+    4. MapFact priority
+    5. Pattern position in list (earlier = more specific)
+    """
+    config = REGEX_SCORING
+    score = 0.0
+
+    # 1. Pattern type
+    score += config['pattern_type'].get(candidate.pattern_type, 0)
+
+    # 2. Number of patterns matched
+    n = len(candidate.matched_patterns)
+    if n >= 4:
+        score += config['pattern_count_bonus'][4]
+    elif n in config['pattern_count_bonus']:
+        score += config['pattern_count_bonus'][n]
+
+    # 3. Specificity (average match length)
+    if candidate.matched_patterns:
+        avg_len = sum(pm.match_length for pm in candidate.matched_patterns) / n
+        for threshold in sorted(config['specificity_thresholds'].keys(), reverse=True):
+            if avg_len >= threshold:
+                score += config['specificity_thresholds'][threshold]
+                break
+
+    # 4. MapFact priority
+    score += candidate.priority * config['priority_multiplier']
+
+    # 5. Pattern position
+    if candidate.matched_patterns:
+        first_idx = min(pm.pattern_index for pm in candidate.matched_patterns)
+        score += config['pattern_position_bonus'].get(first_idx, 0)
+
+    return score
+
