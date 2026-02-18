@@ -4,6 +4,10 @@
 # where does the script logging get captured usually when running from frontend?
 # save logs to file?
 
+# when requestion script directly, I see GPU activity which means agent is working.
+# but when running from frontend, I don't see GPU activity.
+# why?
+
 ## when requesting collection from frontedn for AAPL last 10 years:
 
 INFO:     Application startup complete.
