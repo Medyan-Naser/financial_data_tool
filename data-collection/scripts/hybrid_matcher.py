@@ -380,3 +380,89 @@ class HybridMatcher:
         candidates.sort(key=lambda c: c.regex_score, reverse=True)
 
         return candidates
+
+    def _camelcase_fallback(self, row_idx: str, human_label: str) -> List[MatchCandidate]:
+        """
+        Fallback: decompose the tag into CamelCase words and match keywords
+        against the keyword index. This catches company-specific tags like 
+        'tsla_DepreciationAmortizationAndImpairment' or 
+        'amzn_FulfillmentExpense'.
+        """
+        decomposed = decompose_gaap_tag(row_idx)
+        words = re.findall(r'[A-Za-z]+', decomposed['words'])
+        words_lower = [w.lower() for w in words if len(w) > 2]
+
+        # Score each MapFact by keyword overlap
+        fact_scores: Dict[str, Tuple[float, MapFact]] = {}
+
+        for word in words_lower:
+            if word in self._keyword_index:
+                for attr_name, mf in self._keyword_index[word]:
+                    if mf.fact not in fact_scores:
+                        fact_scores[mf.fact] = (0.0, mf)
+                    old_score, _ = fact_scores[mf.fact]
+                    fact_scores[mf.fact] = (old_score + 1.0, mf)
+
+        # Also try matching the human label words
+        if human_label:
+            label_words = re.findall(r'[A-Za-z]+', human_label)
+            for word in label_words:
+                w = word.lower()
+                if w in self._keyword_index:
+                    for attr_name, mf in self._keyword_index[w]:
+                        if mf.fact not in fact_scores:
+                            fact_scores[mf.fact] = (0.0, mf)
+                        old_score, _ = fact_scores[mf.fact]
+                        fact_scores[mf.fact] = (old_score + 0.5, mf)
+
+        # Convert to candidates (only those with enough keyword overlap)
+        candidates = []
+        for fact_name, (score, mf) in fact_scores.items():
+            if score >= 2.0:  # Need at least 2 keyword matches
+                dummy_match = PatternMatch(
+                    pattern='camelcase_fallback',
+                    match_string=decomposed['words'],
+                    pattern_index=99,
+                )
+                c = MatchCandidate(
+                    map_fact=mf,
+                    pattern_type='CamelCase',
+                    matched_patterns=[dummy_match],
+                )
+                c.regex_score = compute_regex_score(c) + score  # Add keyword bonus
+                c.context['camelcase_words'] = decomposed['words']
+                c.context['keyword_score'] = score
+                candidates.append(c)
+
+        candidates.sort(key=lambda c: c.regex_score, reverse=True)
+        return candidates[:5]  # Return top 5 CamelCase candidates
+
+    def find_all_row_candidates(self, og_df: pd.DataFrame,
+                                 rows_text: Dict[str, str]) -> Dict[str, List[MatchCandidate]]:
+        """
+        Find candidates for every row in the original DataFrame.
+        
+        Args:
+            og_df: Original DataFrame from filing
+            rows_text: Dict mapping row index -> human-readable label
+        
+        Returns:
+            Dict mapping row_idx -> List[MatchCandidate]
+        """
+        all_candidates = {}
+
+        for idx in og_df.index:
+            row = og_df.loc[idx]
+            human_label = rows_text.get(idx, "")
+            candidates = self.find_candidates(idx, row, human_label)
+            all_candidates[idx] = candidates
+
+            if candidates:
+                logger.debug(
+                    f"Row '{idx}' ({human_label}): {len(candidates)} candidates, "
+                    f"top={candidates[0].map_fact.fact} (score={candidates[0].regex_score:.1f})"
+                )
+            else:
+                logger.debug(f"Row '{idx}' ({human_label}): NO candidates")
+
+        return all_candidates
