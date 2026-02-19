@@ -321,3 +321,136 @@ class ParsingPipeline:
             discovered_mappings=discovered,
             statistics=stats,
         )
+
+    def _create_mapped_df(self) -> pd.DataFrame:
+        """Create a zeroed DataFrame from the statement map."""
+        map_facts = vars(self.statement_map)
+        row_labels = [
+            mf.fact for mf in map_facts.values()
+            if isinstance(mf, MapFact)
+        ]
+        column_labels = self.og_df.columns
+        return pd.DataFrame(0.0, index=row_labels, columns=column_labels)
+
+    def _select_best_mappings(self, candidates_by_row: Dict[str, List[MatchCandidate]],
+                               mapped_df: pd.DataFrame) -> List[MappingResult]:
+        """
+        Select the best mapping for each row using combined scores.
+        
+        Uses LLM agents for tie-breaking when:
+        - Top 2 candidates are within `llm_ambiguity_threshold` of each other
+        - Best candidate score is below `llm_low_confidence_threshold`
+        """
+        mappings = []
+        mapped_facts: Set[str] = set()  # Track which facts are already assigned
+
+        # Sort rows by their best candidate score (highest first) 
+        # This ensures high-confidence matches are locked in first
+        row_order = sorted(
+            candidates_by_row.keys(),
+            key=lambda idx: (
+                max((c.total_score for c in candidates_by_row[idx]), default=0)
+            ),
+            reverse=True,
+        )
+
+        for row_idx in row_order:
+            candidates = candidates_by_row[row_idx]
+            if not candidates:
+                continue
+
+            # Filter out already-mapped facts
+            available = [c for c in candidates if c.map_fact.fact not in mapped_facts]
+            if not available:
+                continue
+
+            # Re-sort by total_score
+            available.sort(key=lambda c: c.total_score, reverse=True)
+            
+            best = available[0]
+            used_llm = False
+
+            # Check if we need LLM tie-breaking
+            needs_llm = False
+            llm_reason = ""
+            if len(available) >= 2:
+                gap = best.total_score - available[1].total_score
+                if gap < self.config.llm_ambiguity_threshold:
+                    needs_llm = True
+                    llm_reason = (f"ambiguous: '{best.map_fact.fact}' ({best.total_score:.1f}) vs "
+                                  f"'{available[1].map_fact.fact}' ({available[1].total_score:.1f}), gap={gap:.1f}")
+            if best.total_score < self.config.llm_low_confidence_threshold:
+                needs_llm = True
+                llm_reason = f"low confidence: best score {best.total_score:.1f} < threshold {self.config.llm_low_confidence_threshold}"
+
+            if needs_llm:
+                if self.config.llm_enabled:
+                    logger.info(f"[Pipeline] LLM tie-break needed for '{row_idx}': {llm_reason}")
+                else:
+                    logger.info(f"[Pipeline] LLM tie-break needed but DISABLED for '{row_idx}': {llm_reason}")
+
+            if needs_llm and self.config.llm_enabled:
+                agent = self._get_agent()
+                if agent:
+                    # Build context for LLM
+                    surrounding = self._get_surrounding_rows(row_idx, n=3)
+                    temporal_info = None
+                    if 'temporal_result' in best.context:
+                        tr = best.context['temporal_result']
+                        temporal_info = {
+                            'matched_years': [(m.year_column, m.hist_filing_year) for m in tr.matches if m.matched],
+                            'total_comparisons': tr.total_comparisons,
+                        }
+                    sum_info = None
+                    if 'sum_check' in best.context:
+                        sc = best.context['sum_check']
+                        sum_info = {
+                            'is_sum_row': sc.is_sum_row,
+                            'sum_type': sc.sum_type,
+                            'component_rows': sc.component_rows[:5],
+                        }
+                    
+                    try:
+                        decision = agent.resolve_ambiguous_match(
+                            row_idx=row_idx,
+                            human_label=self.rows_text.get(row_idx, ''),
+                            candidates=available[:3],
+                            row_data=self.og_df.loc[row_idx],
+                            surrounding_rows=surrounding,
+                            temporal_info=temporal_info,
+                            sum_check_info=sum_info,
+                        )
+                        
+                        # Apply LLM decision
+                        if decision.selected_fact:
+                            for c in available:
+                                if c.map_fact.fact == decision.selected_fact:
+                                    c.llm_score = decision.confidence * 30
+                                    best = c
+                                    used_llm = True
+                                    break
+                    except Exception as e:
+                        logger.warning(f"LLM tie-breaking failed for '{row_idx}': {e}")
+
+            # Apply the mapping
+            fact_name = best.map_fact.fact
+            if fact_name in mapped_df.index:
+                mapped_df.loc[fact_name] = self.og_df.loc[row_idx]
+                mapped_facts.add(fact_name)
+
+                mapping = MappingResult(
+                    row_idx=row_idx,
+                    fact_name=fact_name,
+                    pattern_type=best.pattern_type,
+                    total_score=best.total_score,
+                    regex_score=best.regex_score,
+                    temporal_score=best.temporal_score,
+                    summation_score=best.summation_score,
+                    llm_score=best.llm_score,
+                    confidence=min(1.0, best.total_score / 80.0),
+                    used_llm=used_llm,
+                    is_total_row=best.is_total_row,
+                )
+                mappings.append(mapping)
+
+        return mappings
