@@ -454,3 +454,30 @@ class ParsingPipeline:
                 mappings.append(mapping)
 
         return mappings
+
+    def _get_surrounding_rows(self, row_idx: str, n: int = 3) -> List[Dict]:
+        """Get n rows above and below the target row for LLM context."""
+        row_list = list(self.og_df.index)
+        try:
+            pos = row_list.index(row_idx)
+        except ValueError:
+            return []
+
+        surrounding = []
+        start = max(0, pos - n)
+        end = min(len(row_list), pos + n + 1)
+
+        first_col = self.og_df.columns[0] if len(self.og_df.columns) > 0 else None
+
+        for i in range(start, end):
+            if i == pos:
+                continue
+            idx = row_list[i]
+            val = float(self.og_df.loc[idx, first_col]) if first_col else 0
+            surrounding.append({
+                'idx': idx,
+                'label': self.rows_text.get(idx, ''),
+                'value': f"{val:,.0f}" if val != 0 else "0",
+            })
+
+        return surrounding
