@@ -190,3 +190,134 @@ class ParsingPipeline:
             base_url=self.config.llm_base_url,
         )
         return self._agent_orchestrator
+
+    def run(self) -> PipelineResult:
+        """
+        Execute the full parsing pipeline.
+        
+        Returns:
+            PipelineResult with mapped DataFrame and metadata
+        """
+        logger.info(f"[Pipeline] Starting {self.statement_type} ({len(self.og_df)} rows, {len(self.historical_statements)} historical filings)")
+
+        # ── Step 1: Create empty mapped DataFrame ──────────────────────────
+        mapped_df = self._create_mapped_df()
+
+        # ── Step 2: Generate regex candidates for every row ────────────────
+        logger.info("[Pipeline] Step 2: Generating regex candidates...")
+        candidates_by_row = self.matcher.find_all_row_candidates(
+            self.og_df, self.rows_text
+        )
+        
+        # Attach row_data to each candidate's context
+        for row_idx, candidates in candidates_by_row.items():
+            row_data = self.og_df.loc[row_idx]
+            for c in candidates:
+                c.context['row_data'] = row_data
+                c.context['human_label'] = self.rows_text.get(row_idx, '')
+
+        # ── Step 3: Temporal validation ────────────────────────────────────
+        if self.temporal_validator and self.historical_statements:
+            logger.info("[Pipeline] Step 3: Temporal cross-year validation (%d historical filings)", len(self.historical_statements))
+            self.temporal_validator.validate_all_candidates(candidates_by_row)
+        else:
+            logger.info("[Pipeline] Step 3: Temporal validation skipped (no historical data)")
+
+        # ── Step 4: Summation checking ─────────────────────────────────────
+        if self.summation_checker:
+            logger.info("[Pipeline] Step 4: Summation verification (%d sum-marked rows)", len(self.rows_that_are_sum))
+            self.summation_checker.score_all_candidates(candidates_by_row)
+        else:
+            logger.info("[Pipeline] Step 4: Summation checking skipped")
+
+        # ── Step 5: Select best candidates & LLM tie-breaking ──────────────
+        logger.info("[Pipeline] Step 5: Selecting best matches...")
+        mappings = self._select_best_mappings(candidates_by_row, mapped_df)
+
+        # ── Step 6: Discovery of missing items ─────────────────────────────
+        discovered = []
+        mapped_fact_names = {m.fact_name for m in mappings}
+        mapped_row_idxs = {m.row_idx for m in mappings}
+        expected = self.config.expected_facts.get(self.statement_type, [])
+        missing_facts = [f for f in expected if f not in mapped_fact_names]
+
+        if missing_facts and self.config.discovery_enabled:
+            logger.info("[Pipeline] Step 6: LLM Discovery for missing items: %s", missing_facts)
+            agent = self._get_agent()
+            if agent:
+                discoveries = agent.discover_missing_items(
+                    self.og_df, self.rows_text,
+                    mapped_row_idxs, missing_facts, self.statement_type
+                )
+                for disc in discoveries:
+                    if (disc.suggested_fact and disc.confidence >= 0.6 and
+                        disc.suggested_fact in mapped_df.index and
+                        disc.row_idx in self.og_df.index):
+                        # Apply the discovery
+                        mapped_df.loc[disc.suggested_fact] = self.og_df.loc[disc.row_idx]
+                        discovered.append({
+                            'row_idx': disc.row_idx,
+                            'fact': disc.suggested_fact,
+                            'confidence': disc.confidence,
+                            'reasoning': disc.reasoning,
+                        })
+                        logger.info(
+                            f"  Discovered: '{disc.row_idx}' -> '{disc.suggested_fact}' "
+                            f"(conf={disc.confidence:.2f})"
+                        )
+        else:
+            logger.info("[Pipeline] Step 6: Discovery skipped (no missing items or disabled)")
+
+        # ── Compute statistics ─────────────────────────────────────────────
+        total_rows = len(self.og_df)
+        mapped_rows = len(mappings) + len(discovered)
+        non_zero_facts = len(mapped_df.index[(mapped_df != 0).any(axis=1)])
+        
+        stats = {
+            'total_rows': total_rows,
+            'mapped_rows': mapped_rows,
+            'unmapped_rows': total_rows - mapped_rows,
+            'match_percentage': (mapped_rows / total_rows * 100) if total_rows > 0 else 0,
+            'non_zero_facts': non_zero_facts,
+            'llm_invocations': sum(1 for m in mappings if m.used_llm),
+            'discovered_items': len(discovered),
+            'missing_expected': [f for f in missing_facts if f not in {d['fact'] for d in discovered}],
+        }
+        
+        unmapped = [idx for idx in self.og_df.index if idx not in mapped_row_idxs]
+        
+        # ── Detailed logging of results ───────────────────────────
+        logger.info(f"[Pipeline] === {self.statement_type} Results ===")
+        logger.info(f"[Pipeline] Matched {mapped_rows}/{total_rows} rows ({stats['match_percentage']:.1f}%)")
+        
+        # Log key mappings
+        for m in sorted(mappings, key=lambda x: x.total_score, reverse=True):
+            dim_flag = ' [DIM]' if m.row_idx != m.row_idx.split('::')[-1].lstrip('D1:').lstrip('D2:') else ''
+            llm_flag = ' [LLM]' if m.used_llm else ''
+            logger.info(
+                f"[Pipeline]   {m.fact_name:40s} <- {m.row_idx:50s} "
+                f"(score={m.total_score:6.1f}, {m.pattern_type}){dim_flag}{llm_flag}"
+            )
+        
+        if stats['llm_invocations'] > 0:
+            logger.info(f"[Pipeline] LLM agent invocations: {stats['llm_invocations']}")
+        if discovered:
+            logger.info(f"[Pipeline] LLM discovered {len(discovered)} missing items:")
+            for d in discovered:
+                logger.info(f"[Pipeline]   {d['fact']:40s} <- {d['row_idx']} (conf={d['confidence']:.2f})")
+        if stats['missing_expected']:
+            logger.warning(f"[Pipeline] Still missing expected items: {stats['missing_expected']}")
+        if unmapped:
+            logger.debug(f"[Pipeline] {len(unmapped)} unmatched rows (use DEBUG to see details)")
+            for u in unmapped[:10]:
+                logger.debug(f"[Pipeline]   unmatched: {u}  ({self.rows_text.get(u, '')})")
+            if len(unmapped) > 10:
+                logger.debug(f"[Pipeline]   ... and {len(unmapped) - 10} more")
+
+        return PipelineResult(
+            mapped_df=mapped_df,
+            mappings=mappings,
+            unmapped_rows=unmapped,
+            discovered_mappings=discovered,
+            statistics=stats,
+        )
