@@ -252,3 +252,95 @@ class SummationChecker:
             )
 
         return None
+
+    def _check_numeric_sum(self, row_idx: str, row_data: pd.Series,
+                           actual_value: float) -> Optional[SumCheckResult]:
+        """
+        Check if this row is a sum of rows above it.
+        
+        Strategy: Look at contiguous blocks of rows above this one.
+        Financial statements have a structure where totals follow
+        their components.
+        """
+        row_list = list(self.og_df.index)
+        try:
+            current_pos = row_list.index(row_idx)
+        except ValueError:
+            return None
+
+        if current_pos == 0:
+            return None
+
+        # Get rows above (up to 20 rows)
+        lookback = min(current_pos, 20)
+        rows_above = row_list[current_pos - lookback:current_pos]
+
+        first_col = self.og_df.columns[0]
+        
+        # Get values for rows above
+        above_values = {}
+        for r in rows_above:
+            val = self.og_df.loc[r, first_col]
+            if not pd.isna(val) and val != 0:
+                above_values[r] = float(val)
+
+        if not above_values:
+            return None
+
+        # Try: sum of ALL rows above (within lookback)
+        # Try contiguous subsets starting from just above
+        best_result = None
+        best_confidence = 0.0
+
+        for start in range(len(rows_above)):
+            subset_rows = rows_above[start:]
+            subset_vals = [above_values[r] for r in subset_rows if r in above_values]
+            
+            if not subset_vals:
+                continue
+
+            # Try positive sum
+            computed = sum(subset_vals)
+            pct_diff = self._pct_diff(actual_value, computed)
+            if pct_diff <= self.tolerance:
+                conf = 0.8 if len(subset_vals) >= 2 else 0.5
+                if conf > best_confidence:
+                    best_confidence = conf
+                    best_result = SumCheckResult(
+                        row_idx=row_idx, is_sum_row=True, sum_type='exact',
+                        component_rows=[r for r in subset_rows if r in above_values],
+                        computed_sum=computed, actual_value=actual_value,
+                        tolerance_used=self.tolerance, pct_difference=pct_diff,
+                        confidence=conf,
+                    )
+
+            # Try negative sum (actual might be negative of sum)
+            pct_diff_neg = self._pct_diff(actual_value, -computed)
+            if pct_diff_neg <= self.tolerance:
+                conf = 0.75 if len(subset_vals) >= 2 else 0.45
+                if conf > best_confidence:
+                    best_confidence = conf
+                    best_result = SumCheckResult(
+                        row_idx=row_idx, is_sum_row=True, sum_type='exact',
+                        component_rows=[r for r in subset_rows if r in above_values],
+                        computed_sum=-computed, actual_value=actual_value,
+                        tolerance_used=self.tolerance, pct_difference=pct_diff_neg,
+                        confidence=conf,
+                    )
+
+            # Try absolute sum
+            computed_abs = sum(abs(v) for v in subset_vals)
+            pct_diff_abs = self._pct_diff(abs(actual_value), computed_abs)
+            if pct_diff_abs <= self.tolerance:
+                conf = 0.7 if len(subset_vals) >= 2 else 0.4
+                if conf > best_confidence:
+                    best_confidence = conf
+                    best_result = SumCheckResult(
+                        row_idx=row_idx, is_sum_row=True, sum_type='absolute',
+                        component_rows=[r for r in subset_rows if r in above_values],
+                        computed_sum=computed_abs, actual_value=actual_value,
+                        tolerance_used=self.tolerance, pct_difference=pct_diff_abs,
+                        confidence=conf,
+                    )
+
+        return best_result
