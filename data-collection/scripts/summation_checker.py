@@ -80,3 +80,96 @@ class SummationChecker:
         'stockholders equity', 'current assets', 'current liabilities',
         'noncurrent assets', 'noncurrent liabilities',
     }
+
+    def __init__(self, og_df: pd.DataFrame,
+                 rows_that_are_sum: List[str],
+                 cal_facts: Optional[Dict] = None,
+                 tolerance: float = 0.02):
+        """
+        Args:
+            og_df: Original DataFrame from filing (rows = facts, cols = periods)
+            rows_that_are_sum: List of row indices marked as sum rows in HTML
+            cal_facts: Calculation relationships from _cal.xml
+            tolerance: Tolerance for sum matching (default 2% for rounding)
+        """
+        self.og_df = og_df
+        self.rows_that_are_sum = set(rows_that_are_sum or [])
+        self.cal_facts = cal_facts or {}
+        self.tolerance = tolerance
+        
+        # Pre-compute row values for first non-zero column for fast checking
+        self._row_values = {}
+        if og_df is not None and not og_df.empty:
+            first_col = og_df.columns[0] if len(og_df.columns) > 0 else None
+            if first_col is not None:
+                for idx in og_df.index:
+                    val = og_df.loc[idx, first_col]
+                    if not pd.isna(val):
+                        self._row_values[idx] = float(val)
+
+    def check_row(self, row_idx: str, row_data: Optional[pd.Series] = None) -> SumCheckResult:
+        """
+        Check if a row is a summation of other rows.
+        
+        Tries strategies in order of authority:
+        1. XML calculation linkbase
+        2. HTML class markers + numeric verification
+        3. Numerical brute-force (rows above this one)
+        
+        Args:
+            row_idx: Index of the row to check
+            row_data: Optional row data (if not in og_df)
+        
+        Returns:
+            SumCheckResult
+        """
+        if row_data is None and row_idx in self.og_df.index:
+            row_data = self.og_df.loc[row_idx]
+
+        default = SumCheckResult(
+            row_idx=row_idx, is_sum_row=False, sum_type='none',
+            component_rows=[], computed_sum=0.0,
+            actual_value=0.0, tolerance_used=self.tolerance,
+            pct_difference=1.0, confidence=0.0,
+        )
+
+        if row_data is None:
+            return default
+
+        # Get actual value (use first non-zero column)
+        actual_value = 0.0
+        for val in row_data:
+            if not pd.isna(val) and val != 0:
+                actual_value = float(val)
+                break
+
+        if actual_value == 0:
+            return default
+
+        default.actual_value = actual_value
+
+        # Strategy 1: XML calculation linkbase
+        xml_result = self._check_xml_calc(row_idx, row_data, actual_value)
+        if xml_result and xml_result.is_sum_row:
+            return xml_result
+
+        # Strategy 2: HTML class markers
+        if row_idx in self.rows_that_are_sum:
+            numeric_result = self._check_numeric_sum(row_idx, row_data, actual_value)
+            if numeric_result and numeric_result.is_sum_row:
+                numeric_result.confidence = min(1.0, numeric_result.confidence + 0.2)
+                return numeric_result
+            # Even if numeric check fails, HTML marker is meaningful
+            return SumCheckResult(
+                row_idx=row_idx, is_sum_row=True, sum_type='html_marker',
+                component_rows=[], computed_sum=0.0,
+                actual_value=actual_value, tolerance_used=self.tolerance,
+                pct_difference=0.0, confidence=0.5,
+            )
+
+        # Strategy 3: Numerical brute-force
+        numeric_result = self._check_numeric_sum(row_idx, row_data, actual_value)
+        if numeric_result and numeric_result.is_sum_row:
+            return numeric_result
+
+        return default
