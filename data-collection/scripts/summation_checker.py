@@ -344,3 +344,81 @@ class SummationChecker:
                     )
 
         return best_result
+
+    def is_total_concept(self, fact_name: str) -> bool:
+        """Check if a fact name represents a 'Total' type concept."""
+        fact_lower = fact_name.lower()
+        return any(kw in fact_lower for kw in self.TOTAL_FACT_KEYWORDS)
+
+    def score_candidates(self, row_idx: str, candidates: list) -> list:
+        """
+        Apply summation scoring to candidates for a row.
+        
+        - If the row IS a sum row, boost candidates whose fact is a "Total" type
+        - If the row is NOT a sum row, penalize "Total" candidates
+        
+        Modifies candidates' summation_score in-place.
+        
+        Args:
+            row_idx: Row index
+            candidates: List of MatchCandidate objects
+        
+        Returns:
+            Same list (modified in-place)
+        """
+        row_data = None
+        if row_idx in self.og_df.index:
+            row_data = self.og_df.loc[row_idx]
+
+        sum_result = self.check_row(row_idx, row_data)
+
+        for candidate in candidates:
+            is_total_fact = self.is_total_concept(candidate.map_fact.fact)
+
+            if sum_result.is_sum_row:
+                candidate.is_total_row = True
+                candidate.context['sum_check'] = sum_result
+
+                if is_total_fact:
+                    # This row IS a sum AND the candidate IS a total concept -> strong match
+                    candidate.summation_score += self.IS_TOTAL_BONUS
+
+                    # Additional bonus based on sum verification confidence
+                    if sum_result.sum_type == 'xml_calc':
+                        candidate.summation_score += self.XML_CALC_BONUS * sum_result.confidence
+                    elif sum_result.sum_type in ('exact', 'absolute'):
+                        candidate.summation_score += self.EXACT_SUM_BONUS * sum_result.confidence
+                else:
+                    # Row is a sum but candidate is NOT a total concept -> mild penalty
+                    candidate.summation_score -= 5.0
+            else:
+                if is_total_fact:
+                    # Row is NOT a sum but candidate IS a total concept -> penalty
+                    candidate.summation_score -= 10.0
+
+        return candidates
+
+    def score_all_candidates(self, candidates_by_row: Dict[str, list]) -> Dict[str, list]:
+        """
+        Apply summation scoring to all candidates for all rows.
+        
+        Args:
+            candidates_by_row: Dict mapping row_idx -> List[MatchCandidate]
+        
+        Returns:
+            Same dict (modified in-place)
+        """
+        for row_idx, candidates in candidates_by_row.items():
+            self.score_candidates(row_idx, candidates)
+
+        return candidates_by_row
+
+    @staticmethod
+    def _pct_diff(val1: float, val2: float) -> float:
+        """Calculate percentage difference between two values."""
+        if val1 == 0 and val2 == 0:
+            return 0.0
+        avg = (abs(val1) + abs(val2)) / 2
+        if avg == 0:
+            return 1.0
+        return abs(val1 - val2) / avg
