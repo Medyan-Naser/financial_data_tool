@@ -1,9 +1,17 @@
 import pandas as pd
 import re
 import logging
+import os
 from typing import List, Dict, Tuple, Optional
 from constants import *
 from statement_maps import *
+
+# Pipeline imports (graceful fallback if not available)
+try:
+    from pipeline import ParsingPipeline, PipelineConfig
+    PIPELINE_AVAILABLE = True
+except ImportError:
+    PIPELINE_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -356,29 +364,85 @@ class FinancialStatement():
         """
         Map facts from original DataFrame to standardized format.
         
-        Uses score-based selection by default for better accuracy.
-        Set environment variable USE_OLD_MATCHING=1 to use legacy first-match-wins approach.
-        
-        Strategy (NEW):
-        1. For each row, find ALL potential matches
-        2. Score each match based on multiple criteria
-        3. Select the best match (highest score)
-        4. Skip if fact already mapped
-        
-        Strategy (OLD - deprecated):
-        1. Priority-based matching (high-confidence items first)
-        2. First match wins (stops immediately)
+        Matching modes (controlled by USE_MATCHING environment variable):
+        - 'pipeline' (default): Full pipeline with temporal validation, sum checks, LLM agents
+        - 'scoring': Score-based selection (no LLM, no temporal/sum checks)
+        - 'legacy': First-match-wins approach
         """
-        import os
-        use_old_matching = os.environ.get('USE_OLD_MATCHING', '0') == '1'
+        matching_mode = os.environ.get('USE_MATCHING', 'pipeline').lower()
         
-        if use_old_matching:
-            logger.info("Using legacy first-match-wins matching (USE_OLD_MATCHING=1)")
+        if matching_mode == 'legacy':
+            logger.info("Using legacy first-match-wins matching")
             self._map_facts_legacy()
-        else:
-            logger.debug("Using score-based matching (default)")
+        elif matching_mode == 'scoring' or not PIPELINE_AVAILABLE:
+            if not PIPELINE_AVAILABLE and matching_mode == 'pipeline':
+                logger.warning("Pipeline not available, falling back to scoring mode")
+            logger.debug("Using score-based matching")
             self.map_facts_with_scoring()
-    
+        else:
+            logger.info("Using full parsing pipeline (with temporal/sum/LLM)")
+            self._map_facts_pipeline()
+
+    def _map_facts_pipeline(self):
+        """
+        Full parsing pipeline: Regex Candidates → Temporal Validation → 
+        Summation Checks → LLM Tie-breaking → Discovery of missing items.
+        """
+        if not PIPELINE_AVAILABLE:
+            logger.warning("Pipeline module not available, falling back to scoring")
+            self.map_facts_with_scoring()
+            return
+
+        # Determine statement type from class name
+        statement_type = 'income_statement'
+        if isinstance(self, BalanceSheet):
+            statement_type = 'balance_sheet'
+        elif isinstance(self, CashFlow):
+            statement_type = 'cash_flow_statement'
+
+        # Build pipeline config
+        config = PipelineConfig()
+        
+        # Check if LLM should be enabled (can be disabled via env var)
+        if os.environ.get('DISABLE_LLM', '0') == '1':
+            config.llm_enabled = False
+            config.discovery_enabled = False
+
+        # Run the pipeline
+        pipeline = ParsingPipeline(
+            statement_map=self.statement_map,
+            og_df=self.og_df,
+            rows_text=self.rows_text,
+            rows_that_are_sum=self.rows_that_are_sum,
+            cal_facts=self.cal_facts,
+            historical_statements=self.historical_statements,
+            statement_type=statement_type,
+            config=config,
+        )
+
+        result = pipeline.run()
+
+        # Apply results
+        self.mapped_df = result.mapped_df
+        self.mapped_facts = [
+            (m.row_idx, m.fact_name, m.pattern_type)
+            for m in result.mappings
+        ]
+        self.mapping_score = {
+            m.row_idx: m.total_score
+            for m in result.mappings
+        }
+
+        # Store pipeline metadata for debugging
+        self._pipeline_result = result
+
+        logger.info(
+            f"Pipeline: {result.statistics['mapped_rows']}/{result.statistics['total_rows']} "
+            f"rows mapped ({result.statistics['match_percentage']:.1f}%)"
+        )
+        if result.statistics.get('missing_expected'):
+            logger.warning(f"Missing expected facts: {result.statistics['missing_expected']}")
+
     def _map_facts_legacy(self):
         """Legacy first-match-wins approach (for comparison/rollback)."""
         

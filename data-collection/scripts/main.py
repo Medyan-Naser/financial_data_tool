@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import sys
+import os
 import pandas as pd
 from typing import Optional
 import logging
@@ -24,12 +25,48 @@ from healpers import save_dataframe_to_csv
 from merge_utils import merge_all_statements, format_merged_output
 from pattern_logger import get_pattern_logger
 
-# Configure logging
+# Configure logging to ensure subprocess output
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,  # Force logging to stdout
+    force=True  # Override any existing configuration
 )
 logger = logging.getLogger(__name__)
+
+# Ensure logger level is set correctly
+logger.setLevel(logging.INFO)
+
+# Also add a console handler to be extra sure
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+# Debug: Check Python environment and imports
+logger.info(f"=== PYTHON ENVIRONMENT DEBUG ===")
+logger.info(f"Python executable: {sys.executable}")
+logger.info(f"Python version: {sys.version}")
+logger.info(f"Virtual environment: {os.environ.get('VIRTUAL_ENV', 'None')}")
+logger.info(f"Python path: {sys.path[:3]}...")  # First 3 entries
+
+# Debug: Test langchain imports
+try:
+    from langchain_ollama import ChatOllama
+    from langchain_core.messages import HumanMessage, SystemMessage
+    logger.info("✅ langchain_ollama imported successfully")
+except ImportError as e:
+    logger.error(f"❌ langchain_ollama import failed: {e}")
+    try:
+        from langchain_community.chat_models import ChatOllama
+        from langchain_core.messages import HumanMessage, SystemMessage
+        logger.info("✅ langchain_community imported successfully")
+    except ImportError as e2:
+        logger.error(f"❌ langchain_community import failed: {e2}")
+        logger.error("❌ LLM agents will be disabled!")
+
+logger.info(f"===================================")
 
 
 def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = False, enable_pattern_logging: bool = True, statement_filter: str = 'all'):
@@ -74,6 +111,12 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
             'metadata': []
         }
         
+        # Accumulate historical statements for cross-year temporal validation
+        # Each filing's mapped_df is stored so the next filing can compare overlapping years
+        historical_income = {}
+        historical_balance = {}
+        historical_cashflow = {}
+        
         # Process each filing
         for idx, (report_date, accession_num) in enumerate(filings.items()):
             logger.info(f"\nProcessing filing {idx + 1}/{len(filings)}: {report_date}")
@@ -92,17 +135,19 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                 # Process income statement (if requested)
                 if statement_filter in ['income', 'all']:
                     logger.info("Processing Income Statement...")
-                    filing.process_one_statement("income_statement")
+                    filing.process_one_statement("income_statement", historical_statements=historical_income)
                     if filing.income_statement:
                         mapped_df = filing.income_statement.get_mapped_df()
                         results['income_statements'].append({
                             'date': report_date,
                             'original': filing.income_statement.og_df,
                             'mapped': mapped_df,
-                            'raw': filing.income_statement.raw_df  # Raw unmapped data for debugging
+                            'raw': filing.income_statement.raw_df
                         })
+                        # Accumulate for next filing's temporal validation
+                        if mapped_df is not None:
+                            historical_income[str(report_date)] = mapped_df.copy()
                         
-                        # Log pattern matching
                         if pattern_logger:
                             pattern_logger.log_statement(
                                 ticker=ticker,
@@ -117,17 +162,18 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                 # Process balance sheet (if requested)
                 if statement_filter in ['balance', 'all']:
                     logger.info("Processing Balance Sheet...")
-                    filing.process_one_statement("balance_sheet")
+                    filing.process_one_statement("balance_sheet", historical_statements=historical_balance)
                     if filing.balance_sheet:
                         mapped_df = filing.balance_sheet.get_mapped_df()
                         results['balance_sheets'].append({
                             'date': report_date,
                             'original': filing.balance_sheet.og_df,
                             'mapped': mapped_df,
-                            'raw': filing.balance_sheet.raw_df  # Raw unmapped data for debugging
+                            'raw': filing.balance_sheet.raw_df
                         })
+                        if mapped_df is not None:
+                            historical_balance[str(report_date)] = mapped_df.copy()
                         
-                        # Log pattern matching
                         if pattern_logger:
                             pattern_logger.log_statement(
                                 ticker=ticker,
@@ -142,17 +188,18 @@ def get_financial_statements(ticker: str, num_years: int = 1, quarterly: bool = 
                 # Process cash flow (if requested)
                 if statement_filter in ['cashflow', 'all']:
                     logger.info("Processing Cash Flow...")
-                    filing.process_one_statement("cash_flow_statement")
+                    filing.process_one_statement("cash_flow_statement", historical_statements=historical_cashflow)
                     if filing.cash_flow:
                         mapped_df = filing.cash_flow.get_mapped_df()
                         results['cash_flows'].append({
                             'date': report_date,
                             'original': filing.cash_flow.og_df,
                             'mapped': mapped_df,
-                            'raw': filing.cash_flow.raw_df  # Raw unmapped data for debugging
+                            'raw': filing.cash_flow.raw_df
                         })
+                        if mapped_df is not None:
+                            historical_cashflow[str(report_date)] = mapped_df.copy()
                         
-                        # Log pattern matching
                         if pattern_logger:
                             pattern_logger.log_statement(
                                 ticker=ticker,
