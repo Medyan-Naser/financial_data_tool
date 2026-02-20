@@ -173,3 +173,82 @@ class SummationChecker:
             return numeric_result
 
         return default
+
+    def _check_xml_calc(self, row_idx: str, row_data: pd.Series,
+                        actual_value: float) -> Optional[SumCheckResult]:
+        """Check using XML calculation linkbase."""
+        if not self.cal_facts:
+            return None
+
+        # Extract the fact name from the row index
+        fact_name = row_idx
+        if '_' in row_idx:
+            fact_name = row_idx.split('_', 1)[-1]
+
+        # Look for this fact in cal_facts
+        children = None
+        for parent_fact, child_list in self.cal_facts.items():
+            parent_clean = parent_fact
+            if '_' in parent_fact:
+                parent_clean = parent_fact.split('_', 1)[-1]
+            if parent_clean.lower() == fact_name.lower():
+                children = child_list
+                break
+
+        if not children:
+            return None
+
+        # Find matching rows in og_df for each child
+        component_rows = []
+        for child in children:
+            child_fact = child.get('fact', '') if isinstance(child, dict) else str(child)
+            if '_' in child_fact:
+                child_fact = child_fact.split('_', 1)[-1]
+            
+            # Find row in og_df that matches this child
+            for idx in self.og_df.index:
+                idx_fact = idx
+                if '_' in idx:
+                    idx_fact = idx.split('_', 1)[-1]
+                if idx_fact.lower() == child_fact.lower():
+                    component_rows.append(idx)
+                    break
+
+        if not component_rows:
+            return None
+
+        # Compute sum from components
+        first_col = self.og_df.columns[0]
+        computed = sum(
+            float(self.og_df.loc[c, first_col]) 
+            for c in component_rows 
+            if c in self.og_df.index and not pd.isna(self.og_df.loc[c, first_col])
+        )
+
+        pct_diff = self._pct_diff(actual_value, computed)
+
+        if pct_diff <= self.tolerance:
+            return SumCheckResult(
+                row_idx=row_idx, is_sum_row=True, sum_type='xml_calc',
+                component_rows=component_rows, computed_sum=computed,
+                actual_value=actual_value, tolerance_used=self.tolerance,
+                pct_difference=pct_diff, confidence=0.95,
+            )
+
+        # Try with absolute values (sign convention differences)
+        computed_abs = sum(
+            abs(float(self.og_df.loc[c, first_col]))
+            for c in component_rows
+            if c in self.og_df.index and not pd.isna(self.og_df.loc[c, first_col])
+        )
+        pct_diff_abs = self._pct_diff(abs(actual_value), computed_abs)
+
+        if pct_diff_abs <= self.tolerance:
+            return SumCheckResult(
+                row_idx=row_idx, is_sum_row=True, sum_type='xml_calc',
+                component_rows=component_rows, computed_sum=computed_abs,
+                actual_value=actual_value, tolerance_used=self.tolerance,
+                pct_difference=pct_diff_abs, confidence=0.90,
+            )
+
+        return None
