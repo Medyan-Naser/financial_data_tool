@@ -604,4 +604,383 @@ class AgenticParser:
         
         return results
 
-   
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MAIN PARSING METHODS
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def parse(
+        self,
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        rows_that_are_sum: List[str],
+    ) -> AgenticParseResult:
+        """
+        Parse the financial statement using fully agentic LLM approach.
+        
+        Args:
+            og_df: Original DataFrame with row indices as GAAP tags
+            rows_text: Dict mapping row_idx to human-readable labels
+            rows_that_are_sum: List of rows marked as sums from HTML
+            
+        Returns:
+            AgenticParseResult with mapped DataFrame and metadata
+        """
+        logger.info(f"[AgenticParser] Starting {self.statement_type} ({len(og_df)} rows)")
+        
+        # Step 1: Detect sum rows (code, not LLM)
+        sum_info = self._detect_sum_rows(og_df, rows_that_are_sum, rows_text)
+        logger.info(f"[AgenticParser] Detected {len(sum_info)} sum rows")
+        
+        # Step 2: Build prompt and get LLM mappings
+        mappings = self._get_llm_mappings(og_df, rows_text, sum_info)
+        
+        # Step 3: Create mapped DataFrame
+        mapped_df = self._create_mapped_df(og_df, mappings)
+        
+        # Step 4: Validate using equations (code, not LLM)
+        year_column = og_df.columns[0] if len(og_df.columns) > 0 else None
+        validation_results = []
+        if year_column:
+            validation_results = self._validate_equations(mapped_df, year_column)
+            
+            # Log validation results
+            for vr in validation_results:
+                if vr.is_valid:
+                    logger.info(f"[AgenticParser] {vr.message}")
+                else:
+                    logger.warning(f"[AgenticParser] {vr.message}")
+        
+        # Step 5: If validation failed, try to fix with LLM (optional)
+        failed_validations = [v for v in validation_results if not v.is_valid]
+        retry_count = 0
+        
+        # Skip retries for now - just return the initial mapping
+        # This can be enabled later for refinement
+        while failed_validations and retry_count < self.max_retries and False:
+            retry_count += 1
+            logger.info(f"[AgenticParser] Validation issues found, retry {retry_count}/{self.max_retries}")
+            
+            # Get LLM corrections
+            corrections = self._get_llm_corrections(
+                og_df, rows_text, mappings, failed_validations
+            )
+            
+            if corrections:
+                # Apply corrections
+                mappings = self._apply_corrections(mappings, corrections)
+                mapped_df = self._create_mapped_df(og_df, mappings)
+                
+                # Re-validate
+                if year_column:
+                    validation_results = self._validate_equations(mapped_df, year_column)
+                    failed_validations = [v for v in validation_results if not v.is_valid]
+            else:
+                break
+        
+        # Compute statistics
+        mapped_count = sum(1 for m in mappings if m.mapped_to is not None)
+        unmapped_rows = [m.row_idx for m in mappings if m.mapped_to is None]
+        
+        stats = {
+            "total_rows": len(og_df),
+            "mapped_rows": mapped_count,
+            "unmapped_rows": len(unmapped_rows),
+            "match_percentage": (mapped_count / len(og_df) * 100) if len(og_df) > 0 else 0,
+            "validation_passed": len([v for v in validation_results if v.is_valid]),
+            "validation_failed": len([v for v in validation_results if not v.is_valid]),
+            "retries_used": retry_count,
+        }
+        
+        logger.info(
+            f"[AgenticParser] Complete: {mapped_count}/{len(og_df)} mapped "
+            f"({stats['match_percentage']:.1f}%), "
+            f"validation: {stats['validation_passed']}/{len(validation_results)} passed"
+        )
+        
+        return AgenticParseResult(
+            mapped_df=mapped_df,
+            mappings=mappings,
+            unmapped_rows=unmapped_rows,
+            validation_results=validation_results,
+            statistics=stats,
+        )
+
+    def _get_llm_mappings(
+        self,
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        sum_info: Dict[str, Dict],
+    ) -> List[AgenticMappingResult]:
+        """Get mappings from LLM."""
+        
+        # Build the prompt with all rows
+        prompt_lines = [
+            f"## Financial Statement Type: {self.statement_type.replace('_', ' ').title()}",
+            "",
+            "## Target Standardized Items (map rows to these):",
+        ]
+        for item in self.target_items:
+            prompt_lines.append(f"  - {item}")
+        
+        prompt_lines.append("")
+        prompt_lines.append("## Rows to Map:")
+        
+        # Get first year column for values
+        year_col = og_df.columns[0] if len(og_df.columns) > 0 else None
+        
+        for idx in og_df.index:
+            human_label = rows_text.get(idx, "")
+            is_sum = idx in sum_info
+            sum_marker = " [SUM]" if is_sum else ""
+            
+            # Get value for context (magnitude helps)
+            value_str = ""
+            if year_col:
+                val = og_df.loc[idx, year_col]
+                if pd.notna(val) and val != 0:
+                    value_str = f" (value: {float(val):,.0f})"
+            
+            prompt_lines.append(f"- **{idx}**{sum_marker}")
+            prompt_lines.append(f"  Label: \"{human_label}\"")
+            if value_str:
+                prompt_lines.append(f"  {value_str}")
+        
+        prompt_lines.append("")
+        prompt_lines.append("## Instructions:")
+        prompt_lines.append("Map each row to the BEST matching standardized item, or null if no match.")
+        prompt_lines.append("Each standardized item should be mapped AT MOST once.")
+        prompt_lines.append("Prefer rows marked [SUM] for total items like 'Total revenue', 'Total Assets', etc.")
+        
+        user_prompt = "\n".join(prompt_lines)
+        
+        # Call LLM
+        response = self._invoke_llm(MAPPER_SYSTEM_PROMPT, user_prompt)
+        parsed = self._parse_json_response(response)
+        
+        mappings = []
+        og_index_set = set(og_df.index)
+        og_index_lower_map = {str(idx).lower(): idx for idx in og_df.index}
+        
+        # Build a case-insensitive map for target items
+        target_items_lower_map = {item.lower(): item for item in self.target_items}
+        
+        if parsed and "mappings" in parsed:
+            # Log summary
+            logger.debug(f"[AgenticParser] First 3 raw mappings from LLM: {parsed['mappings'][:3]}")
+            
+            # Build a lookup for LLM mappings by row_idx
+            llm_mapping_by_row = {}
+            for m in parsed["mappings"]:
+                row_idx = str(m.get("row_idx", ""))  # Ensure string
+                mapped_to = m.get("mapped_to")
+                
+                # Skip null/empty mappings
+                if not mapped_to or not row_idx:
+                    logger.debug(f"[AgenticParser] Skipping empty mapping: row={row_idx}, to={mapped_to}")
+                    continue
+                
+                # Try exact match first for row_idx
+                if row_idx in og_index_set:
+                    actual_idx = row_idx
+                # Try case-insensitive match
+                elif row_idx.lower() in og_index_lower_map:
+                    actual_idx = og_index_lower_map[row_idx.lower()]
+                else:
+                    # Skip if we can't find the row
+                    logger.warning(f"[AgenticParser] Row '{row_idx}' not found in og_df")
+                    continue
+                
+                # Try to match the mapped_to item (flexible matching)
+                actual_mapped_to = None
+                if mapped_to in self.target_items:
+                    actual_mapped_to = mapped_to
+                elif mapped_to.lower() in target_items_lower_map:
+                    actual_mapped_to = target_items_lower_map[mapped_to.lower()]
+                else:
+                    # Try fuzzy match - find best match by substring
+                    mapped_lower = mapped_to.lower()
+                    for target in self.target_items:
+                        target_lower = target.lower()
+                        if mapped_lower in target_lower or target_lower in mapped_lower:
+                            actual_mapped_to = target
+                            break
+                
+                if actual_mapped_to:
+                    llm_mapping_by_row[actual_idx] = {
+                        "mapped_to": actual_mapped_to,
+                        "confidence": float(m.get("confidence", 0.0)),
+                        "reasoning": m.get("reasoning", ""),
+                    }
+                    logger.debug(f"[AgenticParser] Valid mapping: {actual_idx} -> {actual_mapped_to}")
+                else:
+                    logger.debug(f"[AgenticParser] Target item not found: {mapped_to}")
+            
+            # Create AgenticMappingResult for every row in og_df
+            for idx in og_df.index:
+                if idx in llm_mapping_by_row:
+                    lm = llm_mapping_by_row[idx]
+                    mappings.append(AgenticMappingResult(
+                        row_idx=idx,
+                        mapped_to=lm["mapped_to"],
+                        confidence=lm["confidence"],
+                        reasoning=lm["reasoning"],
+                        is_sum_row=idx in sum_info,
+                        value_info="",
+                    ))
+                else:
+                    mappings.append(AgenticMappingResult(
+                        row_idx=idx,
+                        mapped_to=None,
+                        confidence=0.0,
+                        reasoning="Not mapped by LLM",
+                        is_sum_row=idx in sum_info,
+                        value_info="",
+                    ))
+            
+            # Log summary
+            mapped_count = sum(1 for m in mappings if m.mapped_to)
+            logger.info(f"[AgenticParser] LLM returned {len(parsed['mappings'])} mappings, {mapped_count} valid")
+        else:
+            # Fallback: create empty mappings
+            logger.warning("[AgenticParser] LLM failed, creating empty mappings")
+            for idx in og_df.index:
+                mappings.append(AgenticMappingResult(
+                    row_idx=idx,
+                    mapped_to=None,
+                    confidence=0.0,
+                    reasoning="LLM failed",
+                    is_sum_row=idx in sum_info,
+                    value_info="",
+                ))
+        
+        return mappings
+
+    def _create_mapped_df(
+        self,
+        og_df: pd.DataFrame,
+        mappings: List[AgenticMappingResult],
+    ) -> pd.DataFrame:
+        """Create mapped DataFrame from LLM mappings."""
+        
+        # Create zeroed DataFrame with target items as rows
+        mapped_df = pd.DataFrame(
+            0.0,
+            index=self.target_items,
+            columns=og_df.columns,
+        )
+        
+        # Track which items have been mapped
+        mapped_items = set()
+        
+        # Apply mappings
+        for m in mappings:
+            if m.mapped_to and m.mapped_to in mapped_df.index:
+                if m.mapped_to not in mapped_items:
+                    if m.row_idx in og_df.index:
+                        mapped_df.loc[m.mapped_to] = og_df.loc[m.row_idx]
+                        mapped_items.add(m.mapped_to)
+        
+        logger.debug(f"[AgenticParser] Created mapped_df with {len(mapped_items)} populated items")
+        return mapped_df
+
+    def _get_llm_corrections(
+        self,
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        mappings: List[AgenticMappingResult],
+        failed_validations: List[ValidationResult],
+    ) -> Optional[Dict]:
+        """Ask LLM to fix validation failures."""
+        
+        # Build validation failures description
+        failures_text = "\n".join([
+            f"- {v.equation_name}: {v.message}"
+            for v in failed_validations
+        ])
+        
+        # Build current mappings
+        mapped_list = [
+            f"- {m.row_idx} -> {m.mapped_to}"
+            for m in mappings if m.mapped_to
+        ]
+        mappings_text = "\n".join(mapped_list[:50])  # Limit size
+        
+        # Build unmapped rows
+        unmapped = [
+            f"- {m.row_idx}: \"{rows_text.get(m.row_idx, '')}\""
+            for m in mappings if not m.mapped_to
+        ][:20]
+        unmapped_text = "\n".join(unmapped)
+        
+        prompt = VALIDATION_FIX_PROMPT.format(
+            validation_failures=failures_text,
+            current_mappings=mappings_text,
+            unmapped_rows=unmapped_text,
+        )
+        
+        response = self._invoke_llm(MAPPER_SYSTEM_PROMPT, prompt)
+        parsed = self._parse_json_response(response)
+        
+        # Validate the response has the expected structure
+        if parsed and ("corrections" in parsed or "missing_items" in parsed):
+            return parsed
+        else:
+            logger.warning("[AgenticParser] Corrections response doesn't have expected structure")
+            return None
+
+    def _apply_corrections(
+        self,
+        mappings: List[AgenticMappingResult],
+        corrections: Dict,
+    ) -> List[AgenticMappingResult]:
+        """Apply LLM corrections to mappings."""
+        
+        # Create index for fast lookup
+        mapping_idx = {m.row_idx: i for i, m in enumerate(mappings)}
+        
+        # Apply corrections
+        for corr in corrections.get("corrections", []):
+            row_idx = corr.get("row_idx")
+            new_mapping = corr.get("new_mapping")
+            if row_idx in mapping_idx:
+                idx = mapping_idx[row_idx]
+                mappings[idx] = AgenticMappingResult(
+                    row_idx=row_idx,
+                    mapped_to=new_mapping,
+                    confidence=0.7,
+                    reasoning=f"Correction: {corr.get('reasoning', '')}",
+                    is_sum_row=mappings[idx].is_sum_row,
+                    value_info=mappings[idx].value_info,
+                )
+        
+        # Handle missing items
+        for missing in corrections.get("missing_items", []):
+            item = missing.get("item")
+            likely_row = missing.get("likely_row")
+            if likely_row and likely_row in mapping_idx:
+                idx = mapping_idx[likely_row]
+                if mappings[idx].mapped_to is None:
+                    mappings[idx] = AgenticMappingResult(
+                        row_idx=likely_row,
+                        mapped_to=item,
+                        confidence=float(missing.get("confidence", 0.5)),
+                        reasoning=f"Discovery: {missing.get('reasoning', '')}",
+                        is_sum_row=mappings[idx].is_sum_row,
+                        value_info=mappings[idx].value_info,
+                    )
+        
+        return mappings
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HELPER FUNCTION TO CHECK OLLAMA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def check_ollama_for_agentic(base_url: str = "http://localhost:11434") -> bool:
+    """Check if Ollama is available for agentic parsing."""
+    try:
+        import requests
+        response = requests.get(f"{base_url}/api/tags", timeout=5)
+        return response.status_code == 200
+    except Exception:
+        return False
