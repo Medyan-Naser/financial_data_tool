@@ -518,3 +518,90 @@ class AgenticParser:
                 }
         
         return sum_info
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # EQUATION VALIDATION (done by code, not LLM)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _validate_equations(
+        self,
+        mapped_df: pd.DataFrame,
+        year_column: str,
+    ) -> List[ValidationResult]:
+        """
+        Validate mapped data against accounting equations.
+        
+        All calculations done by code - the results inform the LLM.
+        """
+        results = []
+        
+        for eq in self.equations:
+            eq_name = eq["name"]
+            result_item = eq["result"]
+            components = eq["components"]
+            tolerance = eq["tolerance_pct"]
+            
+            # Check if we have the result item
+            if result_item not in mapped_df.index:
+                results.append(ValidationResult(
+                    equation_name=eq_name,
+                    is_valid=False,
+                    expected=0,
+                    actual=0,
+                    difference=0,
+                    tolerance_pct=tolerance,
+                    message=f"Missing result item: {result_item}",
+                ))
+                continue
+            
+            # Calculate expected value from components
+            expected = 0.0
+            missing_components = []
+            for comp_name, multiplier in components:
+                if comp_name not in mapped_df.index:
+                    missing_components.append(comp_name)
+                    continue
+                val = mapped_df.loc[comp_name, year_column]
+                if pd.notna(val) and val != 0:
+                    expected += float(val) * multiplier
+            
+            if missing_components:
+                # Can't validate if components are missing
+                results.append(ValidationResult(
+                    equation_name=eq_name,
+                    is_valid=False,
+                    expected=expected,
+                    actual=0,
+                    difference=0,
+                    tolerance_pct=tolerance,
+                    message=f"Missing components: {missing_components}",
+                ))
+                continue
+            
+            # Get actual value
+            actual = mapped_df.loc[result_item, year_column]
+            if pd.isna(actual):
+                actual = 0.0
+            actual = float(actual)
+            
+            # Calculate difference
+            diff = abs(expected - actual)
+            
+            # Check tolerance
+            base = max(abs(expected), abs(actual), 1)  # Avoid div by zero
+            diff_pct = (diff / base) * 100
+            is_valid = diff_pct <= tolerance
+            
+            results.append(ValidationResult(
+                equation_name=eq_name,
+                is_valid=is_valid,
+                expected=expected,
+                actual=actual,
+                difference=diff,
+                tolerance_pct=tolerance,
+                message=f"{'✓' if is_valid else '✗'} {eq_name}: expected={expected:,.0f}, actual={actual:,.0f}, diff={diff_pct:.1f}%",
+            ))
+        
+        return results
+
+   
