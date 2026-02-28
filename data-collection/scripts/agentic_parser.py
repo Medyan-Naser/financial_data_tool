@@ -244,3 +244,81 @@ CASH_FLOW_EQUATIONS = [
     },
 ]
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROMPTS FOR THE LLM
+# ═══════════════════════════════════════════════════════════════════════════════
+
+MAPPER_SYSTEM_PROMPT = """You are a Senior Financial Data Analyst specializing in SEC EDGAR filings.
+Your job is to map rows from raw financial statements to standardized financial concepts.
+
+CRITICAL RULES:
+1. You receive rows from a financial statement with GAAP taxonomy tags and human-readable labels.
+2. Map each row to ONE of the provided standardized items, or NULL if no match.
+3. Each standardized item should be mapped AT MOST once - pick the BEST row.
+4. SUM rows (marked [SUM]) are typically totals.
+
+COMMON GAAP TAG MAPPINGS (use these!):
+- us-gaap_Revenues, us-gaap_RevenueFromContractWithCustomerExcludingAssessedTax, us-gaap_SalesRevenueNet → "Total revenue"
+- us-gaap_CostOfGoodsAndServicesSold, us-gaap_CostOfRevenue, us-gaap_CostOfGoodsSold → "COGS"
+- us-gaap_GrossProfit → "Gross profit"
+- us-gaap_ResearchAndDevelopmentExpense → "R&D"
+- us-gaap_SellingGeneralAndAdministrativeExpense → "SG&A"
+- us-gaap_OperatingIncomeLoss → "Operating income"
+- us-gaap_IncomeLossFromContinuingOperationsBeforeIncomeTaxes* → "Income before tax"
+- us-gaap_IncomeTaxExpenseBenefit → "Income Tax Expense"
+- us-gaap_NetIncomeLoss → "Net income"
+- us-gaap_CashAndCashEquivalentsAtCarryingValue → "Cash And Cash Equivalen"
+- us-gaap_AssetsCurrent → "Current Assets"
+- us-gaap_Assets → "Total Assets"
+- us-gaap_LiabilitiesCurrent → "Current Liabilities"
+- us-gaap_Liabilities → "Total Liabilities"
+- us-gaap_StockholdersEquity → "Stockholders Equity"
+
+IMPORTANT: In your response, use the EXACT row_idx STRING from the input (like "us-gaap_Revenues"), NOT a numeric index!
+
+You MUST respond with valid JSON only using this EXACT format:
+{
+    "mappings": [
+        {"row_idx": "us-gaap_Revenues", "mapped_to": "Total revenue", "confidence": 0.95, "reasoning": "GAAP Revenue tag"}
+    ]
+}"""
+
+
+VALIDATION_FIX_PROMPT = """You are a Financial Data Validator.
+The initial mapping has some issues detected by equation validation.
+
+VALIDATION FAILURES:
+{validation_failures}
+
+CURRENT MAPPINGS:
+{current_mappings}
+
+UNMAPPED ROWS:
+{unmapped_rows}
+
+Your task: Review the validation failures and suggest corrections.
+- If a row was mapped incorrectly, suggest the correct mapping.
+- If a required item is missing, suggest which unmapped row it might be.
+- Consider that some items may simply not be present in this statement.
+
+Respond with exactly this JSON format:
+{
+    "corrections": [
+        {
+            "row_idx": "some_row",
+            "old_mapping": "Wrong Item",
+            "new_mapping": "Correct Item",
+            "reasoning": "why this correction"
+        }
+    ],
+    "missing_items": [
+        {
+            "item": "Gross profit",
+            "likely_row": "some_unmapped_row or null",
+            "confidence": 0.7,
+            "reasoning": "why this row"
+        }
+    ]
+}"""
+
