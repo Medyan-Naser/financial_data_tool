@@ -322,3 +322,134 @@ Respond with exactly this JSON format:
     ]
 }"""
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AGENTIC PARSER CLASS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AgenticParser:
+    """
+    Fully agentic LLM-based parser for financial statements.
+    
+    All mapping decisions are made by the LLM, with code handling:
+    - Sum row detection
+    - Equation validation
+    - Numeric calculations
+    """
+
+    def __init__(
+        self,
+        statement_type: str = "income_statement",
+        model_name: str = "llama3.2",
+        fallback_model: str = "mistral",
+        base_url: str = "http://localhost:11434",
+        temperature: float = 0.1,
+        timeout: int = 180,
+        max_retries: int = 2,
+        target_items: Optional[List[str]] = None,
+    ):
+        """
+        Args:
+            statement_type: 'income_statement', 'balance_sheet', or 'cash_flow_statement'
+            model_name: Primary Ollama model
+            fallback_model: Fallback if primary fails
+            base_url: Ollama server URL
+            temperature: LLM temperature (low = deterministic)
+            timeout: Request timeout seconds
+            max_retries: Max validation retry attempts
+            target_items: Optional list of target items to map to. If None, uses defaults.
+        """
+        self.statement_type = statement_type
+        self.model_name = model_name
+        self.fallback_model = fallback_model
+        self.base_url = base_url
+        self.temperature = temperature
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self._llm_cache = {}
+        self.enabled = LANGCHAIN_AVAILABLE
+
+        # Set equations based on statement type
+        if statement_type == "income_statement":
+            self.equations = INCOME_STATEMENT_EQUATIONS
+            default_items = INCOME_STATEMENT_ITEMS
+        elif statement_type == "balance_sheet":
+            self.equations = BALANCE_SHEET_EQUATIONS
+            default_items = BALANCE_SHEET_ITEMS
+        elif statement_type == "cash_flow_statement":
+            self.equations = CASH_FLOW_EQUATIONS
+            default_items = CASH_FLOW_ITEMS
+        else:
+            raise ValueError(f"Unknown statement type: {statement_type}")
+        
+        # Use provided target_items or fall back to defaults
+        self.target_items = target_items if target_items else default_items
+
+    def _get_llm(self, model: str):
+        """Get or create a ChatOllama instance."""
+        if not LANGCHAIN_AVAILABLE:
+            return None
+        if model not in self._llm_cache:
+            try:
+                self._llm_cache[model] = ChatOllama(
+                    model=model,
+                    base_url=self.base_url,
+                    temperature=self.temperature,
+                    timeout=self.timeout,
+                    format="json",
+                )
+            except Exception as e:
+                logger.error(f"Failed to create LLM for model '{model}': {e}")
+                return None
+        return self._llm_cache[model]
+
+    def _invoke_llm(self, system_prompt: str, user_prompt: str,
+                    model: Optional[str] = None) -> Optional[str]:
+        """Invoke LLM with fallback."""
+        if not self.enabled:
+            logger.warning("[AgenticParser] LLM not available")
+            return None
+
+        model = model or self.model_name
+
+        for attempt_model in [model, self.fallback_model]:
+            llm = self._get_llm(attempt_model)
+            if llm is None:
+                continue
+            try:
+                logger.info(f"[AgenticParser] Calling model '{attempt_model}'...")
+                t0 = time.time()
+                messages = [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_prompt),
+                ]
+                response = llm.invoke(messages)
+                duration = time.time() - t0
+                content = response.content
+                logger.info(
+                    f"[AgenticParser] Response from '{attempt_model}' "
+                    f"({duration:.1f}s, {len(content)} chars)"
+                )
+                return content
+            except Exception as e:
+                logger.warning(f"[AgenticParser] FAILED with '{attempt_model}': {e}")
+                if attempt_model == self.fallback_model:
+                    return None
+        return None
+
+    def _parse_json_response(self, response: str) -> Optional[Dict]:
+        """Parse JSON from LLM response."""
+        if not response:
+            return None
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            # Try to extract JSON from the response
+            json_match = re.search(r'\{[\s\S]*\}', response)
+            if json_match:
+                try:
+                    return json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+            logger.warning(f"Could not parse LLM response as JSON: {response[:300]}")
+            return None
