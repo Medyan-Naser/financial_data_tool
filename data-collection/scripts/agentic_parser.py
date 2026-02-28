@@ -453,3 +453,68 @@ class AgenticParser:
                     pass
             logger.warning(f"Could not parse LLM response as JSON: {response[:300]}")
             return None
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SUM ROW DETECTION (done by code, not LLM)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _detect_sum_rows(
+        self,
+        og_df: pd.DataFrame,
+        rows_that_are_sum: List[str],
+        rows_text: Dict[str, str],
+    ) -> Dict[str, Dict]:
+        """
+        Detect which rows are sum/total rows.
+        
+        Uses multiple signals:
+        1. rows_that_are_sum from HTML parsing (class='reu' or 'rou')
+        2. Labels containing 'Total', 'Net', etc.
+        3. Numeric analysis: row value ≈ sum of rows above until previous total
+        
+        Returns dict mapping row_idx to sum info.
+        """
+        sum_info = {}
+        
+        # Known sum keywords
+        sum_keywords = [
+            r'(?i)^total\s+',
+            r'(?i)^net\s+',
+            r'(?i)\btotal$',
+            r'(?i)^gross\s+profit',
+            r'(?i)^operating\s+income',
+            r'(?i)^income\s+before',
+        ]
+        
+        for idx in og_df.index:
+            is_sum = False
+            sum_type = None
+            
+            # Check HTML-based sum detection
+            if idx in rows_that_are_sum:
+                is_sum = True
+                sum_type = "html_marker"
+            
+            # Check label keywords
+            human_label = rows_text.get(idx, "")
+            for pattern in sum_keywords:
+                if re.search(pattern, human_label):
+                    is_sum = True
+                    sum_type = "keyword_label"
+                    break
+            
+            # Check GAAP tag for sum indicators
+            if not is_sum:
+                gaap_lower = idx.lower()
+                if any(kw in gaap_lower for kw in ['total', 'net', 'gross']):
+                    is_sum = True
+                    sum_type = "gaap_tag"
+            
+            if is_sum:
+                sum_info[idx] = {
+                    "is_sum": True,
+                    "sum_type": sum_type,
+                    "label": human_label,
+                }
+        
+        return sum_info
