@@ -177,3 +177,70 @@ CASH_FLOW_ITEMS = [
     "Income taxes paid",
 ]
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACCOUNTING EQUATIONS FOR VALIDATION (done by code, not LLM)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+INCOME_STATEMENT_EQUATIONS = [
+    {
+        "name": "Gross Profit = Revenue - COGS",
+        "result": "Gross profit",
+        "components": [("Total revenue", 1), ("COGS", -1)],
+        "tolerance_pct": 5.0,
+    },
+    {
+        "name": "Operating Income = Gross Profit - OpEx",
+        "result": "Operating income",
+        "components": [("Gross profit", 1), ("Total operating expense", -1)],
+        "tolerance_pct": 10.0,
+    },
+    {
+        "name": "Net Income = Income Before Tax - Tax",
+        "result": "Net income",
+        "components": [("Income before tax", 1), ("Income Tax Expense", -1)],
+        "tolerance_pct": 10.0,
+    },
+]
+
+BALANCE_SHEET_EQUATIONS = [
+    {
+        "name": "Total Assets = Current Assets + Noncurrent Assets",
+        "result": "Total Assets",
+        "components": [("Current Assets", 1), ("Noncurrent Assets", 1)],
+        "tolerance_pct": 5.0,
+    },
+    {
+        "name": "Total Liabilities = Current Liabilities + Noncurrent Liabilities",
+        "result": "Total Liabilities",
+        "components": [("Current Liabilities", 1), ("Noncurrent Liabilities", 1)],
+        "tolerance_pct": 5.0,
+    },
+    {
+        "name": "Total Liabilities + Equity = Total Assets",
+        "result": "Total Assets",
+        "components": [("Total Liabilities", 1), ("Stockholders Equity", 1)],
+        "tolerance_pct": 5.0,
+    },
+    {
+        "name": "Total Liabilities And Equity = Total Assets",
+        "result": "Total Liabilities And Equity",
+        "components": [("Total Assets", 1)],
+        "tolerance_pct": 1.0,
+    },
+]
+
+CASH_FLOW_EQUATIONS = [
+    {
+        "name": "Net Change in Cash = Operating + Investing + Financing + FX",
+        "result": "Net change in cash",
+        "components": [
+            ("Net cash from operating activities", 1),
+            ("Net cash from investing activities", 1),
+            ("Net cash from financing activities", 1),
+            ("Effect of exchange rate on cash", 1),
+        ],
+        "tolerance_pct": 10.0,
+    },
+]
+
