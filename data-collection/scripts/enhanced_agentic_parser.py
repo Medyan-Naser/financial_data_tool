@@ -429,4 +429,121 @@ RESPOND WITH:
 }"""
 
 
-# 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENHANCED AGENTIC PARSER CLASS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class EnhancedAgenticParser:
+    """
+    Enhanced agentic parser with:
+    1. Batch LLM queries for related/confusable items
+    2. Cross-year numerical validation (10% tolerance, excludes zeros)
+    3. Verification agent with feedback loop (max 3 iterations)
+    """
+
+    def __init__(
+        self,
+        statement_type: str = "income_statement",
+        historical_statements: Optional[Dict[str, pd.DataFrame]] = None,
+        model_name: str = "llama3.2",
+        fallback_model: str = "mistral",
+        base_url: str = "http://localhost:11434",
+        temperature: float = 0.1,
+        timeout: int = 60,
+        max_verification_iterations: int = 3,
+        cross_year_tolerance: float = 0.10,
+        target_items: Optional[List[str]] = None,
+    ):
+        self.statement_type = statement_type
+        self.historical_statements = historical_statements or {}
+        self.model_name = model_name
+        self.fallback_model = fallback_model
+        self.base_url = base_url
+        self.temperature = temperature
+        self.timeout = timeout
+        self.max_verification_iterations = max_verification_iterations
+        self.cross_year_tolerance = cross_year_tolerance
+        self._llm_cache = {}
+        self.enabled = LANGCHAIN_AVAILABLE
+
+        # Set target items based on statement type
+        if statement_type == "income_statement":
+            default_items = INCOME_STATEMENT_ITEMS
+            self.confusable_groups = CONFUSABLE_GROUPS.get('income_statement', [])
+        elif statement_type == "balance_sheet":
+            default_items = BALANCE_SHEET_ITEMS
+            self.confusable_groups = CONFUSABLE_GROUPS.get('balance_sheet', [])
+        elif statement_type == "cash_flow_statement":
+            default_items = CASH_FLOW_ITEMS
+            self.confusable_groups = CONFUSABLE_GROUPS.get('cash_flow_statement', [])
+        else:
+            raise ValueError(f"Unknown statement type: {statement_type}")
+        
+        self.target_items = target_items if target_items else default_items
+
+    def _get_llm(self, model: str):
+        """Get or create a ChatOllama instance."""
+        if not LANGCHAIN_AVAILABLE:
+            return None
+        if model not in self._llm_cache:
+            try:
+                self._llm_cache[model] = ChatOllama(
+                    model=model,
+                    base_url=self.base_url,
+                    temperature=self.temperature,
+                    timeout=self.timeout,
+                    format="json",
+                )
+            except Exception as e:
+                logger.error(f"Failed to create LLM for model '{model}': {e}")
+                return None
+        return self._llm_cache[model]
+
+    def _invoke_llm(self, system_prompt: str, user_prompt: str,
+                    model: Optional[str] = None, agent_name: str = "Unknown") -> Optional[str]:
+        """Invoke LLM with fallback."""
+        if not self.enabled:
+            logger.warning(f"[{agent_name}] LLM not available")
+            return None
+
+        model = model or self.model_name
+
+        for attempt_model in [model, self.fallback_model]:
+            llm = self._get_llm(attempt_model)
+            if llm is None:
+                continue
+            try:
+                logger.info(f"[{agent_name}] Calling model '{attempt_model}'...")
+                t0 = time.time()
+                messages = [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_prompt),
+                ]
+                response = llm.invoke(messages)
+                duration = time.time() - t0
+                content = response.content
+                logger.info(f"[{agent_name}] Response from '{attempt_model}' ({duration:.1f}s, {len(content)} chars)")
+                return content
+            except Exception as e:
+                logger.warning(f"[{agent_name}] FAILED with '{attempt_model}': {e}")
+                if attempt_model == self.fallback_model:
+                    return None
+        return None
+
+    def _parse_json_response(self, response: str) -> Optional[Dict]:
+        """Parse JSON from LLM response."""
+        if not response:
+            return None
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            json_match = re.search(r'\{[\s\S]*\}', response)
+            if json_match:
+                try:
+                    return json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+            logger.warning(f"Could not parse JSON: {response[:300]}")
+            return None
+
+ 
