@@ -546,4 +546,251 @@ class EnhancedAgenticParser:
             logger.warning(f"Could not parse JSON: {response[:300]}")
             return None
 
- 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CROSS-YEAR NUMERICAL VALIDATION
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _validate_cross_year(
+        self,
+        row_idx: str,
+        row_data: pd.Series,
+        fact_name: str,
+    ) -> List[CrossYearMatch]:
+        """
+        Validate a row's values against historical statements.
+        
+        Returns list of CrossYearMatch for overlapping years.
+        Excludes zero values (not informative).
+        Reports if match was perfect (0% diff) or within tolerance.
+        """
+        matches = []
+        
+        if not self.historical_statements:
+            return matches
+        
+        current_columns = list(row_data.index)
+        
+        for hist_year, hist_df in self.historical_statements.items():
+            if fact_name not in hist_df.index:
+                continue
+            
+            hist_row = hist_df.loc[fact_name]
+            
+            # Find overlapping columns
+            for col in current_columns:
+                if col not in hist_row.index:
+                    continue
+                
+                curr_val = row_data[col]
+                hist_val = hist_row[col]
+                
+                # Skip NaN
+                if pd.isna(curr_val) or pd.isna(hist_val):
+                    continue
+                
+                curr_val = float(curr_val)
+                hist_val = float(hist_val)
+                
+                # Skip zero values (not informative)
+                if curr_val == 0 or hist_val == 0:
+                    continue
+                
+                # Calculate percentage difference
+                avg = (abs(curr_val) + abs(hist_val)) / 2
+                pct_diff = abs(curr_val - hist_val) / avg if avg != 0 else 1.0
+                
+                is_match = pct_diff <= self.cross_year_tolerance
+                is_perfect = pct_diff == 0.0  # Exact match
+                
+                matches.append(CrossYearMatch(
+                    year_column=str(col),
+                    historical_filing=str(hist_year),
+                    current_value=curr_val,
+                    historical_value=hist_val,
+                    pct_difference=pct_diff,
+                    is_match=is_match,
+                    is_perfect_match=is_perfect,
+                ))
+        
+        return matches
+
+    def _find_best_cross_year_match(
+        self,
+        row_idx: str,
+        row_data: pd.Series,
+    ) -> Optional[Tuple[str, List[CrossYearMatch]]]:
+        """
+        Find which standardized item best matches this row based on cross-year data.
+        
+        Returns (best_fact_name, matches) or None if no good match.
+        """
+        best_fact = None
+        best_matches = []
+        best_score = 0
+        
+        for fact_name in self.target_items:
+            matches = self._validate_cross_year(row_idx, row_data, fact_name)
+            if not matches:
+                continue
+            
+            # Score: perfect matches = 3, regular matches = 1
+            score = sum(3 if m.is_perfect_match else (1 if m.is_match else -1) for m in matches)
+            
+            if score > best_score:
+                best_score = score
+                best_fact = fact_name
+                best_matches = matches
+        
+        if best_score > 0:
+            return (best_fact, best_matches)
+        return None
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SUM ROW DETECTION
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _detect_sum_rows(
+        self,
+        og_df: pd.DataFrame,
+        rows_that_are_sum: List[str],
+        rows_text: Dict[str, str],
+    ) -> Dict[str, Dict]:
+        """Detect which rows are sum/total rows."""
+        sum_info = {}
+        
+        sum_keywords = [
+            r'(?i)^total\s+', r'(?i)^net\s+', r'(?i)\btotal$',
+            r'(?i)^gross\s+profit', r'(?i)^operating\s+income',
+            r'(?i)^income\s+before', r'(?i)^current\s+assets',
+            r'(?i)^current\s+liabilities', r'(?i)^stockholders',
+        ]
+        
+        first_col = og_df.columns[0] if len(og_df.columns) > 0 else None
+        row_list = list(og_df.index)
+        
+        for idx in og_df.index:
+            is_sum = False
+            sum_type = None
+            component_rows = []
+            computed_sum = 0.0
+            actual_value = 0.0
+            
+            if first_col:
+                actual_value = float(og_df.loc[idx, first_col]) if not pd.isna(og_df.loc[idx, first_col]) else 0.0
+            
+            # Check HTML-based sum detection
+            if idx in rows_that_are_sum:
+                is_sum = True
+                sum_type = "html_marker"
+            
+            # Check label keywords
+            human_label = rows_text.get(idx, "")
+            for pattern in sum_keywords:
+                if re.search(pattern, human_label):
+                    is_sum = True
+                    sum_type = sum_type or "keyword_label"
+                    break
+            
+            # Check GAAP tag for sum indicators
+            gaap_lower = idx.lower()
+            if any(kw in gaap_lower for kw in ['total', 'gross', 'netincome', 'netcash']):
+                is_sum = True
+                sum_type = sum_type or "gaap_tag"
+            
+            # Try to find component rows (rows above that sum to this value)
+            if is_sum and actual_value != 0 and first_col:
+                try:
+                    pos = row_list.index(idx)
+                    if pos > 0:
+                        lookback = min(pos, 15)
+                        rows_above = row_list[pos - lookback:pos]
+                        
+                        # Get values for rows above
+                        above_vals = {}
+                        for r in rows_above:
+                            val = og_df.loc[r, first_col]
+                            if not pd.isna(val) and val != 0:
+                                above_vals[r] = float(val)
+                        
+                        # Try to find subset that sums to actual_value
+                        if above_vals:
+                            total_above = sum(above_vals.values())
+                            if abs(total_above - actual_value) / max(abs(actual_value), 1) < 0.05:
+                                component_rows = list(above_vals.keys())
+                                computed_sum = total_above
+                except ValueError:
+                    pass
+            
+            if is_sum:
+                sum_info[idx] = {
+                    "is_sum": True,
+                    "sum_type": sum_type,
+                    "label": human_label,
+                    "component_rows": component_rows,
+                    "computed_sum": computed_sum,
+                    "actual_value": actual_value,
+                }
+        
+        return sum_info
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CONFUSABLE GROUP DETECTION
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _identify_confusable_groups(
+        self,
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+    ) -> List[ConfusableGroup]:
+        """
+        Group rows that could be confused with each other based on keywords.
+        """
+        groups = []
+        assigned_rows = set()
+        
+        for group_def in self.confusable_groups:
+            group_type = group_def['group_type']
+            keywords = group_def['keywords']
+            exclude_keywords = group_def.get('exclude_keywords', [])
+            target_items = group_def['target_items']
+            
+            matching_rows = []
+            
+            for idx in og_df.index:
+                if idx in assigned_rows:
+                    continue
+                
+                # Check GAAP tag and human label
+                search_text = (idx + " " + rows_text.get(idx, "")).lower()
+                
+                # Check if any keyword matches
+                has_keyword = any(kw.lower() in search_text for kw in keywords)
+                
+                # Check if any exclude keyword matches
+                has_exclude = any(kw.lower() in search_text for kw in exclude_keywords) if exclude_keywords else False
+                
+                if has_keyword and not has_exclude:
+                    matching_rows.append(idx)
+            
+            if matching_rows:
+                groups.append(ConfusableGroup(
+                    group_id=f"{self.statement_type}_{group_type}",
+                    group_type=group_type,
+                    target_items=target_items,
+                    rows=matching_rows,
+                    reason=f"Rows containing keywords: {keywords}",
+                ))
+                assigned_rows.update(matching_rows)
+        
+        # Create a group for remaining unassigned rows
+        remaining_rows = [idx for idx in og_df.index if idx not in assigned_rows]
+        if remaining_rows:
+            groups.append(ConfusableGroup(
+                group_id=f"{self.statement_type}_other",
+                group_type="other",
+                target_items=self.target_items,
+                rows=remaining_rows,
+                reason="Rows not matching any specific keyword group",
+            ))
+        
+        return groups
