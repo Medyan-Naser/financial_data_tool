@@ -794,3 +794,190 @@ class EnhancedAgenticParser:
             ))
         
         return groups
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # BATCH LLM MAPPING
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _build_batch_prompt(
+        self,
+        group: ConfusableGroup,
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        sum_info: Dict[str, Dict],
+        numerical_contexts: Dict[str, RowNumericalContext],
+    ) -> str:
+        """Build prompt for batch mapping a confusable group."""
+        lines = [
+            f"## Confusable Group: {group.group_type}",
+            f"**Reason for grouping**: {group.reason}",
+            "",
+            "## Target Items to Map To (pick the BEST match for each row):",
+        ]
+        
+        for item in group.target_items:
+            lines.append(f"  - {item}")
+        
+        lines.append("")
+        lines.append("## Rows to Map:")
+        
+        first_col = og_df.columns[0] if len(og_df.columns) > 0 else None
+        
+        for row_idx in group.rows:
+            human_label = rows_text.get(row_idx, "")
+            is_sum = row_idx in sum_info
+            
+            lines.append(f"\n### Row: `{row_idx}`")
+            lines.append(f"  - **Human Label**: \"{human_label}\"")
+            
+            # Add values
+            if first_col and row_idx in og_df.index:
+                val = og_df.loc[row_idx, first_col]
+                if pd.notna(val) and val != 0:
+                    lines.append(f"  - **Value**: {float(val):,.0f}")
+            
+            # Add sum row info
+            if is_sum:
+                si = sum_info[row_idx]
+                lines.append(f"  - **[SUM ROW]** Type: {si['sum_type']}")
+                if si.get('component_rows'):
+                    lines.append(f"  - Components: {si['component_rows'][:5]}")
+                    lines.append(f"  - Computed Sum: {si['computed_sum']:,.0f}")
+            
+            # Add cross-year validation info
+            ctx = numerical_contexts.get(row_idx)
+            if ctx and ctx.cross_year_matches:
+                lines.append("  - **Cross-Year Validation**:")
+                for match in ctx.cross_year_matches[:3]:
+                    status = "✓ PERFECT MATCH" if match.is_perfect_match else (
+                        f"✓ MATCH ({match.pct_difference*100:.1f}% diff)" if match.is_match else 
+                        f"✗ MISMATCH ({match.pct_difference*100:.1f}% diff)"
+                    )
+                    lines.append(f"    - {match.year_column}: current={match.current_value:,.0f} vs historical={match.historical_value:,.0f} → {status}")
+        
+        lines.append("")
+        lines.append("## Instructions:")
+        lines.append("1. Map each row to the BEST matching target item.")
+        lines.append("2. If a row has a PERFECT cross-year match, strongly prefer that mapping.")
+        lines.append("3. SUM rows should map to 'Total' type items.")
+        lines.append("4. Each target item should be mapped AT MOST once.")
+        lines.append("5. Return 'null' for mapped_to if no good match exists.")
+        
+        return "\n".join(lines)
+
+    def _map_batch(
+        self,
+        group: ConfusableGroup,
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        sum_info: Dict[str, Dict],
+        numerical_contexts: Dict[str, RowNumericalContext],
+    ) -> BatchMappingResult:
+        """Map a batch of confusable rows using LLM."""
+        
+        prompt = self._build_batch_prompt(group, og_df, rows_text, sum_info, numerical_contexts)
+        
+        response = self._invoke_llm(
+            BATCH_MAPPER_SYSTEM_PROMPT, 
+            prompt, 
+            agent_name=f"BatchMapper:{group.group_type}"
+        )
+        
+        parsed = self._parse_json_response(response)
+        
+        result = BatchMappingResult(
+            group_id=group.group_id,
+            mappings={},
+            confidence={},
+            reasoning={},
+            unmapped_rows=[],
+        )
+        
+        if parsed and "mappings" in parsed:
+            mapped_items = set()
+            
+            # Build lookup dict for flexible matching
+            og_index_map = {str(idx): idx for idx in og_df.index}
+            og_index_lower_map = {str(idx).lower(): idx for idx in og_df.index}
+            group_rows_set = set(group.rows)
+            
+            # Debug: Log what LLM returned
+            logger.debug(f"[BatchMapper] LLM returned {len(parsed['mappings'])} mappings")
+            for i, m in enumerate(parsed["mappings"][:3]):
+                logger.debug(f"[BatchMapper]   Raw mapping {i}: row_idx='{m.get('row_idx')}' -> '{m.get('mapped_to')}'")
+            logger.debug(f"[BatchMapper] Group has rows: {group.rows[:3]}...")
+            
+            for m in parsed["mappings"]:
+                row_idx = str(m.get("row_idx", "")).strip()
+                mapped_to = m.get("mapped_to")
+                confidence = float(m.get("confidence", 0.0))
+                reasoning = m.get("reasoning", "")
+                
+                # Skip null/empty mappings
+                if not row_idx or not mapped_to or mapped_to.lower() == 'null':
+                    continue
+                
+                # Flexible row_idx matching
+                actual_row_idx = None
+                
+                # 1. Exact match
+                if row_idx in og_index_map:
+                    actual_row_idx = og_index_map[row_idx]
+                # 2. Case-insensitive match
+                elif row_idx.lower() in og_index_lower_map:
+                    actual_row_idx = og_index_lower_map[row_idx.lower()]
+                # 3. Partial match (LLM might return truncated or modified version)
+                else:
+                    for idx in group.rows:
+                        idx_str = str(idx)
+                        if row_idx in idx_str or idx_str in row_idx:
+                            actual_row_idx = idx
+                            break
+                        # Also try without namespace prefix
+                        if '_' in idx_str:
+                            tag_part = idx_str.split('_', 1)[-1]
+                            if row_idx.lower() == tag_part.lower() or tag_part.lower() in row_idx.lower():
+                                actual_row_idx = idx
+                                break
+                
+                if not actual_row_idx:
+                    logger.debug(f"[BatchMapper] Could not match row_idx '{row_idx}' to any row in group")
+                    continue
+                
+                # Flexible mapped_to matching
+                actual_mapped_to = None
+                if mapped_to in self.target_items:
+                    actual_mapped_to = mapped_to
+                else:
+                    # Case-insensitive match
+                    mapped_to_lower = mapped_to.lower()
+                    for target in self.target_items:
+                        if target.lower() == mapped_to_lower:
+                            actual_mapped_to = target
+                            break
+                    # Partial match
+                    if not actual_mapped_to:
+                        for target in self.target_items:
+                            if mapped_to_lower in target.lower() or target.lower() in mapped_to_lower:
+                                actual_mapped_to = target
+                                break
+                
+                if not actual_mapped_to:
+                    logger.debug(f"[BatchMapper] Could not match mapped_to '{mapped_to}' to any target item")
+                    continue
+                
+                if actual_mapped_to not in mapped_items:
+                    result.mappings[actual_row_idx] = actual_mapped_to
+                    result.confidence[actual_row_idx] = confidence
+                    result.reasoning[actual_row_idx] = reasoning
+                    mapped_items.add(actual_mapped_to)
+                    logger.debug(f"[BatchMapper] Mapped: {actual_row_idx} -> {actual_mapped_to}")
+                else:
+                    result.unmapped_rows.append(actual_row_idx)
+            
+            logger.info(f"[BatchMapper] Group '{group.group_type}': {len(result.mappings)} mappings from {len(parsed['mappings'])} LLM responses")
+        else:
+            logger.warning(f"[BatchMapper] No valid mappings in response for group '{group.group_type}'")
+            result.unmapped_rows = group.rows.copy()
+        
+        return result
