@@ -1116,3 +1116,184 @@ class EnhancedAgenticParser:
                     logger.info(f"[Verifier] Applied fix: {row_idx} -> {suggested}")
         
         return new_mappings
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MAIN PARSING METHOD
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def parse(
+        self,
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        rows_that_are_sum: List[str],
+    ) -> EnhancedParseResult:
+        """
+        Parse the financial statement using enhanced agentic approach.
+        
+        Workflow:
+        1. Detect sum rows
+        2. Build numerical context (cross-year validation for each row)
+        3. Identify confusable groups
+        4. Batch LLM mapping for each group
+        5. Verification loop (max 3 iterations)
+        6. Build final mapped DataFrame
+        """
+        logger.info(f"[EnhancedParser] Starting {self.statement_type} ({len(og_df)} rows, "
+                   f"{len(self.historical_statements)} historical statements)")
+        
+        # Step 1: Detect sum rows
+        sum_info = self._detect_sum_rows(og_df, rows_that_are_sum, rows_text)
+        logger.info(f"[EnhancedParser] Detected {len(sum_info)} sum rows")
+        
+        # Step 2: Build numerical context with cross-year validation
+        numerical_contexts = {}
+        cross_year_hints = {}  # row_idx -> suggested fact based on cross-year
+        
+        for idx in og_df.index:
+            row_data = og_df.loc[idx]
+            
+            # Find best cross-year match
+            best_match = self._find_best_cross_year_match(idx, row_data)
+            
+            ctx = RowNumericalContext(
+                row_idx=idx,
+                values={str(col): float(row_data[col]) for col in row_data.index if pd.notna(row_data[col])},
+                cross_year_matches=best_match[1] if best_match else [],
+                is_sum_row=idx in sum_info,
+                sum_components=sum_info.get(idx, {}).get('component_rows', []),
+                sum_computed=sum_info.get(idx, {}).get('computed_sum', 0.0),
+                sum_difference_pct=0.0,
+            )
+            numerical_contexts[idx] = ctx
+            
+            if best_match and best_match[1]:
+                has_perfect = any(m.is_perfect_match for m in best_match[1])
+                has_match = any(m.is_match for m in best_match[1])
+                if has_perfect or has_match:
+                    cross_year_hints[idx] = best_match[0]
+                    logger.info(f"[EnhancedParser] Cross-year hint: {idx} -> {best_match[0]} "
+                               f"({'PERFECT' if has_perfect else 'within 10%'})")
+        
+        # Step 3: Identify confusable groups
+        groups = self._identify_confusable_groups(og_df, rows_text)
+        logger.info(f"[EnhancedParser] Identified {len(groups)} confusable groups: "
+                   f"{[g.group_type for g in groups]}")
+        
+        # Step 4: Batch LLM mapping for each group
+        all_mappings = {}
+        all_confidence = {}
+        all_reasoning = {}
+        
+        for group in groups:
+            logger.info(f"[EnhancedParser] Mapping group '{group.group_type}' ({len(group.rows)} rows)")
+            
+            batch_result = self._map_batch(
+                group, og_df, rows_text, sum_info, numerical_contexts
+            )
+            
+            all_mappings.update(batch_result.mappings)
+            all_confidence.update(batch_result.confidence)
+            all_reasoning.update(batch_result.reasoning)
+        
+        logger.info(f"[EnhancedParser] Initial mapping: {len(all_mappings)} rows mapped")
+        
+        # Apply cross-year hints for unmapped rows with strong validation
+        for row_idx, fact in cross_year_hints.items():
+            if row_idx not in all_mappings and fact not in all_mappings.values():
+                all_mappings[row_idx] = fact
+                all_confidence[row_idx] = 0.9
+                all_reasoning[row_idx] = "Cross-year numerical validation match"
+                logger.info(f"[EnhancedParser] Applied cross-year hint: {row_idx} -> {fact}")
+        
+        # Step 5: Verification loop
+        verification_history = []
+        previous_feedback = None
+        
+        for iteration in range(self.max_verification_iterations):
+            logger.info(f"[EnhancedParser] Verification iteration {iteration + 1}/{self.max_verification_iterations}")
+            
+            verification = self._verify_mappings(
+                all_mappings, og_df, rows_text, sum_info, 
+                numerical_contexts, previous_feedback
+            )
+            verification_history.append(verification)
+            
+            logger.info(f"[EnhancedParser] Verification result: valid={verification.is_valid}, "
+                       f"issues={len(verification.issues)}, confidence={verification.confidence:.2f}")
+            
+            if verification.is_valid or not verification.suggestions:
+                logger.info(f"[EnhancedParser] Verification passed or no suggestions, stopping loop")
+                break
+            
+            # Apply suggestions
+            new_mappings = self._apply_verification_suggestions(all_mappings, verification)
+            
+            if new_mappings == all_mappings:
+                logger.info(f"[EnhancedParser] No changes from suggestions, stopping loop")
+                break
+            
+            all_mappings = new_mappings
+            previous_feedback = f"Issues: {verification.issues}\nApplied fixes for iteration {iteration + 1}"
+        
+        # Step 6: Build final mapped DataFrame
+        mapped_df = pd.DataFrame(0.0, index=self.target_items, columns=og_df.columns)
+        mappings_list = []
+        
+        for row_idx, mapped_to in all_mappings.items():
+            if mapped_to in mapped_df.index and row_idx in og_df.index:
+                mapped_df.loc[mapped_to] = og_df.loc[row_idx]
+                
+                ctx = numerical_contexts.get(row_idx)
+                
+                mappings_list.append(EnhancedMappingResult(
+                    row_idx=row_idx,
+                    mapped_to=mapped_to,
+                    confidence=all_confidence.get(row_idx, 0.5),
+                    reasoning=all_reasoning.get(row_idx, ""),
+                    is_sum_row=row_idx in sum_info,
+                    cross_year_validated=ctx.has_strong_cross_year_match if ctx else False,
+                    cross_year_perfect_match=ctx.has_perfect_match if ctx else False,
+                    mapped_via="batch_llm",
+                    numerical_context=ctx,
+                ))
+        
+        unmapped = [idx for idx in og_df.index if idx not in all_mappings]
+        
+        stats = {
+            "total_rows": len(og_df),
+            "mapped_rows": len(all_mappings),
+            "unmapped_rows": len(unmapped),
+            "match_percentage": (len(all_mappings) / len(og_df) * 100) if len(og_df) > 0 else 0,
+            "cross_year_validated": sum(1 for m in mappings_list if m.cross_year_validated),
+            "perfect_matches": sum(1 for m in mappings_list if m.cross_year_perfect_match),
+            "verification_iterations": len(verification_history),
+            "final_verification_valid": verification_history[-1].is_valid if verification_history else True,
+            "confusable_groups_processed": len(groups),
+        }
+        
+        logger.info(f"[EnhancedParser] Complete: {stats['mapped_rows']}/{stats['total_rows']} mapped "
+                   f"({stats['match_percentage']:.1f}%), {stats['cross_year_validated']} cross-year validated, "
+                   f"{stats['perfect_matches']} perfect matches")
+        
+        return EnhancedParseResult(
+            mapped_df=mapped_df,
+            mappings=mappings_list,
+            unmapped_rows=unmapped,
+            verification_iterations=len(verification_history),
+            verification_history=verification_history,
+            statistics=stats,
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HELPER FUNCTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def check_ollama_for_enhanced_parser(base_url: str = "http://localhost:11434") -> bool:
+    """Check if Ollama is available for enhanced parsing."""
+    try:
+        import requests
+        response = requests.get(f"{base_url}/api/tags", timeout=5)
+        return response.status_code == 200
+    except Exception:
+        return False

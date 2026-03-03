@@ -13,6 +13,13 @@ try:
 except ImportError:
     PIPELINE_AVAILABLE = False
 
+# Enhanced agentic parser (graceful fallback)
+try:
+    from enhanced_agentic_parser import EnhancedAgenticParser, check_ollama_for_enhanced_parser
+    ENHANCED_PARSER_AVAILABLE = True
+except ImportError:
+    ENHANCED_PARSER_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -365,23 +372,95 @@ class FinancialStatement():
         Map facts from original DataFrame to standardized format.
         
         Matching modes (controlled by USE_MATCHING environment variable):
-        - 'pipeline' (default): Full pipeline with temporal validation, sum checks, LLM agents
+        - 'enhanced' (default): Enhanced agentic parser with batch LLM, cross-year validation, verification loop
+        - 'pipeline': Full pipeline with temporal validation, sum checks, LLM agents
         - 'scoring': Score-based selection (no LLM, no temporal/sum checks)
         - 'legacy': First-match-wins approach
         """
-        matching_mode = os.environ.get('USE_MATCHING', 'pipeline').lower()
+        matching_mode = os.environ.get('USE_MATCHING', 'enhanced').lower()
         
         if matching_mode == 'legacy':
             logger.info("Using legacy first-match-wins matching")
             self._map_facts_legacy()
-        elif matching_mode == 'scoring' or not PIPELINE_AVAILABLE:
-            if not PIPELINE_AVAILABLE and matching_mode == 'pipeline':
-                logger.warning("Pipeline not available, falling back to scoring mode")
+        elif matching_mode == 'scoring':
             logger.debug("Using score-based matching")
             self.map_facts_with_scoring()
+        elif matching_mode == 'enhanced' and ENHANCED_PARSER_AVAILABLE:
+            logger.info("Using enhanced agentic parser (batch LLM, cross-year validation, verification loop)")
+            self._map_facts_enhanced()
+        elif matching_mode == 'pipeline' or not ENHANCED_PARSER_AVAILABLE:
+            if not ENHANCED_PARSER_AVAILABLE and matching_mode == 'enhanced':
+                logger.warning("Enhanced parser not available, falling back to pipeline mode")
+            if not PIPELINE_AVAILABLE:
+                logger.warning("Pipeline not available, falling back to scoring mode")
+                self.map_facts_with_scoring()
+            else:
+                logger.info("Using full parsing pipeline (with temporal/sum/LLM)")
+                self._map_facts_pipeline()
         else:
-            logger.info("Using full parsing pipeline (with temporal/sum/LLM)")
+            logger.warning("No suitable matching mode available, using scoring")
+            self.map_facts_with_scoring()
+
+    def _map_facts_enhanced(self):
+        """
+        Enhanced agentic parser with:
+        1. Batch LLM queries for related/confusable items
+        2. Cross-year numerical validation (10% tolerance, excludes zeros)
+        3. Verification agent with feedback loop (max 3 iterations)
+        """
+        if not ENHANCED_PARSER_AVAILABLE:
+            logger.warning("Enhanced parser not available, falling back to pipeline")
             self._map_facts_pipeline()
+            return
+
+        # Determine statement type from class name
+        statement_type = 'income_statement'
+        if isinstance(self, BalanceSheet):
+            statement_type = 'balance_sheet'
+        elif isinstance(self, CashFlow):
+            statement_type = 'cash_flow_statement'
+
+        # Check if LLM is disabled
+        if os.environ.get('DISABLE_LLM', '0') == '1':
+            logger.warning("LLM disabled, falling back to scoring mode")
+            self.map_facts_with_scoring()
+            return
+
+        # Run enhanced parser
+        parser = EnhancedAgenticParser(
+            statement_type=statement_type,
+            historical_statements=self.historical_statements,
+            max_verification_iterations=3,
+            cross_year_tolerance=0.10,
+        )
+
+        result = parser.parse(
+            og_df=self.og_df,
+            rows_text=self.rows_text,
+            rows_that_are_sum=self.rows_that_are_sum,
+        )
+
+        # Apply results
+        self.mapped_df = result.mapped_df
+        self.mapped_facts = [
+            (m.row_idx, m.mapped_to, m.mapped_via)
+            for m in result.mappings
+        ]
+        self.mapping_score = {
+            m.row_idx: m.confidence
+            for m in result.mappings
+        }
+
+        # Store result for debugging
+        self._enhanced_result = result
+
+        logger.info(
+            f"Enhanced Parser: {result.statistics['mapped_rows']}/{result.statistics['total_rows']} "
+            f"rows mapped ({result.statistics['match_percentage']:.1f}%), "
+            f"{result.statistics['cross_year_validated']} cross-year validated, "
+            f"{result.statistics['perfect_matches']} perfect matches, "
+            f"{result.verification_iterations} verification iterations"
+        )
 
     def _map_facts_pipeline(self):
         """
