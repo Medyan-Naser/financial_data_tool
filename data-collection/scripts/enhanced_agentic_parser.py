@@ -981,3 +981,138 @@ class EnhancedAgenticParser:
             result.unmapped_rows = group.rows.copy()
         
         return result
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # VERIFICATION AGENT
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _build_verification_prompt(
+        self,
+        mappings: Dict[str, str],
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        sum_info: Dict[str, Dict],
+        numerical_contexts: Dict[str, RowNumericalContext],
+        previous_feedback: Optional[str] = None,
+    ) -> str:
+        """Build prompt for verification agent."""
+        lines = [
+            f"## Statement Type: {self.statement_type}",
+            "",
+            "## Current Mappings:",
+        ]
+        
+        first_col = og_df.columns[0] if len(og_df.columns) > 0 else None
+        
+        for row_idx, mapped_to in sorted(mappings.items(), key=lambda x: x[1]):
+            value = ""
+            if first_col and row_idx in og_df.index:
+                val = og_df.loc[row_idx, first_col]
+                if pd.notna(val):
+                    value = f" (value: {float(val):,.0f})"
+            
+            lines.append(f"  - `{row_idx}` → **{mapped_to}**{value}")
+        
+        # Add unmapped rows
+        unmapped = [idx for idx in og_df.index if idx not in mappings]
+        if unmapped:
+            lines.append("")
+            lines.append("## Unmapped Rows:")
+            for idx in unmapped[:20]:
+                label = rows_text.get(idx, "")
+                value = ""
+                if first_col:
+                    val = og_df.loc[idx, first_col]
+                    if pd.notna(val) and val != 0:
+                        value = f" (value: {float(val):,.0f})"
+                lines.append(f"  - `{idx}` ({label}){value}")
+        
+        # Add cross-year validation summary
+        lines.append("")
+        lines.append("## Cross-Year Validation Summary:")
+        for row_idx, mapped_to in mappings.items():
+            ctx = numerical_contexts.get(row_idx)
+            if ctx and ctx.cross_year_matches:
+                perfect = any(m.is_perfect_match for m in ctx.cross_year_matches)
+                matched = any(m.is_match for m in ctx.cross_year_matches)
+                if perfect:
+                    lines.append(f"  - {row_idx} → {mapped_to}: ✓ PERFECT cross-year match")
+                elif matched:
+                    lines.append(f"  - {row_idx} → {mapped_to}: ✓ Cross-year match within 10%")
+                else:
+                    lines.append(f"  - {row_idx} → {mapped_to}: ⚠ No cross-year validation")
+        
+        if previous_feedback:
+            lines.append("")
+            lines.append("## Previous Feedback (from earlier iteration):")
+            lines.append(previous_feedback)
+        
+        lines.append("")
+        lines.append("## Verify the mappings. Check for:")
+        lines.append("1. Accounting equation violations")
+        lines.append("2. Mismatched cross-year validations")
+        lines.append("3. Missing critical items")
+        lines.append("4. Economic nonsense (negative revenue, etc.)")
+        
+        return "\n".join(lines)
+
+    def _verify_mappings(
+        self,
+        mappings: Dict[str, str],
+        og_df: pd.DataFrame,
+        rows_text: Dict[str, str],
+        sum_info: Dict[str, Dict],
+        numerical_contexts: Dict[str, RowNumericalContext],
+        previous_feedback: Optional[str] = None,
+    ) -> VerificationResult:
+        """Run verification agent on current mappings."""
+        
+        prompt = self._build_verification_prompt(
+            mappings, og_df, rows_text, sum_info, 
+            numerical_contexts, previous_feedback
+        )
+        
+        response = self._invoke_llm(
+            VERIFIER_SYSTEM_PROMPT, 
+            prompt, 
+            agent_name="Verifier"
+        )
+        
+        parsed = self._parse_json_response(response)
+        
+        if parsed:
+            return VerificationResult(
+                is_valid=parsed.get("is_valid", True),
+                issues=parsed.get("issues", []),
+                suggestions=parsed.get("suggestions", []),
+                confidence=float(parsed.get("confidence", 0.5)),
+                reasoning=parsed.get("reasoning", ""),
+            )
+        
+        return VerificationResult(
+            is_valid=True,
+            issues=[],
+            suggestions=[],
+            confidence=0.5,
+            reasoning="Verification failed to parse",
+        )
+
+    def _apply_verification_suggestions(
+        self,
+        mappings: Dict[str, str],
+        verification: VerificationResult,
+    ) -> Dict[str, str]:
+        """Apply verification suggestions to mappings."""
+        new_mappings = mappings.copy()
+        
+        for suggestion in verification.suggestions:
+            row_idx = suggestion.get("row_idx")
+            suggested = suggestion.get("suggested_mapping")
+            
+            if row_idx and suggested and suggested in self.target_items:
+                # Check if suggested item is not already mapped
+                if suggested not in new_mappings.values():
+                    new_mappings[row_idx] = suggested
+                    logger.info(f"[Verifier] Applied fix: {row_idx} -> {suggested}")
+        
+        return new_mappings
