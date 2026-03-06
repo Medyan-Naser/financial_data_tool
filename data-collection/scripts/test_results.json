@@ -1,0 +1,53 @@
+{
+  "summary": {
+    "total_tests": 2,
+    "successful_tests": 2,
+    "failed_tests": 0,
+    "total_rows_processed": 38,
+    "total_rows_mapped": 2,
+    "overall_match_percentage": 5.3,
+    "total_cross_year_validated": 1,
+    "total_perfect_matches": 1,
+    "avg_match_percentage": 5.3,
+    "avg_parse_time_seconds": 33.88,
+    "total_time_seconds": 117.8,
+    "by_statement_type": {
+      "income_statement": {
+        "count": 2,
+        "match_pct_sum": 10.526315789473683,
+        "avg_match_pct": 5.3
+      }
+    }
+  },
+  "results": [
+    {
+      "ticker": "AAPL",
+      "statement_type": "income_statement",
+      "filing_date": "2025-09-27",
+      "total_rows": 19,
+      "mapped_rows": 1,
+      "match_percentage": 5.3,
+      "cross_year_validated": 0,
+      "perfect_matches": 0,
+      "verification_iterations": 1,
+      "verification_passed": false,
+      "parse_time_seconds": 39.99,
+      "errors": []
+    },
+    {
+      "ticker": "AAPL",
+      "statement_type": "income_statement",
+      "filing_date": "2024-09-28",
+      "total_rows": 19,
+      "mapped_rows": 1,
+      "match_percentage": 5.3,
+      "cross_year_validated": 1,
+      "perfect_matches": 1,
+      "verification_iterations": 1,
+      "verification_passed": false,
+      "parse_time_seconds": 27.77,
+      "errors": []
+    }
+  ],
+  "timestamp": "2026-02-28T14:56:12.447172"
+}
