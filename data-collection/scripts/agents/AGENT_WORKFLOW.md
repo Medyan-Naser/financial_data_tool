@@ -94,3 +94,51 @@ Full prompt and response written to `agents/logs/llm_interactions.jsonl`
 
 ---
 
+## Agent 2: FINALIZER
+
+### When Called
+- After Auditor, only if Auditor confidence < 0.9
+- Acts as a second opinion/economic sanity check
+
+### Input Context
+```python
+{
+    'auditor_decision': AgentDecision(...),
+    'row_idx': '...',
+    'human_label': '...',
+    'row_values': {...},
+    'historical_trend': {'2024': 833M, '2023': 795M, '2022': 745M, ...}
+}
+```
+
+### What It Does
+1. Reviews Auditor's recommendation
+2. Checks if 10-year trend makes economic sense
+3. Validates that Revenue grows reasonably
+4. Confirms Net Income is proportional to Revenue
+5. Can override Auditor if economically irrational
+
+### Output
+```python
+AgentDecision(
+    selected_fact='Total revenue',  # Confirmed or overridden
+    confidence=0.92,
+    reasoning='Trend is economically sound...',
+    agent_name='Finalizer'
+)
+```
+
+### Terminal Logging
+```
+INFO:agents.llm_agents:[Agent] Auditor confidence 0.85 < 0.9, escalating to Finalizer
+INFO:agents.llm_agents:[Agent:Finalizer] Reviewing Auditor decision for '...'
+INFO:agents.llm_agents:[Agent:Finalizer] CONFIRMED Auditor: 'Total revenue' (conf=0.92)
+```
+
+Or if overriding:
+```
+INFO:agents.llm_agents:[Agent:Finalizer] OVERRODE Auditor: 'SG&A' -> 'Total operating expense' (conf=0.88)
+```
+
+---
+
