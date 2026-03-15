@@ -232,3 +232,101 @@ SumRowValidation(
     component_rows=['us-gaap_RnD', 'us-gaap_SGA', ...]
 )
 ```
+
+### Terminal Logging
+```
+INFO:agents.llm_agents:[Agent:SumRowValidator] Validating 'us-gaap_OperatingExpenses' (label='Total operating expenses')
+INFO:agents.llm_agents:[Agent:SumRowValidator] Result: is_sum=True (conf=0.90)
+```
+
+---
+
+## Agent 5: DATECOLUMNVALIDATOR (NEW)
+
+### When Called
+- **Future integration**: In `Filling.py` when extracting date columns from HTML tables
+- Validates which columns are fiscal period dates vs. metadata/ratio columns
+
+### Current Use Case
+Some filings have columns like "Shares", "Per Share", "12 Months Ended" mixed with actual date columns.
+
+### Input Context
+```python
+{
+    'all_columns': ['2024-09-28', '2023-09-30', 'Shares', '12 Months Ended 2024-09-28'],
+    'sample_values': {
+        '2024-09-28': [833000000, -400000000, 433000000],
+        'Shares': [172000000, 172000000, 172000000],
+        ...
+    }
+}
+```
+
+### What It Does
+1. Identifies columns matching date format (YYYY-MM-DD)
+2. Excludes columns with descriptive text or ratios
+3. Detects duplicate/redundant date columns
+4. Returns selected fiscal period dates
+
+### Output
+```python
+DateColumnValidation(
+    selected_columns=['2024-09-28', '2023-09-30', '2022-09-24'],
+    rejected_columns=['Shares', '12 Months Ended 2024-09-28'],
+    confidence=0.92,
+    reasoning='Selected columns match date format and contain financial values. Excluded metadata columns.'
+)
+```
+
+### Terminal Logging
+```
+INFO:agents.llm_agents:[Agent:DateColumnValidator] Validating 4 columns
+INFO:agents.llm_agents:[Agent:DateColumnValidator] Selected 3/4 columns (conf=0.92)
+```
+
+---
+
+## Agent 6: ROWCLASSIFIER (NEW)
+
+### When Called
+- **Future integration**: Post-pipeline analysis of unmapped rows
+- Identifies important financial concepts that regex missed
+
+### Current Use Case
+After pipeline completes, some rows remain unmapped. Agent classifies them to determine if they're important.
+
+### Input Context
+```python
+{
+    'row_idx': 'aapl_ServicesRevenue',
+    'human_label': 'Services',
+    'row_values': {'2024': 85M, '2023': 78M},
+    'camelcase_words': 'Services Revenue'
+}
+```
+
+### What It Does
+1. Examines GAAP tag and CamelCase decomposition
+2. Considers human label and value magnitude
+3. Determines if row represents a standard concept
+4. Classifies as relevant/irrelevant
+5. Suggests which financial concept it represents
+
+### Output
+```python
+RowClassification(
+    row_idx='aapl_ServicesRevenue',
+    financial_concept='Services revenue',
+    is_relevant=True,
+    confidence=0.85,
+    reasoning='CamelCase and label clearly indicate services revenue component'
+)
+```
+
+### Terminal Logging
+```
+INFO:agents.llm_agents:[Agent:RowClassifier] Classifying 'aapl_ServicesRevenue'
+INFO:agents.llm_agents:[Agent:RowClassifier] Classified as 'Services revenue' (conf=0.85)
+```
+
+---
