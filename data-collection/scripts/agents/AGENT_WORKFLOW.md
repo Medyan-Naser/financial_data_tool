@@ -142,3 +142,93 @@ INFO:agents.llm_agents:[Agent:Finalizer] OVERRODE Auditor: 'SG&A' -> 'Total oper
 
 ---
 
+## Agent 3: DISCOVERER
+
+### When Called
+- In `pipeline.run()` Step 6
+- After all regex matching is complete
+- Only when expected facts are still missing
+
+### Input Context
+```python
+{
+    'unmatched_rows': [
+        {
+            'idx': 'tsla_RestructuringAndOther',
+            'human_label': 'Restructuring and other',
+            'camelcase_words': 'Restructuring And Other',
+            'values': {'2024': -50M, '2023': -35M}
+        },
+        ...
+    ],
+    'expected_items': ['Total revenue', 'Operating income'],
+    'statement_type': 'income_statement'
+}
+```
+
+### What It Does
+1. Examines unmatched rows in batches of 5
+2. Looks for company-specific tags (e.g., `tsla_*`, `aapl_*`)
+3. Uses CamelCase decomposition and human labels
+4. Considers numerical magnitudes (billions = revenue-level)
+5. Suggests which expected items these rows might represent
+
+### Output
+```python
+[
+    DiscoveryResult(
+        row_idx='tsla_RestructuringAndOther',
+        suggested_fact='Restructuring charges',
+        confidence=0.75,
+        reasoning='CamelCase and label indicate restructuring expense...'
+    ),
+    ...
+]
+```
+
+### Terminal Logging
+```
+INFO:agents.llm_agents:[Agent:Discoverer] Searching 15 unmatched rows for 2 missing items
+INFO:agents.llm_agents:[Agent:Discoverer] Batch 1/3: ['tsla_Restructuring...', ...]
+INFO:agents.llm_agents:[Agent:Discoverer] Found: 'tsla_Restructuring...' -> 'Restructuring charges' (conf=0.75)
+INFO:agents.llm_agents:[Agent:Discoverer] Complete: 2 discoveries from 15 rows
+```
+
+---
+
+## Agent 4: SUMROWVALIDATOR (NEW)
+
+### When Called
+- **Future integration**: In `Filling.py` when processing HTML tables
+- Can replace hardcoded HTML class checking (`reu`, `rou`)
+
+### Current Use Case
+HTML classes `reu`/`rou` indicate sum rows, but they're not always reliable. Agent provides dynamic validation.
+
+### Input Context
+```python
+{
+    'row_idx': 'us-gaap_OperatingExpenses',
+    'human_label': 'Total operating expenses',
+    'row_values': {'2024': -362M, '2023': -346M},
+    'html_class': 'reu',
+    'potential_components': ['us-gaap_RnD', 'us-gaap_SGA', ...]
+}
+```
+
+### What It Does
+1. Examines row label for "Total", "Net", summation keywords
+2. Checks if HTML class indicates sum row
+3. Analyzes if numerical value ≈ sum of components
+4. Returns whether it's a sum row + confidence
+
+### Output
+```python
+SumRowValidation(
+    row_idx='us-gaap_OperatingExpenses',
+    is_sum_row=True,
+    confidence=0.90,
+    reasoning='Label contains "Total" and value matches sum of components',
+    component_rows=['us-gaap_RnD', 'us-gaap_SGA', ...]
+)
+```
