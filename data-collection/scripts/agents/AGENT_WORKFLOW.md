@@ -330,3 +330,101 @@ INFO:agents.llm_agents:[Agent:RowClassifier] Classified as 'Services revenue' (c
 ```
 
 ---
+
+## Complete Pipeline Flow with Agents
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 1: Create Empty Mapped DataFrame                          │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 2: Generate Regex Candidates                              │
+│ - HybridMatcher finds potential MapFacts for each row          │
+│ - Scores based on GAAP/IFRS/Human patterns                     │
+│ - Penalizes dimensional rows (Revenue::, D1:)                  │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 3: Temporal Cross-Year Validation                         │
+│ - Compares values to historical filings                        │
+│ - Boosts score if matches previous year's mapping              │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 4: Summation Verification                                 │
+│ - Checks if sum rows actually sum to components                │
+│ - Adjusts scores based on sum accuracy                         │
+│ - FUTURE: Use SumRowValidator agent here                       │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 5: Select Best Mappings + LLM Tie-Breaking               │
+│ - For each row, pick best candidate                            │
+│ - IF ambiguous (gap < 15.0) OR low confidence (< 40.0):        │
+│   ├─► AGENT 1: AUDITOR                                         │
+│   │   Analyzes top 3 candidates + context                      │
+│   │   Returns: recommended fact + confidence                   │
+│   └─► IF Auditor confidence < 0.9:                             │
+│       └─► AGENT 2: FINALIZER                                   │
+│           Validates economic rationality                        │
+│           Returns: confirmed or overridden decision             │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 6: Discovery of Missing Items                             │
+│ - Check which expected facts are still missing                 │
+│ - IF missing AND discovery_enabled:                            │
+│   └─► AGENT 3: DISCOVERER                                      │
+│       Examines unmatched rows for company-specific tags        │
+│       Returns: suggested mappings for missing items            │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Post-Processing (FUTURE Integration)                           │
+│ - AGENT 4: SumRowValidator - validate sum rows dynamically     │
+│ - AGENT 5: DateColumnValidator - validate date columns         │
+│ - AGENT 6: RowClassifier - classify remaining unmapped rows    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Logging System
+
+### Terminal Logs (INFO level, visible in uvicorn)
+
+All agent activities logged with `[Agent:...]` prefix:
+- Agent invocations
+- Model calls and response times
+- Decisions and reasoning
+- Pipeline LLM tie-break triggers
+
+### File Logs (JSONL format)
+
+Full prompt/response pairs written to: `agents/logs/llm_interactions.jsonl`
+
+Each line is a JSON record:
+```json
+{
+  "timestamp": "2026-02-16T11:35:00",
+  "agent": "Auditor",
+  "model": "llama3.2",
+  "system_prompt": "You are a Senior Financial Data Auditor...",
+  "user_prompt": "## Row to Match\n- **Raw GAAP Tag**: ...",
+  "response": "{\"selected_fact\": \"Total revenue\", ...}",
+  "duration_seconds": 4.41,
+  "error": null
+}
+```
+
+### Why Agents Weren't Called in RBBN Example
+
+The RBBN run had `DISABLE_LLM=1` OR regex matches were highly confident:
+- `us-gaap_RevenueFromContractWithCustomer...` → score 50+ (GAAP exact match)
+- No ambiguity (no close runner-up candidates)
+- Score > 40 (above low_confidence_threshold)
+
+**With new thresholds (15.0, 40.0)**, agents will trigger more often.
+
+---
