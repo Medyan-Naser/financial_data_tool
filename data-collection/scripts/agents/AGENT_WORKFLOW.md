@@ -428,3 +428,103 @@ The RBBN run had `DISABLE_LLM=1` OR regex matches were highly confident:
 **With new thresholds (15.0, 40.0)**, agents will trigger more often.
 
 ---
+
+## Testing Agent Triggers
+
+### Verify Agents Are Called
+
+```bash
+cd data-collection/scripts
+python3 main.py --ticker RBBN --years 3
+
+# Look for logs like:
+# INFO:pipeline:[Pipeline] LLM tie-break needed for '...'
+# INFO:agents.llm_agents:[Agent:Auditor] Analyzing '...'
+# INFO:agents.llm_agents:[Agent:Discoverer] Searching ...
+```
+
+### Check LLM Log File
+
+```bash
+tail -f agents/logs/llm_interactions.jsonl | jq .
+```
+
+---
+
+## Future Integration Points
+
+### 1. Integrate SumRowValidator in Filling.py
+Replace:
+```python
+if row_class == ['reu'] or row_class == ['rou']:
+    rows_that_are_sum.append(row_title)
+```
+
+With:
+```python
+if agent_orchestrator:
+    validation = agent_orchestrator.validate_sum_row(
+        row_idx=row_title,
+        human_label=row_text,
+        row_values=row_values_dict,
+        html_class=row_class,
+        potential_components=previous_rows
+    )
+    if validation.is_sum_row and validation.confidence > 0.7:
+        rows_that_are_sum.append(row_title)
+```
+
+### 2. Integrate DateColumnValidator in Filling.py
+Replace regex-based date column selection with agent validation.
+
+### 3. Integrate RowClassifier Post-Pipeline
+After pipeline completes, run RowClassifier on all unmapped rows to identify missed concepts.
+
+---
+
+## Performance Considerations
+
+- **Average agent call**: 3-6 seconds (depends on model)
+- **Parallelization**: Agents currently run sequentially
+- **Caching**: LLM responses not cached (each call hits Ollama)
+- **Optimization**: Could batch similar rows to reduce calls
+
+---
+
+## Troubleshooting
+
+### Agents Not Being Called
+
+1. Check if `llm_enabled=True` in PipelineConfig
+2. Check if `DISABLE_LLM` env var is set
+3. Verify Ollama is running: `check_ollama_available()`
+4. Check thresholds - scores may be too confident
+
+### LLM Responses Failing to Parse
+
+- Check `agents/logs/llm_interactions.jsonl` for raw responses
+- LLM may not be following JSON format
+- Try different model (mistral fallback)
+- Adjust temperature (lower = more deterministic)
+
+### Slow Performance
+
+- Reduce `llm_ambiguity_threshold` to trigger agents less
+- Use faster model (mistral instead of llama3)
+- Consider caching LLM responses
+- Batch similar decisions
+
+---
+
+## Summary
+
+The agent system makes the financial data pipeline **dynamic and adaptive** rather than relying on hardcoded rules. By lowering thresholds and adding new agent roles, the system can:
+
+1. **Resolve ambiguity** when regex matching isn't confident
+2. **Validate economic rationality** of matches
+3. **Discover company-specific tags** that regex can't handle
+4. **Validate sum rows** beyond simple HTML class checking
+5. **Validate date columns** to exclude metadata
+6. **Classify unmapped rows** to catch missed concepts
+
+All agent activity is logged both to terminal (INFO level) and to JSONL files for review.
