@@ -92,3 +92,95 @@ class TestResult:
             'errors': self.errors,
         }
 
+
+class TestSuite:
+    """Collect and summarize test results."""
+    
+    def __init__(self):
+        self.results: List[TestResult] = []
+        self.start_time = datetime.now()
+        
+    def add_result(self, result: TestResult):
+        self.results.append(result)
+    
+    def get_summary(self) -> dict:
+        if not self.results:
+            return {'message': 'No results'}
+        
+        total_tests = len(self.results)
+        successful_tests = sum(1 for r in self.results if not r.errors)
+        
+        total_rows = sum(r.total_rows for r in self.results)
+        total_mapped = sum(r.mapped_rows for r in self.results)
+        total_cross_year = sum(r.cross_year_validated for r in self.results)
+        total_perfect = sum(r.perfect_matches for r in self.results)
+        
+        avg_match_pct = sum(r.match_percentage for r in self.results) / total_tests
+        avg_parse_time = sum(r.parse_time_seconds for r in self.results) / total_tests
+        
+        by_statement = {}
+        for r in self.results:
+            if r.statement_type not in by_statement:
+                by_statement[r.statement_type] = {'count': 0, 'match_pct_sum': 0}
+            by_statement[r.statement_type]['count'] += 1
+            by_statement[r.statement_type]['match_pct_sum'] += r.match_percentage
+        
+        for st in by_statement:
+            by_statement[st]['avg_match_pct'] = round(
+                by_statement[st]['match_pct_sum'] / by_statement[st]['count'], 1
+            )
+        
+        return {
+            'total_tests': total_tests,
+            'successful_tests': successful_tests,
+            'failed_tests': total_tests - successful_tests,
+            'total_rows_processed': total_rows,
+            'total_rows_mapped': total_mapped,
+            'overall_match_percentage': round(total_mapped / total_rows * 100, 1) if total_rows > 0 else 0,
+            'total_cross_year_validated': total_cross_year,
+            'total_perfect_matches': total_perfect,
+            'avg_match_percentage': round(avg_match_pct, 1),
+            'avg_parse_time_seconds': round(avg_parse_time, 2),
+            'total_time_seconds': round((datetime.now() - self.start_time).total_seconds(), 1),
+            'by_statement_type': by_statement,
+        }
+    
+    def print_summary(self):
+        summary = self.get_summary()
+        print("\n" + "=" * 80)
+        print("ENHANCED PARSER TEST SUMMARY".center(80))
+        print("=" * 80)
+        
+        print(f"\n📊 Overall Results:")
+        print(f"   Tests Run: {summary['total_tests']}")
+        print(f"   Successful: {summary['successful_tests']}")
+        print(f"   Failed: {summary['failed_tests']}")
+        
+        print(f"\n📈 Mapping Statistics:")
+        print(f"   Total Rows Processed: {summary['total_rows_processed']:,}")
+        print(f"   Total Rows Mapped: {summary['total_rows_mapped']:,}")
+        print(f"   Overall Match Rate: {summary['overall_match_percentage']}%")
+        print(f"   Avg Match Rate per Statement: {summary['avg_match_percentage']}%")
+        
+        print(f"\n🔗 Cross-Year Validation:")
+        print(f"   Cross-Year Validated: {summary['total_cross_year_validated']:,}")
+        print(f"   Perfect Matches: {summary['total_perfect_matches']:,}")
+        
+        print(f"\n⏱️  Performance:")
+        print(f"   Average Parse Time: {summary['avg_parse_time_seconds']}s")
+        print(f"   Total Test Time: {summary['total_time_seconds']}s")
+        
+        print(f"\n📋 By Statement Type:")
+        for st, stats in summary.get('by_statement_type', {}).items():
+            print(f"   {st}: {stats['count']} tests, {stats['avg_match_pct']}% avg match")
+        
+        print("\n" + "=" * 80)
+        
+        # Print any errors
+        errors = [r for r in self.results if r.errors]
+        if errors:
+            print("\n⚠️  Errors:")
+            for r in errors:
+                print(f"   {r.ticker} {r.statement_type} {r.filing_date}: {r.errors}")
+
+
