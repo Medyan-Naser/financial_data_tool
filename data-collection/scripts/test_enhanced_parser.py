@@ -184,3 +184,173 @@ class TestSuite:
                 print(f"   {r.ticker} {r.statement_type} {r.filing_date}: {r.errors}")
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEST FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_single_statement(
+    og_df: pd.DataFrame,
+    rows_text: Dict[str, str],
+    rows_that_are_sum: List[str],
+    statement_type: str,
+    historical_statements: Dict[str, pd.DataFrame],
+    ticker: str,
+    filing_date: str,
+) -> TestResult:
+    """Test the enhanced parser on a single statement."""
+    
+    result = TestResult(ticker, statement_type, filing_date)
+    result.total_rows = len(og_df)
+    
+    try:
+        parser = EnhancedAgenticParser(
+            statement_type=statement_type,
+            historical_statements=historical_statements,
+            max_verification_iterations=3,
+            cross_year_tolerance=0.10,
+        )
+        
+        start_time = time.time()
+        parse_result = parser.parse(
+            og_df=og_df,
+            rows_text=rows_text,
+            rows_that_are_sum=rows_that_are_sum,
+        )
+        result.parse_time_seconds = time.time() - start_time
+        
+        # Extract statistics
+        result.mapped_rows = parse_result.statistics['mapped_rows']
+        result.cross_year_validated = parse_result.statistics.get('cross_year_validated', 0)
+        result.perfect_matches = parse_result.statistics.get('perfect_matches', 0)
+        result.verification_iterations = parse_result.verification_iterations
+        result.verification_passed = parse_result.statistics.get('final_verification_valid', True)
+        
+        logger.info(
+            f"[{ticker}] {statement_type} {filing_date}: "
+            f"{result.mapped_rows}/{result.total_rows} mapped ({result.match_percentage:.1f}%), "
+            f"{result.cross_year_validated} cross-year, {result.perfect_matches} perfect, "
+            f"{result.verification_iterations} iterations, {result.parse_time_seconds:.1f}s"
+        )
+        
+    except Exception as e:
+        result.errors.append(str(e))
+        logger.error(f"[{ticker}] {statement_type} {filing_date}: ERROR - {e}")
+    
+    return result
+
+
+def test_company(
+    ticker: str,
+    num_years: int = 5,
+    statement_filter: str = 'all',
+    test_suite: Optional[TestSuite] = None,
+) -> Dict[str, List[TestResult]]:
+    """Test enhanced parser for a single company over multiple years."""
+    
+    logger.info(f"\n{'='*60}")
+    logger.info(f"Testing {ticker} for {num_years} years")
+    logger.info(f"{'='*60}")
+    
+    results_by_type = {
+        'income_statement': [],
+        'balance_sheet': [],
+        'cash_flow_statement': [],
+    }
+    
+    try:
+        # Initialize company
+        company = Company(ticker=ticker)
+        logger.info(f"Company CIK: {company.cik}")
+        
+        # Get annual filings
+        filings = company.ten_k_fillings
+        filings = filings.iloc[:num_years]
+        logger.info(f"Found {len(filings)} 10-K filings")
+        
+        # Accumulate historical statements
+        historical_income = {}
+        historical_balance = {}
+        historical_cashflow = {}
+        
+        for idx, (report_date, accession_num) in enumerate(filings.items()):
+            logger.info(f"\nProcessing filing {idx + 1}/{len(filings)}: {report_date}")
+            
+            try:
+                filing = Filling(
+                    ticker=ticker,
+                    cik=company.cik,
+                    acc_num_unfiltered=accession_num,
+                    company_facts=company.company_facts,
+                    quarterly=False
+                )
+                
+                # Test income statement
+                if statement_filter in ['income', 'all']:
+                    filing.process_one_statement("income_statement", historical_statements=historical_income)
+                    if filing.income_statement and filing.income_statement.og_df is not None:
+                        result = test_single_statement(
+                            og_df=filing.income_statement.og_df,
+                            rows_text=filing.income_statement.rows_text,
+                            rows_that_are_sum=filing.income_statement.rows_that_are_sum,
+                            statement_type='income_statement',
+                            historical_statements=historical_income,
+                            ticker=ticker,
+                            filing_date=str(report_date),
+                        )
+                        results_by_type['income_statement'].append(result)
+                        if test_suite:
+                            test_suite.add_result(result)
+                        
+                        # Add to historical
+                        if filing.income_statement.mapped_df is not None:
+                            historical_income[str(report_date)] = filing.income_statement.mapped_df.copy()
+                
+                # Test balance sheet
+                if statement_filter in ['balance', 'all']:
+                    filing.process_one_statement("balance_sheet", historical_statements=historical_balance)
+                    if filing.balance_sheet and filing.balance_sheet.og_df is not None:
+                        result = test_single_statement(
+                            og_df=filing.balance_sheet.og_df,
+                            rows_text=filing.balance_sheet.rows_text,
+                            rows_that_are_sum=filing.balance_sheet.rows_that_are_sum,
+                            statement_type='balance_sheet',
+                            historical_statements=historical_balance,
+                            ticker=ticker,
+                            filing_date=str(report_date),
+                        )
+                        results_by_type['balance_sheet'].append(result)
+                        if test_suite:
+                            test_suite.add_result(result)
+                        
+                        if filing.balance_sheet.mapped_df is not None:
+                            historical_balance[str(report_date)] = filing.balance_sheet.mapped_df.copy()
+                
+                # Test cash flow
+                if statement_filter in ['cashflow', 'all']:
+                    filing.process_one_statement("cash_flow_statement", historical_statements=historical_cashflow)
+                    if filing.cash_flow and filing.cash_flow.og_df is not None:
+                        result = test_single_statement(
+                            og_df=filing.cash_flow.og_df,
+                            rows_text=filing.cash_flow.rows_text,
+                            rows_that_are_sum=filing.cash_flow.rows_that_are_sum,
+                            statement_type='cash_flow_statement',
+                            historical_statements=historical_cashflow,
+                            ticker=ticker,
+                            filing_date=str(report_date),
+                        )
+                        results_by_type['cash_flow_statement'].append(result)
+                        if test_suite:
+                            test_suite.add_result(result)
+                        
+                        if filing.cash_flow.mapped_df is not None:
+                            historical_cashflow[str(report_date)] = filing.cash_flow.mapped_df.copy()
+                
+            except Exception as e:
+                logger.error(f"Error processing filing {accession_num}: {e}")
+                continue
+        
+    except Exception as e:
+        logger.error(f"Error testing {ticker}: {e}")
+    
+    return results_by_type
+
