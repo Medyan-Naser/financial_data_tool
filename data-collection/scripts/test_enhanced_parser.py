@@ -354,3 +354,104 @@ def test_company(
     
     return results_by_type
 
+
+def run_full_test(
+    companies: List[str],
+    num_years: int = 5,
+    statement_filter: str = 'all',
+    output_file: Optional[str] = None,
+):
+    """Run the full test suite across multiple companies."""
+    
+    # Check Ollama availability
+    if not check_ollama_for_enhanced_parser():
+        logger.error("Ollama is not available. Please start Ollama before running tests.")
+        logger.error("Run: ollama serve")
+        return
+    
+    logger.info(f"\n{'#'*80}")
+    logger.info(f"ENHANCED PARSER TEST SUITE".center(80))
+    logger.info(f"{'#'*80}")
+    logger.info(f"Companies: {companies}")
+    logger.info(f"Years: {num_years}")
+    logger.info(f"Statement Filter: {statement_filter}")
+    logger.info(f"{'#'*80}\n")
+    
+    test_suite = TestSuite()
+    
+    for ticker in companies:
+        try:
+            test_company(
+                ticker=ticker,
+                num_years=num_years,
+                statement_filter=statement_filter,
+                test_suite=test_suite,
+            )
+        except Exception as e:
+            logger.error(f"Failed to test {ticker}: {e}")
+    
+    # Print summary
+    test_suite.print_summary()
+    
+    # Save results to JSON if output file specified
+    if output_file:
+        output_data = {
+            'summary': test_suite.get_summary(),
+            'results': [r.to_dict() for r in test_suite.results],
+            'timestamp': datetime.now().isoformat(),
+        }
+        with open(output_file, 'w') as f:
+            json.dump(output_data, f, indent=2)
+        logger.info(f"\nResults saved to {output_file}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Test Enhanced Agentic Parser with Multiple Companies'
+    )
+    parser.add_argument(
+        '--companies',
+        nargs='+',
+        default=DEFAULT_TEST_COMPANIES,
+        help=f'Stock ticker symbols to test (default: {DEFAULT_TEST_COMPANIES})'
+    )
+    parser.add_argument(
+        '--years',
+        type=int,
+        default=DEFAULT_TEST_YEARS,
+        help=f'Number of years to test (default: {DEFAULT_TEST_YEARS})'
+    )
+    parser.add_argument(
+        '--statement',
+        type=str,
+        choices=['income', 'balance', 'cashflow', 'all'],
+        default='all',
+        help='Which statement type to test (default: all)'
+    )
+    parser.add_argument(
+        '--output',
+        type=str,
+        default=None,
+        help='Output JSON file for results'
+    )
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Enable verbose logging'
+    )
+    
+    args = parser.parse_args()
+    
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
+    run_full_test(
+        companies=args.companies,
+        num_years=args.years,
+        statement_filter=args.statement,
+        output_file=args.output,
+    )
+
+
+if __name__ == "__main__":
+    main()
