@@ -793,3 +793,119 @@ def fetch_13f_holdings(
     )
     return result
 
+
+# ══════════════════════════════════════════════════════════════════
+# PUBLIC: MULTI-FILING HISTORY (for ChartManager time-series)
+# ══════════════════════════════════════════════════════════════════
+
+def fetch_13f_history(
+    cik: str,
+    num_filings: int = 6,
+    top_n: int = 15,
+    force_refresh: bool = False,
+) -> Dict:
+    """
+    Fetch the last `num_filings` distinct quarterly 13F periods and return
+    portfolio weight history for the top-N holdings.
+
+    Handles investors with multiple sub-manager 13F filings per quarter
+    (e.g. Berkshire Hathaway) by grouping on reportDate and using the filing
+    with the most holdings for each quarter period.
+
+    Args:
+        cik: Investor EDGAR CIK
+        num_filings: How many distinct quarters to load
+        top_n: How many top holdings to track over time
+        force_refresh: Bypass file cache
+
+    Returns:
+        dict with:
+            investor_name, cik,
+            columns: [oldest_date, ..., newest_date]  (filing dates)
+            rows: [ { name: company_name, values: [pct_oldest, ..., pct_newest] }, ... ]
+            all_holdings_latest: full latest holdings list
+            available_filings: all filing dates
+    """
+    cik_padded = cik.zfill(10)
+    cache_key = f"history_{cik_padded}_{num_filings}_{top_n}"
+    cache_path = _cache_path(INVESTOR_CACHE_DIR, cache_key)
+
+    if not force_refresh:
+        cached = _read_cache(cache_path)
+        if cached:
+            return cached
+
+    filings_data = fetch_investor_filings(cik_padded, force_refresh=force_refresh)
+    all_filings = filings_data.get("filings", [])
+    investor_name = filings_data.get("investor_name", f"CIK {cik}")
+
+    if not all_filings:
+        raise ValueError(f"No 13F filings found for CIK {cik}")
+
+    # Group by reportDate; for each quarter keep all filing accession numbers
+    # so we can pick the one with the most holdings
+    from collections import defaultdict
+    by_period: Dict[str, List[Dict]] = defaultdict(list)
+    for f in all_filings:
+        period = f.get("reportDate") or f["filingDate"][:7]  # fallback to YYYY-MM
+        by_period[period].append(f)
+
+    # Take the N most recent distinct periods
+    sorted_periods = sorted(by_period.keys(), reverse=True)[:num_filings]
+    sorted_periods.reverse()  # oldest → newest
+
+    # For each period, try each filing and keep the one with most holdings
+    per_filing: List[Dict] = []
+    for period in sorted_periods:
+        candidates = by_period[period]
+        best: Optional[Dict] = None
+        for filing in candidates:
+            try:
+                data = fetch_13f_holdings(
+                    cik_padded,
+                    filing_date=filing["filingDate"],
+                    force_refresh=force_refresh,
+                )
+                if best is None or data["total_holdings"] > best["total_holdings"]:
+                    best = data
+                time.sleep(0.05)
+            except Exception as exc:
+                logger.warning("Could not load filing %s: %s", filing["filingDate"], exc)
+        if best and best["total_holdings"] > 0:
+            per_filing.append(best)
+
+    if not per_filing:
+        raise ValueError(f"No holdings data could be loaded for CIK {cik}")
+
+    # Find top-N companies by value in the most recent (largest) filing
+    latest = per_filing[-1]
+    top_companies = [h["company_name"] for h in latest["holdings"][:top_n]]
+
+    # Build time-series: columns = filing dates, rows = per-company portfolio %
+    columns = [f["filing_date"] for f in per_filing]
+    rows = []
+    for company in top_companies:
+        values = []
+        for filing_data in per_filing:
+            match = next(
+                (h for h in filing_data["holdings"] if h["company_name"] == company),
+                None,
+            )
+            values.append(round(match["portfolio_pct"], 4) if match else None)
+        rows.append({"name": company, "values": values})
+
+    result = {
+        "cik": cik_padded,
+        "investor_name": investor_name,
+        "columns": columns,
+        "rows": rows,
+        "all_holdings_latest": latest["holdings"],
+        "total_portfolio_value": latest["total_portfolio_value"],
+        "latest_filing_date": latest["filing_date"],
+        "available_filings": all_filings,
+        "fetched_at": datetime.now().isoformat(),
+    }
+
+    _write_cache(cache_path, result)
+    return result
+
