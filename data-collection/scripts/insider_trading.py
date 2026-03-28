@@ -451,3 +451,145 @@ def fetch_form4_transactions(
         "from_cache": True,
     }
 
+
+# ══════════════════════════════════════════════════════════════════
+# FORM 13F PARSING
+# ══════════════════════════════════════════════════════════════════
+
+def _find_13f_info_table_url(cik: str, accession_number: str) -> Optional[str]:
+    """
+    Locate the 13F information table **raw** XML file URL within a filing.
+
+    The filing index contains two flavours of the info table link:
+      - xslForm13F_X02/50240.xml  → XSLT-styled (renders as HTML) — SKIP
+      - 50240.xml                  → raw XML we want
+
+    Strategy:
+      1. Parse index HTML, find rows with "INFORMATION TABLE" text.
+         Prefer links whose text ends in .xml (raw) over those ending in .html.
+      2. Fallback: any .xml not named primary_doc and not under xsl* path.
+      3. Last resort: probe common filenames.
+    """
+    acc_clean = accession_number.replace("-", "")
+    cik_int = str(int(cik))
+    base_url = f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc_clean}"
+    index_url = f"{base_url}/{accession_number}-index.htm"
+
+    def _resolve(href: str) -> str:
+        if href.startswith("/"):
+            return f"https://www.sec.gov{href}"
+        if href.startswith("http"):
+            return href
+        return f"{base_url}/{href}"
+
+    def _is_raw_xml(href: str) -> bool:
+        """True if the href points to raw XML (not an XSLT wrapper)."""
+        lower = href.lower()
+        if not lower.endswith(".xml"):
+            return False
+        # Skip XSLT-prefixed paths (e.g. xslForm13F_X02/..., xslF345X05/...)
+        parts = href.split("/")
+        if len(parts) > 1 and parts[-2].lower().startswith("xsl"):
+            return False
+        return True
+
+    try:
+        resp = requests.get(index_url, headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # Pass 1: rows with "INFORMATION TABLE" — collect raw .xml links
+        info_table_links = []
+        for row in soup.find_all("tr"):
+            cells = row.find_all("td")
+            row_text = " ".join(c.text.upper() for c in cells)
+            if "INFORMATION TABLE" in row_text:
+                for cell in cells:
+                    for link in cell.find_all("a", href=True):
+                        href = link["href"]
+                        if _is_raw_xml(href):
+                            info_table_links.append(_resolve(href))
+
+        if info_table_links:
+            return info_table_links[0]
+
+        # Pass 2: any raw .xml not named primary_doc
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if _is_raw_xml(href) and "primary_doc" not in href.lower():
+                return _resolve(href)
+
+    except Exception as exc:
+        logger.warning("Could not fetch 13F index for %s: %s", accession_number, exc)
+
+    # Last resort: probe known filenames
+    for fname in ["informationtable.xml", "infotable.xml", "form13finfotable.xml"]:
+        url = f"{base_url}/{fname}"
+        try:
+            r = requests.head(url, headers=HEADERS, timeout=5)
+            if r.status_code == 200:
+                return url
+        except Exception:
+            pass
+
+    return None
+
+
+def _parse_13f_xml(xml_text: str) -> List[Dict]:
+    """Parse 13F information table XML → list of holding dicts."""
+    soup = BeautifulSoup(xml_text, "lxml-xml")
+    holdings: List[Dict] = []
+
+    for entry in soup.find_all("infoTable"):
+        name_tag = entry.find("nameOfIssuer")
+        cusip_tag = entry.find("cusip")
+        value_tag = entry.find("value")
+        title_tag = entry.find("titleOfClass")
+        put_call_tag = entry.find("putCall")
+
+        company_name = name_tag.text.strip() if name_tag else ""
+        cusip = cusip_tag.text.strip() if cusip_tag else ""
+        title = title_tag.text.strip() if title_tag else ""
+        put_call = put_call_tag.text.strip() if (put_call_tag and put_call_tag.text) else None
+        value = _safe_float(value_tag.text) if value_tag else None  # US dollars
+
+        shr_amt = entry.find("shrsOrPrnAmt")
+        shares = shares_type = None
+        if shr_amt:
+            shr_tag = shr_amt.find("sshPrnamt")
+            type_tag = shr_amt.find("sshPrnamtType")
+            shares = _safe_float(shr_tag.text) if shr_tag else None
+            shares_type = type_tag.text.strip() if type_tag else ""
+
+        holdings.append({
+            "company_name": company_name,
+            "cusip": cusip,
+            "title_of_class": title,
+            "value": value,        # dollars
+            "shares": shares,
+            "shares_type": shares_type,
+            "put_call": put_call,
+            "portfolio_pct": 0.0,  # filled in by caller
+        })
+
+    return holdings
+
+
+def _aggregate_holdings(holdings: List[Dict]) -> List[Dict]:
+    """
+    Aggregate duplicate CUSIPs (some investors report multiple managers for same stock).
+    Sums value and shares per CUSIP, keeps first company_name.
+    """
+    agg: Dict[str, Dict] = {}
+    for h in holdings:
+        key = h["cusip"] or h["company_name"]
+        if key not in agg:
+            agg[key] = dict(h)
+        else:
+            agg[key]["value"] = (agg[key]["value"] or 0) + (h["value"] or 0)
+            agg[key]["shares"] = (agg[key]["shares"] or 0) + (h["shares"] or 0)
+
+    result = list(agg.values())
+    result.sort(key=lambda h: h.get("value") or 0, reverse=True)
+    return result
+
