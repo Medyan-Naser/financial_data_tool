@@ -113,3 +113,84 @@ def _get_cik_from_ticker(ticker: str) -> str:
             return cik
     raise ValueError(f"Ticker '{ticker}' not found in SEC database")
 
+
+def _get_submissions(cik: str) -> dict:
+    """
+    Fetch all EDGAR submission data for a CIK including paginated older filings.
+    Returns the full submissions dict with all filings merged into 'recent'.
+    """
+    url = f"https://data.sec.gov/submissions/CIK{cik}.json"
+    resp = requests.get(url, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+
+    for old_file in data.get("filings", {}).get("files", []):
+        old_url = "https://data.sec.gov/submissions/" + old_file["name"]
+        try:
+            old_resp = requests.get(old_url, headers=HEADERS, timeout=10)
+            old_sub = old_resp.json()
+            for col in old_sub:
+                if col in data["filings"]["recent"]:
+                    data["filings"]["recent"][col] += old_sub[col]
+        except Exception as exc:
+            logger.warning("Could not load extra filings page %s: %s", old_file["name"], exc)
+
+    return data
+
+
+def _xml_val(element, tag: str, default=None):
+    """
+    Extract text from <tag><value>...</value></tag> or plain <tag>...</tag>.
+    Returns default when tag is missing or contains only <footnoteId/>.
+    """
+    if element is None:
+        return default
+    found = element.find(tag)
+    if found is None:
+        return default
+    value_child = found.find("value")
+    if value_child is not None:
+        text = (value_child.text or "").strip()
+        return text if text else default
+    text = (found.text or "").strip()
+    return text if text else default
+
+
+def _safe_float(s) -> Optional[float]:
+    if s is None:
+        return None
+    try:
+        return float(str(s).replace(",", "").strip())
+    except (ValueError, TypeError):
+        return None
+
+
+# ══════════════════════════════════════════════════════════════════
+# FORM 4 PARSING
+# ══════════════════════════════════════════════════════════════════
+
+_TXN_CODE_MAP = {
+    "P": "Purchase", "S": "Sale", "A": "Award/Grant",
+    "D": "Return to Issuer", "F": "Tax Withholding",
+    "M": "Option/RSU Exercise", "C": "Conversion", "G": "Gift",
+    "J": "Other", "I": "Discretionary", "K": "Equity Conversion",
+    "L": "Small Acquisition", "O": "Option Exercise (OTM)",
+    "U": "Tender Disposition", "W": "Inheritance",
+    "X": "Option Exercise (ITM)", "Z": "Voting Trust",
+    "V": "Voluntary", "E": "Expiration", "H": "Expiration (ITM)",
+}
+
+
+def _normalize_txn_type(code: str, acquired_disposed: str) -> str:
+    code_up = (code or "").upper()
+    if code_up == "P":
+        return "Buy"
+    if code_up == "S":
+        return "Sell"
+    base = _TXN_CODE_MAP.get(code_up, f"Other ({code})")
+    if acquired_disposed == "A":
+        return f"{base} (Acquired)"
+    if acquired_disposed == "D":
+        return f"{base} (Disposed)"
+    return base
+
