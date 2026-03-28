@@ -909,3 +909,62 @@ def fetch_13f_history(
     _write_cache(cache_path, result)
     return result
 
+
+# ══════════════════════════════════════════════════════════════════
+# CLI ENTRY POINT (for manual testing)
+# ══════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    import argparse
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    parser = argparse.ArgumentParser(description="Insider Trading & Investor Data Collection")
+    sub = parser.add_subparsers(dest="cmd")
+
+    p_form4 = sub.add_parser("form4", help="Fetch Form 4 insider transactions")
+    p_form4.add_argument("ticker")
+    p_form4.add_argument("--limit", type=int, default=40)
+    p_form4.add_argument("--derivatives", action="store_true")
+    p_form4.add_argument("--refresh", action="store_true")
+
+    p_search = sub.add_parser("search", help="Search institutional investors")
+    p_search.add_argument("query")
+
+    p_holdings = sub.add_parser("holdings", help="Fetch 13F holdings for a CIK")
+    p_holdings.add_argument("cik")
+    p_holdings.add_argument("--date", default=None)
+    p_holdings.add_argument("--refresh", action="store_true")
+
+    p_history = sub.add_parser("history", help="Fetch portfolio history for a CIK")
+    p_history.add_argument("cik")
+    p_history.add_argument("--filings", type=int, default=6)
+    p_history.add_argument("--top", type=int, default=15)
+
+    args = parser.parse_args()
+
+    if args.cmd == "form4":
+        data = fetch_form4_transactions(args.ticker, args.limit, args.derivatives, args.refresh)
+        print(f"\n{data['company_name']} ({data['ticker']})")
+        print(f"Transactions: {len(data['transactions'])}")
+        for t in data["transactions"][:5]:
+            print(f"  {t['transaction_date']} | {t['insider_name']} | {t['transaction_type']} | {t['shares']} shares @ ${t['price_per_share']}")
+    elif args.cmd == "search":
+        data = search_investors(args.query)
+        print(f"\nResults for '{args.query}':")
+        for r in data["results"][:10]:
+            print(f"  {r['name']} (CIK {r['cik']})")
+    elif args.cmd == "holdings":
+        data = fetch_13f_holdings(args.cik, args.date, args.refresh)
+        print(f"\n{data['investor_name']} — {data['filing_date']}")
+        print(f"Total portfolio: ${data['total_portfolio_value']:,.0f}")
+        for h in data["holdings"][:10]:
+            print(f"  {h['company_name']}: {h['portfolio_pct']:.2f}%  ${h['value']:,.0f}")
+    elif args.cmd == "history":
+        data = fetch_13f_history(args.cik, args.filings, args.top)
+        print(f"\n{data['investor_name']} — {len(data['columns'])} filings")
+        print("Columns:", data["columns"])
+        for row in data["rows"][:5]:
+            print(f"  {row['name']}: {row['values']}")
+    else:
+        parser.print_help()
