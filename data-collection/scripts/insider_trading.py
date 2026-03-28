@@ -593,3 +593,64 @@ def _aggregate_holdings(holdings: List[Dict]) -> List[Dict]:
     result.sort(key=lambda h: h.get("value") or 0, reverse=True)
     return result
 
+
+# ══════════════════════════════════════════════════════════════════
+# PUBLIC: INVESTOR SEARCH
+# ══════════════════════════════════════════════════════════════════
+
+def search_investors(query: str) -> Dict:
+    """
+    Search EDGAR for institutional investors by name (those that file 13F-HR).
+
+    Uses the EDGAR company search HTML (tableFile2) because the Atom feed
+    returns broken company names (SEC CGI renders Perl internal references).
+
+    Returns:
+        dict with keys: query, results (list of {cik, name}), count, fetched_at
+    """
+    cache_key = f"search_{re.sub(r'[^a-z0-9]', '_', query.lower())}"
+    cache_path = _cache_path(INVESTOR_CACHE_DIR, cache_key)
+
+    cached = _read_cache(cache_path)
+    if cached:
+        return cached
+
+    resp = requests.get(
+        "https://www.sec.gov/cgi-bin/browse-edgar",
+        params={
+            "company": query, "CIK": "", "type": "13F-HR",
+            "dateb": "", "owner": "include", "count": "40",
+            "search_text": "", "action": "getcompany",
+        },
+        headers=HEADERS,
+        timeout=15,
+    )
+    resp.raise_for_status()
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    results = []
+
+    table = soup.find("table", class_="tableFile2")
+    if table:
+        for row in table.find_all("tr"):
+            cols = row.find_all("td")
+            if len(cols) >= 2:
+                cik_text = cols[0].text.strip()
+                name_raw = cols[1].text.strip()
+                # Strip SIC description if appended (e.g. "NAME INC\nSIC: 6726 ...")
+                name = name_raw.split("SIC:")[0].split("\n")[0].strip()
+                if cik_text.isdigit() and name:
+                    results.append({
+                        "cik": cik_text.zfill(10),
+                        "name": name,
+                    })
+
+    result = {
+        "query": query,
+        "results": results,
+        "count": len(results),
+        "fetched_at": datetime.now().isoformat(),
+    }
+    _write_cache(cache_path, result)
+    return result
+
