@@ -194,3 +194,120 @@ def _normalize_txn_type(code: str, acquired_disposed: str) -> str:
         return f"{base} (Disposed)"
     return base
 
+
+def _parse_form4_xml(xml_text: str, filing_date: str) -> List[Dict]:
+    """Parse a Form 4 XML document → list of transaction dicts."""
+    soup = BeautifulSoup(xml_text, "lxml-xml")
+    transactions: List[Dict] = []
+
+    owner = soup.find("reportingOwner")
+    if not owner:
+        return []
+
+    owner_name = owner_cik = ""
+    role_parts: List[str] = []
+
+    owner_id = owner.find("reportingOwnerId")
+    if owner_id:
+        name_tag = owner_id.find("rptOwnerName")
+        owner_name = name_tag.text.strip() if name_tag else ""
+        cik_tag = owner_id.find("rptOwnerCik")
+        owner_cik = cik_tag.text.strip() if cik_tag else ""
+
+    rel = owner.find("reportingOwnerRelationship")
+    if rel:
+        def _is1(tag):
+            t = rel.find(tag)
+            return t is not None and (t.text or "").strip() == "1"
+
+        if _is1("isDirector"):
+            role_parts.append("Director")
+        if _is1("isOfficer"):
+            title_tag = rel.find("officerTitle")
+            title = title_tag.text.strip() if title_tag else ""
+            role_parts.append(f"Officer ({title})" if title else "Officer")
+        if _is1("isTenPercentOwner"):
+            role_parts.append("10% Owner")
+
+    role_str = ", ".join(role_parts) if role_parts else "Insider"
+    period_tag = soup.find("periodOfReport")
+    period = period_tag.text.strip() if period_tag else filing_date
+
+    def _parse_txn(txn_el, is_derivative: bool) -> Optional[Dict]:
+        security = _xml_val(txn_el, "securityTitle") or "Common Stock"
+        txn_date = _xml_val(txn_el, "transactionDate") or period
+
+        coding = txn_el.find("transactionCoding")
+        txn_code = ""
+        if coding:
+            ct = coding.find("transactionCode")
+            txn_code = ct.text.strip() if ct else ""
+
+        amounts = txn_el.find("transactionAmounts")
+        shares = price = None
+        acquired_disposed = ""
+        if amounts:
+            shares = _safe_float(_xml_val(amounts, "transactionShares"))
+            price = _safe_float(_xml_val(amounts, "transactionPricePerShare"))
+            acquired_disposed = _xml_val(amounts, "transactionAcquiredDisposedCode") or ""
+
+        post = txn_el.find("postTransactionAmounts")
+        shares_after = (
+            _safe_float(_xml_val(post, "sharesOwnedFollowingTransaction")) if post else None
+        )
+
+        txn_type = _normalize_txn_type(txn_code, acquired_disposed)
+        total_value = (
+            round(shares * price, 2)
+            if shares is not None and price is not None and price > 0
+            else None
+        )
+
+        return {
+            "insider_name": owner_name,
+            "insider_cik": owner_cik,
+            "insider_role": role_str,
+            "security_title": security,
+            "transaction_type": txn_type,
+            "transaction_code": txn_code,
+            "shares": shares,
+            "price_per_share": price,
+            "total_value": total_value,
+            "acquired_disposed": acquired_disposed,
+            "transaction_date": txn_date,
+            "filing_date": filing_date,
+            "shares_after_transaction": shares_after,
+            "is_derivative": is_derivative,
+        }
+
+    ndt = soup.find("nonDerivativeTable")
+    if ndt:
+        for txn in ndt.find_all("nonDerivativeTransaction"):
+            parsed = _parse_txn(txn, False)
+            if parsed:
+                transactions.append(parsed)
+
+    dt = soup.find("derivativeTable")
+    if dt:
+        for txn in dt.find_all("derivativeTransaction"):
+            parsed = _parse_txn(txn, True)
+            if parsed:
+                transactions.append(parsed)
+
+    return transactions
+
+
+def _fetch_form4_xml(cik: str, accession_number: str, primary_doc: str) -> Optional[str]:
+    """Fetch raw Form 4 XML text from EDGAR."""
+    acc_clean = accession_number.replace("-", "")
+    cik_int = str(int(cik))
+    doc_filename = primary_doc.split("/")[-1] if "/" in primary_doc else primary_doc
+    url = f"https://www.sec.gov/Archives/edgar/data/{cik_int}/{acc_clean}/{doc_filename}"
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+        return resp.text
+    except Exception as exc:
+        logger.warning("Failed to fetch Form 4 %s: %s", accession_number, exc)
+        return None
+
