@@ -10,6 +10,8 @@ import AIView from './components/AIView';
 import EconomyView from './components/EconomyView';
 import DataCollectionProgress from './components/DataCollectionProgress';
 import StockPriceChart from './components/StockPriceChart';
+import InsiderTradingPanel from './components/InsiderTradingPanel';
+import InvestorView from './components/InvestorView';
 import { checkCacheStatus, getCachedFinancialData, collectFinancialData, refreshFinancialData } from './api';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -20,7 +22,7 @@ function App() {
   const [financialData, setFinancialData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeMainTab, setActiveMainTab] = useState('stocks'); // Main navigation: stocks, economy, ai
+  const [activeMainTab, setActiveMainTab] = useState('stocks'); // Main navigation: stocks, economy, ai, investors
   const [activeTab, setActiveTab] = useState('income_statement');
   const [charts, setCharts] = useState([]);
   const [tablePanel, setTablePanel] = useState({
@@ -32,6 +34,10 @@ function App() {
     size: { width: 800, height: 600 }
   });
   const [showStockPrice, setShowStockPrice] = useState(true);
+  const [insiderPanel, setInsiderPanel] = useState({
+    position: { x: 20, y: 740 },
+    size: { width: 1000, height: 700 }
+  });
   const [chartPanels, setChartPanels] = useState({});
   const [draggingPanel, setDraggingPanel] = useState(null);
   const [alignmentGuides, setAlignmentGuides] = useState([]);
@@ -216,6 +222,7 @@ function App() {
     const allPanels = [
       { id: 'table', ...tablePanel },
       { id: 'stockPrice', ...stockPricePanel },
+      { id: 'insider', ...insiderPanel },
       ...Object.entries(chartPanels).map(([id, panel]) => ({ id, ...panel }))
     ].filter(p => p.id !== excludePanelId);
 
@@ -323,6 +330,12 @@ function App() {
             onClick={() => setActiveMainTab('ai')}
           >
             🤖 AI Predictions
+          </button>
+          <button
+            className={`main-tab ${activeMainTab === 'investors' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('investors')}
+          >
+            🏛️ Investors
           </button>
         </div>
         
@@ -478,6 +491,31 @@ function App() {
               );
             })}
 
+            {/* Insider Trading Panel — always shown when a ticker is loaded */}
+            {selectedTicker && financialData && (
+              <DraggableResizablePanel
+                id="insider"
+                position={insiderPanel.position}
+                size={insiderPanel.size}
+                onPositionChange={(pos) => {
+                  setInsiderPanel(prev => ({ ...prev, position: pos }));
+                  setDraggingPanel('insider');
+                  setAlignmentGuides(calculateAlignmentGuides('insider'));
+                }}
+                onSizeChange={(size) => setInsiderPanel(prev => ({ ...prev, size }))}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('insider')}
+                minWidth={600}
+                minHeight={500}
+                alignmentGuides={alignmentGuides}
+                showAlignmentGuides={draggingPanel === 'insider'}
+              >
+                <InsiderTradingPanel
+                  ticker={selectedTicker}
+                />
+              </DraggableResizablePanel>
+            )}
+
             {/* Stock Price Panel */}
             {showStockPrice && selectedTicker && (
               <DraggableResizablePanel
@@ -511,6 +549,11 @@ function App() {
         {/* Economy Tab */}
         {activeMainTab === 'economy' && (
           <EconomyView />
+        )}
+
+        {/* Investors Tab */}
+        {activeMainTab === 'investors' && (
+          <InvestorView />
         )}
 
         {/* AI Predictions Tab */}
