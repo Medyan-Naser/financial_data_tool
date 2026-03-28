@@ -311,3 +311,143 @@ def _fetch_form4_xml(cik: str, accession_number: str, primary_doc: str) -> Optio
         logger.warning("Failed to fetch Form 4 %s: %s", accession_number, exc)
         return None
 
+
+# ══════════════════════════════════════════════════════════════════
+# PUBLIC: FORM 4 — INSIDER TRANSACTIONS
+# ══════════════════════════════════════════════════════════════════
+
+# How many years back to collect Form 4 filings for the full MAX cache
+_FORM4_MAX_YEARS = 10
+
+
+def _fetch_form4_all(ticker: str) -> Dict:
+    """
+    Fetch Form 4 filings for a ticker going back _FORM4_MAX_YEARS years.
+    Results are saved in the MAX cache (key: {ticker}_ALL).
+    This is the "collect once, filter locally" function — never called directly
+    by users; always goes through fetch_form4_transactions().
+    """
+    ticker = ticker.upper()
+    max_cutoff = (datetime.now() - timedelta(days=_FORM4_MAX_YEARS * 365)).strftime("%Y-%m-%d")
+    logger.info("Fetching Form 4 MAX data for %s (last %d years, cutoff %s)", ticker, _FORM4_MAX_YEARS, max_cutoff)
+
+    cik = _get_cik_from_ticker(ticker)
+    subs = _get_submissions(cik)
+    filings = subs.get("filings", {}).get("recent", {})
+    company_name = subs.get("name", ticker)
+
+    forms = filings.get("form", [])
+    accessions = filings.get("accessionNumber", [])
+    filing_dates = filings.get("filingDate", [])
+    primary_docs = filings.get("primaryDocument", [])
+
+    # Filter by form type AND date — only fetch XMLs within the year window
+    form4_filings = [
+        {
+            "accessionNumber": accessions[i],
+            "filingDate": filing_dates[i],
+            "primaryDocument": primary_docs[i] if i < len(primary_docs) else "",
+        }
+        for i, form in enumerate(forms)
+        if form in ("4", "4/A")
+        and i < len(accessions)
+        and filing_dates[i] >= max_cutoff
+    ]
+
+    all_transactions: List[Dict] = []
+    parse_errors = 0
+
+    try:
+        for idx, filing in enumerate(form4_filings):
+            if _stop_fetch.is_set():
+                logger.info("Fetch of %s stopped early at filing %d/%d", ticker, idx, len(form4_filings))
+                break
+            if not filing["primaryDocument"] or not filing["accessionNumber"]:
+                continue
+            xml_text = _fetch_form4_xml(cik, filing["accessionNumber"], filing["primaryDocument"])
+            if xml_text:
+                txns = _parse_form4_xml(xml_text, filing["filingDate"])
+                all_transactions.extend(txns)
+            else:
+                parse_errors += 1
+
+            # Respect SEC rate limit (~5 req/s burst, 10/s sustained)
+            if idx % 5 == 4:
+                time.sleep(0.2)
+    except KeyboardInterrupt:
+        logger.info("KeyboardInterrupt: stopping Form 4 fetch for %s, collected %d txns so far", ticker, len(all_transactions))
+
+    all_transactions.sort(key=lambda x: x.get("transaction_date") or "", reverse=True)
+
+    return {
+        "ticker": ticker,
+        "cik": cik,
+        "company_name": company_name,
+        "transactions": all_transactions,           # ALL transactions, unfiltered
+        "total_filings_parsed": len(form4_filings),
+        "parse_errors": parse_errors,
+        "fetched_at": datetime.now().isoformat(),
+    }
+
+
+def fetch_form4_transactions(
+    ticker: str,
+    years: int = 5,
+    force_refresh: bool = False,
+) -> Dict:
+    """
+    Fetch Form 4 insider transactions for a company.
+
+    Strategy (mirrors stock_price.py):
+      1. Check if the full MAX cache ({ticker}_ALL) exists.
+      2. If not (or force_refresh), call _fetch_form4_all() and cache ALL filings.
+      3. Filter the cached full dataset by `years` (how many years back to return).
+
+    This means the first call is slow (fetches everything), but subsequent calls
+    for any year range are instant cache hits with local filtering.
+
+    Args:
+        ticker: Stock ticker symbol (e.g., "AAPL")
+        years: How many years back to return transactions for (filters local cache)
+        force_refresh: Re-fetch from EDGAR and overwrite the full cache
+
+    Returns:
+        dict with keys: ticker, cik, company_name, transactions,
+                        total_filings_parsed, parse_errors,
+                        requested_years, cutoff_date, from_cache, fetched_at
+    """
+    ticker = ticker.upper()
+    years = max(1, years)
+
+    # ── Full-data (MAX) cache — keyed as {TICKER}_ALL ──────────────────────
+    all_cache_path = _cache_path(INSIDER_CACHE_DIR, f"{ticker}_ALL")
+
+    if not force_refresh:
+        full_cached = _read_cache(all_cache_path)
+    else:
+        full_cached = None
+
+    if full_cached is None:
+        full_cached = _fetch_form4_all(ticker)
+        _write_cache(all_cache_path, full_cached)
+        logger.info("Cached Form 4 MAX data for %s (%d txns)", ticker, len(full_cached["transactions"]))
+    else:
+        logger.info("Cache hit for insider %s (full data, filtering to %d years)", ticker, years)
+
+    # ── Filter by requested year range ─────────────────────────────────────
+    cutoff = (datetime.now() - timedelta(days=years * 365)).strftime("%Y-%m-%d")
+    all_txns = full_cached.get("transactions", [])
+    filtered = [
+        t for t in all_txns
+        if (t.get("transaction_date") or t.get("filing_date") or "9999-12-31") >= cutoff
+    ]
+
+    return {
+        **full_cached,
+        "transactions": filtered,
+        "requested_years": years,
+        "cutoff_date": cutoff,
+        "total_cached_transactions": len(all_txns),
+        "from_cache": True,
+    }
+
