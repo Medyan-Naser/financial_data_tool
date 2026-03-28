@@ -107,3 +107,70 @@ export const getFinancialData = async (ticker) => {
     throw error;
   }
 };
+
+// ──────────────────────────────────────────────────────────────
+// Insider Trading (Form 4)
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Fetch Form 4 insider transactions for a company.
+ * @param {string} ticker
+ * @param {object} options - { limit, include_derivatives, force_refresh }
+ */
+export const getInsiderTransactions = async (ticker, options = {}) => {
+  const { years = 5, force_refresh = false } = options;
+  const response = await axios.get(`${API_BASE_URL}/api/insider/${ticker}`, {
+    params: { years, force_refresh },
+  });
+  return response.data;
+};
+
+// ──────────────────────────────────────────────────────────────
+// Investor Tracking (Form 13F)
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Search EDGAR for institutional investors by name.
+ * @param {string} query
+ */
+export const searchInvestors = async (query) => {
+  const response = await axios.get(`${API_BASE_URL}/api/investors/search`, {
+    params: { q: query },
+  });
+  return response.data;
+};
+
+/**
+ * List all 13F-HR filing dates for an investor CIK.
+ * @param {string} cik
+ */
+export const getInvestorFilings = async (cik) => {
+  const response = await axios.get(`${API_BASE_URL}/api/investors/${cik}/filings`);
+  return response.data;
+};
+
+/**
+ * Get 13F holdings for a specific filing (defaults to most recent).
+ * @param {string} cik
+ * @param {string|null} filingDate - YYYY-MM-DD or null for latest
+ * @param {boolean} forceRefresh
+ */
+export const getInvestorHoldings = async (cik, filingDate = null, forceRefresh = false) => {
+  const params = { force_refresh: forceRefresh };
+  if (filingDate) params.filing_date = filingDate;
+  const response = await axios.get(`${API_BASE_URL}/api/investors/${cik}/holdings`, { params });
+  return response.data;
+};
+
+/**
+ * Get portfolio weight time-series for ChartManager (top-N holdings over multiple filings).
+ * @param {string} cik
+ * @param {object} options - { num_filings, top_n, force_refresh }
+ */
+export const getInvestorHistory = async (cik, options = {}) => {
+  const { num_filings = 6, top_n = 15, force_refresh = false } = options;
+  const response = await axios.get(`${API_BASE_URL}/api/investors/${cik}/history`, {
+    params: { num_filings, top_n, force_refresh },
+  });
+  return response.data;
+};
