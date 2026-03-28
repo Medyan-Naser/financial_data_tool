@@ -5,6 +5,7 @@ from . import economy_endpoints
 from . import financials_cached
 from . import ai_models
 from . import stock_price
+from . import insider_endpoints
 from starlette.middleware.cors import CORSMiddleware
 
 
@@ -27,3 +28,4 @@ app.include_router(ai_endpoints.router)
 app.include_router(ai_models.router)  # New AI/ML models
 app.include_router(economy_endpoints.router)  # Economy data endpoints
 app.include_router(stock_price.router)  # Stock price data endpoints
+app.include_router(insider_endpoints.router)  # Insider trading + investor tracking (Form 4 / 13F)
