@@ -654,3 +654,142 @@ def search_investors(query: str) -> Dict:
     _write_cache(cache_path, result)
     return result
 
+
+# ══════════════════════════════════════════════════════════════════
+# PUBLIC: 13F FILINGS LIST
+# ══════════════════════════════════════════════════════════════════
+
+def fetch_investor_filings(cik: str, force_refresh: bool = False) -> Dict:
+    """
+    Return all 13F-HR filing dates for an investor CIK.
+
+    Returns:
+        dict with keys: cik, investor_name, filings (list), total_filings, fetched_at
+    """
+    cik_padded = cik.zfill(10)
+    cache_path = _cache_path(INVESTOR_CACHE_DIR, f"filings_{cik_padded}")
+
+    if not force_refresh:
+        cached = _read_cache(cache_path)
+        if cached:
+            return cached
+
+    subs = _get_submissions(cik_padded)
+    filings = subs.get("filings", {}).get("recent", {})
+    investor_name = subs.get("name", f"CIK {cik}")
+
+    forms = filings.get("form", [])
+    accessions = filings.get("accessionNumber", [])
+    filing_dates = filings.get("filingDate", [])
+    report_dates = filings.get("reportDate", [])
+
+    filing_list = [
+        {
+            "accessionNumber": accessions[i],
+            "filingDate": filing_dates[i],
+            "reportDate": report_dates[i] if i < len(report_dates) else "",
+            "form": form,
+        }
+        for i, form in enumerate(forms)
+        if form in ("13F-HR", "13F-HR/A") and i < len(accessions)
+    ]
+
+    result = {
+        "cik": cik_padded,
+        "investor_name": investor_name,
+        "filings": filing_list,
+        "total_filings": len(filing_list),
+        "fetched_at": datetime.now().isoformat(),
+    }
+    _write_cache(cache_path, result)
+    return result
+
+
+# ══════════════════════════════════════════════════════════════════
+# PUBLIC: 13F HOLDINGS
+# ══════════════════════════════════════════════════════════════════
+
+def fetch_13f_holdings(
+    cik: str,
+    filing_date: Optional[str] = None,
+    force_refresh: bool = False,
+) -> Dict:
+    """
+    Fetch and parse 13F-HR holdings for an investor.
+
+    Args:
+        cik: Investor EDGAR CIK
+        filing_date: Specific YYYY-MM-DD filing date, or None for most recent
+        force_refresh: Bypass file cache
+
+    Returns:
+        dict with keys: cik, investor_name, filing_date, report_date,
+                        holdings (list), total_holdings, total_portfolio_value,
+                        available_filings, fetched_at
+    """
+    cik_padded = cik.zfill(10)
+    cache_key = f"holdings_{cik_padded}_{filing_date or 'latest'}"
+    cache_path = _cache_path(INVESTOR_CACHE_DIR, cache_key)
+
+    if not force_refresh:
+        cached = _read_cache(cache_path)
+        if cached:
+            logger.info("Cache hit for investor holdings %s", cik_padded)
+            return cached
+
+    logger.info("Fetching 13F holdings for CIK %s (date=%s)", cik_padded, filing_date or "latest")
+
+    filings_data = fetch_investor_filings(cik_padded, force_refresh=force_refresh)
+    filing_list = filings_data.get("filings", [])
+    investor_name = filings_data.get("investor_name", f"CIK {cik}")
+
+    if not filing_list:
+        raise ValueError(f"No 13F-HR filings found for CIK {cik}")
+
+    if filing_date:
+        target = next((f for f in filing_list if f["filingDate"] == filing_date), None)
+        if not target:
+            raise ValueError(f"No 13F filing found for date {filing_date}")
+    else:
+        target = filing_list[0]
+
+    info_url = _find_13f_info_table_url(cik_padded, target["accessionNumber"])
+
+    raw_holdings: List[Dict] = []
+    if info_url:
+        try:
+            resp = requests.get(info_url, headers=HEADERS, timeout=20)
+            resp.raise_for_status()
+            raw_holdings = _parse_13f_xml(resp.text)
+        except Exception as exc:
+            logger.error("Failed to fetch 13F info table for CIK %s: %s", cik, exc)
+    else:
+        logger.warning("Could not find info table URL for CIK %s filing %s", cik, target["accessionNumber"])
+
+    holdings = _aggregate_holdings(raw_holdings)
+    total_value = sum(h.get("value") or 0 for h in holdings)
+
+    for h in holdings:
+        h["portfolio_pct"] = (
+            round((h.get("value") or 0) / total_value * 100, 4) if total_value > 0 else 0.0
+        )
+
+    result = {
+        "cik": cik_padded,
+        "investor_name": investor_name,
+        "filing_date": target["filingDate"],
+        "report_date": target.get("reportDate", ""),
+        "holdings": holdings,
+        "total_holdings": len(holdings),
+        "total_portfolio_value": total_value,
+        "available_filings": [f["filingDate"] for f in filing_list],
+        "fetched_at": datetime.now().isoformat(),
+    }
+
+    _write_cache(cache_path, result)
+    logger.info(
+        "13F fetch complete for %s: %d positions, total $%.1fB",
+        investor_name, len(holdings), total_value / 1e9,
+    )
+    return result
+
