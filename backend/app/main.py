@@ -11,6 +11,16 @@ from starlette.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+
+@app.on_event("shutdown")
+async def _on_shutdown():
+    """Signal any in-progress EDGAR fetch loops to stop so Ctrl+C exits promptly."""
+    try:
+        from insider_trading import _stop_fetch
+        _stop_fetch.set()
+    except Exception:
+        pass
+
 # Add CORS middleware to allow cross-origin requests from your React app
 app.add_middleware(
     CORSMiddleware,
