@@ -166,3 +166,129 @@
   color: #64748b;
   margin: 0 0 16px 0;
 }
+
+.itv-tooltip {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+}
+
+.itv-tooltip-label {
+  color: #94a3b8;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.itv-filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.itv-filter-btn {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.itv-filter-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.itv-filter-btn.active {
+  background: #1d4ed8;
+  color: white;
+  border-color: #1d4ed8;
+}
+
+.itv-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #334155;
+}
+
+.itv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.itv-table thead tr {
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.itv-table th {
+  padding: 10px 14px;
+  text-align: left;
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.itv-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.itv-sortable:hover {
+  color: #e2e8f0;
+}
+
+.itv-table tbody tr {
+  border-bottom: 1px solid #1e293b;
+  transition: background 0.1s;
+}
+
+.itv-table tbody tr:hover {
+  background: #1e293b;
+}
+
+.itv-table td {
+  padding: 9px 14px;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.itv-name {
+  color: #e2e8f0 !important;
+  font-weight: 500;
+}
+
+.itv-role {
+  color: #94a3b8 !important;
+  font-size: 0.8rem;
+}
+
+.itv-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.itv-security {
+  color: #64748b !important;
+  font-size: 0.8rem;
+}
+
+.itv-type-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.itv-no-data {
+  text-align: center !important;
+  color: #475569 !important;
+  padding: 32px !important;
+}
