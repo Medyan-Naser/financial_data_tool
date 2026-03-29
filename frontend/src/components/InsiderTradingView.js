@@ -232,7 +232,64 @@ export default function InsiderTradingView({ availableTickers }) {
             </div>
           )}
 
-          
+          {/* Filters */}
+          <div className="itv-filter-bar">
+            {FILTER_OPTIONS.map((f) => (
+              <button
+                key={f}
+                className={`itv-filter-btn ${filter === f ? 'active' : ''}`}
+                onClick={() => setFilter(f)}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Transactions Table */}
+          <div className="itv-table-wrap">
+            <table className="itv-table">
+              <thead>
+                <tr>
+                  <SortHeader field="transaction_date" label="Date" />
+                  <SortHeader field="insider_name" label="Insider" />
+                  <SortHeader field="insider_role" label="Role" />
+                  <SortHeader field="transaction_type" label="Type" />
+                  <SortHeader field="shares" label="Shares" />
+                  <SortHeader field="price_per_share" label="Price" />
+                  <SortHeader field="total_value" label="Total Value" />
+                  <th>Security</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="itv-no-data">
+                      No transactions found for filter: {filter}
+                    </td>
+                  </tr>
+                ) : (
+                  sortedTransactions.map((t, idx) => {
+                    const color = TXN_TYPE_COLOR[t.transaction_type] || '#94a3b8';
+                    return (
+                      <tr key={idx} className="itv-row">
+                        <td>{t.transaction_date || '—'}</td>
+                        <td className="itv-name">{t.insider_name}</td>
+                        <td className="itv-role">{t.insider_role}</td>
+                        <td>
+                          <span className="itv-type-badge" style={{ background: color + '22', color }}>
+                            {t.transaction_type}
+                          </span>
+                        </td>
+                        <td className="itv-num">{formatShares(t.shares)}</td>
+                        <td className="itv-num">
+                          {t.price_per_share != null ? `$${t.price_per_share.toFixed(2)}` : '—'}
+                        </td>
+                        <td className="itv-num">{formatCurrency(t.total_value)}</td>
+                        <td className="itv-security">{t.security_title}</td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
