@@ -61,3 +61,183 @@ const CustomTooltip = ({ active, payload, label }) => {
     </div>
   );
 };
+
+export default function InsiderTradingView({ availableTickers }) {
+  const [selectedTicker, setSelectedTicker] = useState(null);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('All');
+  const [includeDerivatives, setIncludeDerivatives] = useState(false);
+  const [limit, setLimit] = useState(40);
+  const [sortField, setSortField] = useState('transaction_date');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const fetchData = useCallback(async (ticker, opts = {}) => {
+    if (!ticker) return;
+    setLoading(true);
+    setError(null);
+    setData(null);
+    try {
+      const result = await getInsiderTransactions(ticker, {
+        limit: opts.limit ?? limit,
+        include_derivatives: opts.includeDerivatives ?? includeDerivatives,
+        force_refresh: opts.forceRefresh ?? false,
+      });
+      setData(result);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch insider transactions');
+    } finally {
+      setLoading(false);
+    }
+  }, [limit, includeDerivatives]);
+
+  useEffect(() => {
+    if (selectedTicker) fetchData(selectedTicker);
+  }, [selectedTicker, includeDerivatives, limit]);
+
+  const handleTickerSelect = (ticker) => {
+    setSelectedTicker(ticker);
+    setFilter('All');
+  };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
+  };
+
+  const filteredTransactions = data?.transactions
+    ? data.transactions.filter((t) => {
+        if (filter === 'All') return true;
+        if (filter === 'Buy') return t.transaction_type === 'Buy';
+        if (filter === 'Sell') return t.transaction_type === 'Sell';
+        return (t.transaction_type || '').startsWith(filter);
+      })
+    : [];
+
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    const av = a[sortField] ?? '';
+    const bv = b[sortField] ?? '';
+    const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const chartData = data ? groupByMonth(data.transactions) : [];
+
+  const SortHeader = ({ field, label }) => (
+    <th onClick={() => handleSort(field)} className="itv-sortable">
+      {label} {sortField === field ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+    </th>
+  );
+
+  return (
+    <div className="itv-root">
+      <div className="itv-header">
+        <h2>👥 Insider Trading</h2>
+        <p className="itv-subtitle">Form 4 filings — reported insider transactions</p>
+      </div>
+
+      <div className="itv-controls">
+        <div className="itv-search-wrap">
+          <TickerSearch
+            tickers={availableTickers}
+            onSelect={handleTickerSelect}
+            selectedTicker={selectedTicker}
+          />
+        </div>
+
+        <div className="itv-options">
+          <label className="itv-option-label">
+            <input
+              type="checkbox"
+              checked={includeDerivatives}
+              onChange={(e) => setIncludeDerivatives(e.target.checked)}
+            />
+            Include RSU/options
+          </label>
+          <label className="itv-option-label">
+            Filings:
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="itv-select"
+            >
+              {[20, 40, 60, 80, 100].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          {data && !loading && (
+            <button
+              className="itv-refresh-btn"
+              onClick={() => fetchData(selectedTicker, { forceRefresh: true })}
+            >
+              🔄 Refresh
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading && (
+        <div className="itv-loading">
+          ⏳ Fetching Form 4 filings from EDGAR…
+          <div className="itv-loading-hint">Parsing up to {limit} filings — may take a moment</div>
+        </div>
+      )}
+
+      {error && <div className="itv-error">❌ {error}</div>}
+
+      {!selectedTicker && !loading && (
+        <div className="itv-welcome">
+          <h3>Search for a ticker to view insider transactions</h3>
+          <p>Uses SEC EDGAR Form 4 filings. Only tickers in your cache list are shown, but you can type any ticker directly.</p>
+        </div>
+      )}
+
+      {data && !loading && (
+        <>
+          <div className="itv-summary">
+            <span className="itv-company">{data.company_name} ({data.ticker})</span>
+            <span className="itv-meta">
+              {data.transactions.length} transactions from {data.total_filings_parsed} filings
+              {data.parse_errors > 0 && ` · ${data.parse_errors} parse errors`}
+            </span>
+            {data.from_cache && <span className="itv-cache-badge">📦 Cached</span>}
+          </div>
+
+          {/* Activity Chart */}
+          {chartData.length > 0 && (
+            <div className="itv-chart-section">
+              <h3>Net Insider Activity by Month</h3>
+              <p className="itv-chart-note">Green = purchases · Red = sales (by dollar value)</p>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chartData} margin={{ top: 10, right: 20, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis
+                    tickFormatter={(v) => formatCurrency(Math.abs(v))}
+                    tick={{ fill: '#94a3b8', fontSize: 11 }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ color: '#94a3b8' }} />
+                  <ReferenceLine y={0} stroke="#64748b" />
+                  <Bar dataKey="buy" name="Purchases" fill="#22c55e" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="sell" name="Sales" fill="#ef4444" radius={[0, 0, 3, 3]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
