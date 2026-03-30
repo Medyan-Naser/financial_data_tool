@@ -188,3 +188,116 @@ export default function InvestorView() {
       {label}{sortField === field ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
     </th>
   );
+
+  return (
+    <div className="inv-root">
+      <div className="inv-header">
+        <h2>🏛️ Institutional Investors</h2>
+        <p className="inv-subtitle">Form 13F-HR — institutional portfolio holdings</p>
+      </div>
+
+      {/* Search */}
+      <div className="inv-search-section" ref={dropdownRef}>
+        <div className="inv-search-wrap">
+          <input
+            className="inv-search-input"
+            type="text"
+            placeholder="Search investor name (e.g., Berkshire, Vanguard, BlackRock…)"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+          />
+          {searchLoading && <span className="inv-search-spinner">⏳</span>}
+        </div>
+
+        {showDropdown && searchResults.length > 0 && (
+          <div className="inv-dropdown">
+            {searchResults.map((r) => (
+              <div
+                key={r.cik}
+                className="inv-dropdown-item"
+                onClick={() => handleSelectInvestor(r)}
+              >
+                <span className="inv-dropdown-name">{r.name}</span>
+                <span className="inv-dropdown-cik">CIK {r.cik}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {searchError && <div className="inv-error">❌ {searchError}</div>}
+      </div>
+
+      {!selectedInvestor && !searchLoading && (
+        <div className="inv-welcome">
+          <h3>Search for an institutional investor</h3>
+          <p>Type a fund or company name to find their Form 13F portfolio filings.</p>
+          <div className="inv-examples">
+            <span>Examples:</span>
+            {['Berkshire Hathaway', 'Vanguard', 'BlackRock', 'Renaissance Technologies'].map((name) => (
+              <button
+                key={name}
+                className="inv-example-btn"
+                onClick={() => {
+                  setSearchQuery(name);
+                  handleSearchChange({ target: { value: name } });
+                }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {holdingsLoading && (
+        <div className="inv-loading">⏳ Fetching 13F portfolio data from EDGAR…</div>
+      )}
+
+      {holdingsError && <div className="inv-error">❌ {holdingsError}</div>}
+
+      {holdings && !holdingsLoading && (
+        <>
+          <div className="inv-investor-header">
+            <div className="inv-investor-info">
+              <h3 className="inv-investor-name">{holdings.investor_name}</h3>
+              <span className="inv-cik-badge">CIK {holdings.cik}</span>
+              {holdings.from_cache && <span className="inv-cache-badge">📦 Cached</span>}
+            </div>
+            <div className="inv-filing-controls">
+              {filings.length > 0 && (
+                <label className="inv-filing-label">
+                  Filing date:
+                  <select
+                    className="inv-filing-select"
+                    value={selectedFilingDate}
+                    onChange={handleFilingDateChange}
+                  >
+                    {filings.map((f) => (
+                      <option key={f.filingDate} value={f.filingDate}>
+                        {f.filingDate} {f.reportDate ? `(Q: ${f.reportDate})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <button className="inv-refresh-btn" onClick={handleRefresh}>
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+
+          <div className="inv-portfolio-summary">
+            <div className="inv-stat">
+              <div className="inv-stat-label">Total Portfolio Value</div>
+              <div className="inv-stat-value">{formatValue(holdings.total_portfolio_value)}</div>
+            </div>
+            <div className="inv-stat">
+              <div className="inv-stat-label">Positions</div>
+              <div className="inv-stat-value">{holdings.total_holdings.toLocaleString()}</div>
+            </div>
+            <div className="inv-stat">
+              <div className="inv-stat-label">Report Date</div>
+              <div className="inv-stat-value">{holdings.report_date || holdings.filing_date}</div>
+            </div>
+          </div>
