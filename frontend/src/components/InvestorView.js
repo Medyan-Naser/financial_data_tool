@@ -301,3 +301,107 @@ export default function InvestorView() {
               <div className="inv-stat-value">{holdings.report_date || holdings.filing_date}</div>
             </div>
           </div>
+
+          {/* Portfolio History Chart via ChartManager */}
+          {historyChart && (
+            <div className="inv-chart-section">
+              <div className="inv-chart-header-row">
+                <h3>Top Holdings — Portfolio Weight Over Time</h3>
+                <div className="inv-chart-type-btns">
+                  {['line', 'area', 'bar', 'stacked-area'].map(t => (
+                    <button
+                      key={t}
+                      className={`inv-chart-type-btn ${chartType === t ? 'active' : ''}`}
+                      onClick={() => setChartType(t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="inv-chart-manager-wrap">
+                <ChartManager
+                  charts={[{ ...historyChart, type: chartType }]}
+                  onRemoveChart={() => {}}
+                  ticker={selectedInvestor?.name || ''}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Holdings Table */}
+          <div className="inv-table-section">
+            <div className="inv-table-header-row">
+              <h3>Holdings ({sortedHoldings.length} positions)</h3>
+              <div className="inv-pagination">
+                <button
+                  className="inv-page-btn"
+                  disabled={searchPage === 1}
+                  onClick={() => setSearchPage((p) => p - 1)}
+                >
+                  ←
+                </button>
+                <span className="inv-page-info">
+                  {searchPage} / {totalPages}
+                </span>
+                <button
+                  className="inv-page-btn"
+                  disabled={searchPage >= totalPages}
+                  onClick={() => setSearchPage((p) => p + 1)}
+                >
+                  →
+                </button>
+              </div>
+            </div>
+
+            <div className="inv-table-wrap">
+              <table className="inv-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <SortTh field="company_name" label="Company" />
+                    <th>CUSIP</th>
+                    <th>Class</th>
+                    <SortTh field="shares" label="Shares" />
+                    <SortTh field="value" label="Market Value" />
+                    <SortTh field="portfolio_pct" label="Portfolio %" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedHoldings.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="inv-no-data">No holdings found</td>
+                    </tr>
+                  ) : (
+                    pagedHoldings.map((h, idx) => {
+                      const rank = (searchPage - 1) * PAGE_SIZE + idx + 1;
+                      return (
+                        <tr key={idx} className="inv-row">
+                          <td className="inv-rank">{rank}</td>
+                          <td className="inv-company">{h.company_name}</td>
+                          <td className="inv-cusip">{h.cusip}</td>
+                          <td className="inv-class">{h.title_of_class}</td>
+                          <td className="inv-num">{formatShares(h.shares)}</td>
+                          <td className="inv-num">{formatValue(h.value)}</td>
+                          <td className="inv-num">
+                            <div className="inv-pct-bar-wrap">
+                              <div
+                                className="inv-pct-bar"
+                                style={{ width: `${Math.min(100, (h.portfolio_pct || 0) * 5)}%` }}
+                              />
+                              <span>{(h.portfolio_pct || 0).toFixed(2)}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
