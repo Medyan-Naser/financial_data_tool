@@ -98,3 +98,93 @@ export default function InvestorView() {
       }
     }, 400);
   };
+
+  const handleSelectInvestor = async (investor) => {
+    setSelectedInvestor(investor);
+    setSearchQuery(investor.name);
+    setShowDropdown(false);
+    setHoldings(null);
+    setHistoryChart(null);
+    setHoldingsError(null);
+    setFilings([]);
+    setSelectedFilingDate('');
+
+    try {
+      const filingsData = await getInvestorFilings(investor.cik);
+      const list = filingsData.filings || [];
+      setFilings(list);
+      if (list.length > 0) {
+        setSelectedFilingDate(list[0].filingDate);
+        await loadHoldings(investor.cik, list[0].filingDate);
+      }
+      // Load portfolio history for ChartManager
+      loadHistory(investor.cik);
+    } catch (err) {
+      setHoldingsError(err.message || 'Failed to load filings');
+    }
+  };
+
+  const loadHoldings = async (cik, date, forceRefresh = false) => {
+    setHoldingsLoading(true);
+    setHoldingsError(null);
+    try {
+      const data = await getInvestorHoldings(cik, date, forceRefresh);
+      setHoldings(data);
+    } catch (err) {
+      setHoldingsError(err.message || 'Failed to load holdings');
+    } finally {
+      setHoldingsLoading(false);
+    }
+  };
+
+  const loadHistory = async (cik, forceRefresh = false) => {
+    try {
+      const data = await getInvestorHistory(cik, { num_filings: 8, top_n: 15, force_refresh: forceRefresh });
+      const config = buildHistoryChartConfig(data.investor_name, data);
+      setHistoryChart({ ...config, type: chartType });
+    } catch (err) {
+      console.warn('Portfolio history unavailable:', err.message);
+    }
+  };
+
+  const handleFilingDateChange = async (e) => {
+    const date = e.target.value;
+    setSelectedFilingDate(date);
+    if (selectedInvestor) await loadHoldings(selectedInvestor.cik, date);
+  };
+
+  const handleRefresh = () => {
+    if (selectedInvestor && selectedFilingDate) {
+      loadHoldings(selectedInvestor.cik, selectedFilingDate, true);
+      loadHistory(selectedInvestor.cik, true);
+    }
+  };
+
+  const handleSort = (field) => {
+    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir('desc'); }
+  };
+
+  // Update chart type in historyChart when chartType changes
+  useEffect(() => {
+    if (historyChart) setHistoryChart(prev => ({ ...prev, type: chartType }));
+  }, [chartType]);
+
+  const sortedHoldings = holdings
+    ? [...(holdings.holdings || [])].sort((a, b) => {
+        const av = a[sortField] ?? 0;
+        const bv = b[sortField] ?? 0;
+        const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+        return sortDir === 'asc' ? cmp : -cmp;
+      })
+    : [];
+
+  const PAGE_SIZE = 50;
+  const pagedHoldings = sortedHoldings.slice((searchPage - 1) * PAGE_SIZE, searchPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(sortedHoldings.length / PAGE_SIZE));
+
+  const SortTh = ({ field, label }) => (
+    <th onClick={() => handleSort(field)} className="inv-sortable">
+      {label}{sortField === field ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+    </th>
+  );
