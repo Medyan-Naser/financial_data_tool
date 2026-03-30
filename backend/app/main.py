@@ -5,10 +5,21 @@ from . import economy_endpoints
 from . import financials_cached
 from . import ai_models
 from . import stock_price
+from . import insider_endpoints
 from starlette.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+
+@app.on_event("shutdown")
+async def _on_shutdown():
+    """Signal any in-progress EDGAR fetch loops to stop so Ctrl+C exits promptly."""
+    try:
+        from insider_trading import _stop_fetch
+        _stop_fetch.set()
+    except Exception:
+        pass
 
 # Add CORS middleware to allow cross-origin requests from your React app
 app.add_middleware(
@@ -27,3 +38,4 @@ app.include_router(ai_endpoints.router)
 app.include_router(ai_models.router)  # New AI/ML models
 app.include_router(economy_endpoints.router)  # Economy data endpoints
 app.include_router(stock_price.router)  # Stock price data endpoints
+app.include_router(insider_endpoints.router)  # Insider trading + investor tracking (Form 4 / 13F)

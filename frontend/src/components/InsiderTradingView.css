@@ -1,0 +1,294 @@
+.itv-root {
+  padding: 24px;
+  color: #e2e8f0;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.itv-header {
+  margin-bottom: 20px;
+}
+
+.itv-header h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 4px 0;
+}
+
+.itv-subtitle {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.itv-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  background: #1e293b;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+}
+
+.itv-search-wrap {
+  flex: 1;
+  min-width: 200px;
+}
+
+.itv-options {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.itv-option-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+}
+
+.itv-option-label input[type="checkbox"] {
+  accent-color: #3b82f6;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.itv-select {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.itv-refresh-btn {
+  background: #1d4ed8;
+  color: white;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.itv-refresh-btn:hover {
+  background: #2563eb;
+}
+
+.itv-loading {
+  text-align: center;
+  padding: 48px 24px;
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
+.itv-loading-hint {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.itv-error {
+  background: #7f1d1d;
+  color: #fca5a5;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.itv-welcome {
+  text-align: center;
+  padding: 60px 24px;
+  color: #64748b;
+}
+
+.itv-welcome h3 {
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.itv-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.itv-company {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.itv-meta {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.itv-cache-badge {
+  background: #1e3a5f;
+  color: #60a5fa;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+}
+
+.itv-chart-section {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.itv-chart-section h3 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  color: #f1f5f9;
+}
+
+.itv-chart-note {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 16px 0;
+}
+
+.itv-tooltip {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+}
+
+.itv-tooltip-label {
+  color: #94a3b8;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.itv-filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.itv-filter-btn {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.itv-filter-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.itv-filter-btn.active {
+  background: #1d4ed8;
+  color: white;
+  border-color: #1d4ed8;
+}
+
+.itv-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #334155;
+}
+
+.itv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.itv-table thead tr {
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.itv-table th {
+  padding: 10px 14px;
+  text-align: left;
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.itv-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.itv-sortable:hover {
+  color: #e2e8f0;
+}
+
+.itv-table tbody tr {
+  border-bottom: 1px solid #1e293b;
+  transition: background 0.1s;
+}
+
+.itv-table tbody tr:hover {
+  background: #1e293b;
+}
+
+.itv-table td {
+  padding: 9px 14px;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.itv-name {
+  color: #e2e8f0 !important;
+  font-weight: 500;
+}
+
+.itv-role {
+  color: #94a3b8 !important;
+  font-size: 0.8rem;
+}
+
+.itv-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.itv-security {
+  color: #64748b !important;
+  font-size: 0.8rem;
+}
+
+.itv-type-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.itv-no-data {
+  text-align: center !important;
+  color: #475569 !important;
+  padding: 32px !important;
+}
