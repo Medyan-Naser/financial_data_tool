@@ -174,3 +174,22 @@ export const getInvestorHistory = async (cik, options = {}) => {
   });
   return response.data;
 };
+
+// ──────────────────────────────────────────────────────────────
+// Company Ownership (Who owns this stock?)
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Fetch ownership breakdown for a company.
+ * Returns institutional, insider, and retail ownership percentages.
+ * @param {string} ticker
+ * @param {boolean} forceRefresh
+ */
+export const getCompanyOwnership = async (ticker, forceRefresh = false) => {
+  const response = await axios.get(`${API_BASE_URL}/api/ownership/${ticker}`, {
+    params: { force_refresh: forceRefresh },
+  });
+  return response.data;
+};
+
+
