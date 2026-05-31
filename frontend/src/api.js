@@ -192,4 +192,15 @@ export const getCompanyOwnership = async (ticker, forceRefresh = false) => {
   return response.data;
 };
 
-
+/**
+ * Fetch historical ownership data for a company.
+ * @param {string} ticker
+ * @param {object} options - { quarters, force_refresh }
+ */
+export const getOwnershipHistory = async (ticker, options = {}) => {
+  const { quarters = 8, force_refresh = false } = options;
+  const response = await axios.get(`${API_BASE_URL}/api/ownership/${ticker}/history`, {
+    params: { quarters, force_refresh },
+  });
+  return response.data;
+};
