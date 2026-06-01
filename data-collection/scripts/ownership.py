@@ -40,3 +40,40 @@ _PROJECT_ROOT = _SCRIPT_DIR.parent.parent
 OWNERSHIP_CACHE_DIR = _PROJECT_ROOT / ".api_cache" / "ownership"
 OWNERSHIP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+
+# ══════════════════════════════════════════════════════════════════
+# CACHE HELPERS
+# ══════════════════════════════════════════════════════════════════
+
+def _cache_path(key: str) -> Path:
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", key)
+    return OWNERSHIP_CACHE_DIR / f"{safe}.json"
+
+
+def _read_cache(path: Path) -> Optional[Dict]:
+    if not path.exists():
+        return None
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        cached_at = data.get("_cached_at")
+        if not cached_at:
+            return None
+        age = datetime.now() - datetime.fromisoformat(cached_at)
+        if age > timedelta(hours=CACHE_TTL_HOURS):
+            logger.debug("Cache expired for %s", path.name)
+            return None
+        return data
+    except Exception as exc:
+        logger.warning("Cache read failed for %s: %s", path, exc)
+        return None
+
+
+def _write_cache(path: Path, data: Dict) -> None:
+    try:
+        data["_cached_at"] = datetime.now().isoformat()
+        with open(path, "w") as f:
+            json.dump(data, f)
+    except Exception as exc:
+        logger.warning("Cache write failed for %s: %s", path, exc)
+
