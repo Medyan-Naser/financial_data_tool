@@ -49,3 +49,45 @@ def _dc_check():
         )
 
 
+# ══════════════════════════════════════════════════════════════════
+# OWNERSHIP ENDPOINTS
+# ══════════════════════════════════════════════════════════════════
+
+@router.get("/api/ownership/{ticker}")
+async def get_company_ownership(
+    ticker: str,
+    force_refresh: bool = Query(default=False),
+):
+    """
+    Get current ownership breakdown for a company.
+    
+    Returns:
+    - Institutional ownership percentage and top holders
+    - Insider ownership percentage and top insiders
+    - Retail/Other ownership percentage
+    - Shares outstanding (when available)
+    
+    Data sources:
+    - Form 13F filings for institutional ownership
+    - Form 3/4/5 filings for insider ownership
+    """
+    _dc_check()
+    ticker = ticker.upper()
+    cache_key = f"ownership_{ticker}"
+    
+    if not force_refresh:
+        cached = ownership_cache.get(cache_key)
+        if cached:
+            return JSONResponse({**cached, "from_cache": True})
+    
+    try:
+        result = fetch_company_ownership(ticker, force_refresh=force_refresh)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        logger.error("Error fetching ownership for %s: %s", ticker, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching ownership data: {exc}")
+    
+    ownership_cache.set(cache_key, result)
+    return JSONResponse({**result, "from_cache": False})
+
