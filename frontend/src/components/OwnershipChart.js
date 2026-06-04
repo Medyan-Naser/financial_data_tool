@@ -44,3 +44,99 @@ const CustomTooltip = ({ active, payload }) => {
   }
   return null;
 };
+
+export default function OwnershipChart({ ticker }) {
+  const [ownershipData, setOwnershipData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [viewMode, setViewMode] = useState('pie'); // 'pie', 'holders', or 'history'
+  const [historyData, setHistoryData] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (!ticker) return;
+    
+    const fetchOwnership = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getCompanyOwnership(ticker);
+        setOwnershipData(data);
+      } catch (err) {
+        setError(err.response?.data?.detail || err.message || 'Failed to load ownership data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchOwnership();
+  }, [ticker]);
+
+  const handleRefresh = async () => {
+    if (!ticker) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getCompanyOwnership(ticker, true);
+      setOwnershipData(data);
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Failed to refresh ownership data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchHistory = async () => {
+    if (!ticker || historyData) return;
+    setHistoryLoading(true);
+    try {
+      const data = await getOwnershipHistory(ticker, { quarters: 8 });
+      setHistoryData(data);
+    } catch (err) {
+      console.error('Failed to load history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'history' && !historyData && !historyLoading) {
+      fetchHistory();
+    }
+  }, [viewMode]);
+
+  if (loading) {
+    return (
+      <div className="own-panel">
+        <div className="own-header">
+          <h3>📊 Company Ownership</h3>
+        </div>
+        <div className="own-loading">⏳ Loading ownership data from SEC EDGAR...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="own-panel">
+        <div className="own-header">
+          <h3>📊 Company Ownership</h3>
+        </div>
+        <div className="own-error">❌ {error}</div>
+      </div>
+    );
+  }
+
+  if (!ownershipData) {
+    return (
+      <div className="own-panel">
+        <div className="own-header">
+          <h3>📊 Company Ownership</h3>
+        </div>
+        <div className="own-empty">Select a ticker to view ownership data</div>
+      </div>
+    );
+  }
+
+  const breakdown = ownershipData.ownership_breakdown;
+  
