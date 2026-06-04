@@ -77,3 +77,54 @@ def _write_cache(path: Path, data: Dict) -> None:
     except Exception as exc:
         logger.warning("Cache write failed for %s: %s", path, exc)
 
+
+# ══════════════════════════════════════════════════════════════════
+# EDGAR HELPERS
+# ══════════════════════════════════════════════════════════════════
+
+def _get_cik_from_ticker(ticker: str) -> str:
+    """Resolve ticker → 10-digit zero-padded CIK."""
+    cache_path = _cache_path(f"cik_{ticker.upper()}")
+    cached = _read_cache(cache_path)
+    if cached:
+        return cached["cik"]
+
+    resp = requests.get(
+        "https://www.sec.gov/files/company_tickers.json",
+        headers=HEADERS,
+        timeout=10,
+    )
+    resp.raise_for_status()
+    ticker_norm = ticker.upper().replace(".", "-")
+    for company in resp.json().values():
+        if company["ticker"] == ticker_norm:
+            cik = str(company["cik_str"]).zfill(10)
+            _write_cache(cache_path, {"cik": cik})
+            return cik
+    raise ValueError(f"Ticker '{ticker}' not found in SEC database")
+
+
+def _get_company_info(cik: str) -> Dict:
+    """Get company name and other basic info from EDGAR."""
+    url = f"https://data.sec.gov/submissions/CIK{cik}.json"
+    resp = requests.get(url, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+    return {
+        "name": data.get("name", ""),
+        "cik": cik,
+        "sic": data.get("sic", ""),
+        "sicDescription": data.get("sicDescription", ""),
+        "tickers": data.get("tickers", []),
+        "exchanges": data.get("exchanges", []),
+    }
+
+
+def _safe_float(s) -> Optional[float]:
+    if s is None:
+        return None
+    try:
+        return float(str(s).replace(",", "").strip())
+    except (ValueError, TypeError):
+        return None
+
