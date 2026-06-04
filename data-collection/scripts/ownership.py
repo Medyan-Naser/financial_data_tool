@@ -600,3 +600,277 @@ def _fetch_13f_holders_for_stock(
         "num_institutions": len(holders),
     }
 
+
+# ══════════════════════════════════════════════════════════════════
+# HISTORICAL OWNERSHIP DATA
+# ══════════════════════════════════════════════════════════════════
+
+def _fetch_ownership_history(
+    ticker: str,
+    cusip: str,
+    num_quarters: int = 8,
+) -> List[Dict]:
+    """
+    Fetch historical ownership data across multiple quarters.
+    """
+    history = []
+    
+    # For now, we'll return current quarter only
+    # Full history would require parsing multiple quarterly 13F filings
+    
+    return history
+
+
+# ══════════════════════════════════════════════════════════════════
+# PUBLIC: FETCH COMPANY OWNERSHIP
+# ══════════════════════════════════════════════════════════════════
+
+def fetch_company_ownership(
+    ticker: str,
+    force_refresh: bool = False,
+) -> Dict:
+    """
+    Fetch comprehensive ownership data for a company.
+    
+    Returns breakdown of:
+    - Institutional ownership (from 13F filings)
+    - Insider ownership (from Form 3/4/5)
+    - Public/Retail ownership (calculated as remainder)
+    
+    Args:
+        ticker: Stock ticker symbol
+        force_refresh: Bypass cache
+        
+    Returns:
+        dict with ownership breakdown, top holders, and history
+    """
+    ticker = ticker.upper()
+    cache_key = f"ownership_{ticker}"
+    cache_path_file = _cache_path(cache_key)
+    
+    if not force_refresh:
+        cached = _read_cache(cache_path_file)
+        if cached:
+            logger.info("Cache hit for ownership %s", ticker)
+            return {**cached, "from_cache": True}
+    
+    logger.info("Fetching ownership data for %s", ticker)
+    
+    # Get company info
+    try:
+        cik = _get_cik_from_ticker(ticker)
+        company_info = _get_company_info(cik)
+    except Exception as exc:
+        raise ValueError(f"Could not find company info for {ticker}: {exc}")
+    
+    # Get CUSIP for 13F lookups (try hardcoded first)
+    cusip = _get_cusip_for_ticker(ticker)
+    
+    # Fetch large shareholders from SC 13G/13D filings
+    # This also gives us CUSIP if not found above
+    large_shareholders_data = {"shareholders": [], "cusip": None}
+    try:
+        large_shareholders_data = _fetch_large_shareholders(cik, ticker)
+        if not cusip and large_shareholders_data.get("cusip"):
+            cusip = large_shareholders_data["cusip"]
+            logger.info("Found CUSIP %s from 13G/13D filings", cusip)
+    except Exception as exc:
+        logger.warning("Could not fetch large shareholders for %s: %s", ticker, exc)
+    
+    # Get shares outstanding
+    shares_outstanding = _get_shares_outstanding(ticker)
+    
+    # Fetch institutional holders from 13F filings
+    institutional_data = {"holders": [], "total_institutional_shares": 0, "num_institutions": 0}
+    if cusip:
+        try:
+            institutional_data = _fetch_13f_holders_for_stock(ticker, cusip, top_n=25)
+        except Exception as exc:
+            logger.warning("Could not fetch 13F institutional data for %s: %s", ticker, exc)
+    
+    # Merge large shareholders into institutional holders
+    large_shareholders = large_shareholders_data.get("shareholders", [])
+    if large_shareholders:
+        # Add large shareholders that aren't already in institutional_data
+        existing_names = {h.get("investor_name", "").upper() for h in institutional_data.get("holders", [])}
+        for sh in large_shareholders:
+            if sh["name"].upper() not in existing_names and sh.get("type") == "institutional":
+                institutional_data["holders"].append({
+                    "investor_name": sh["name"],
+                    "shares": sh.get("shares") or 0,
+                    "percentage": sh.get("percentage"),
+                    "filing_date": sh.get("filing_date"),
+                    "form": sh.get("form"),
+                    "value": None,  # Not available from 13G/13D
+                })
+                if sh.get("shares"):
+                    institutional_data["total_institutional_shares"] = (
+                        institutional_data.get("total_institutional_shares", 0) + sh["shares"]
+                    )
+        institutional_data["num_institutions"] = len(institutional_data.get("holders", []))
+    
+    # Estimate insider ownership
+    insider_data = _estimate_insider_ownership(ticker)
+    
+    # Calculate ownership percentages
+    total_inst_shares = institutional_data.get("total_institutional_shares", 0) or 0
+    total_insider_shares = insider_data.get("total_shares", 0) or 0
+    
+    # Estimate ownership percentages
+    # Note: Without exact shares outstanding, we estimate based on known holdings
+    ownership_breakdown = {
+        "institutional": {
+            "shares": total_inst_shares,
+            "percentage": None,
+            "num_holders": institutional_data.get("num_institutions", 0),
+        },
+        "insider": {
+            "shares": total_insider_shares,
+            "percentage": None,
+            "num_holders": insider_data.get("num_insiders", 0),
+        },
+        "retail_other": {
+            "shares": None,
+            "percentage": None,
+        },
+    }
+    
+    if shares_outstanding and shares_outstanding > 0:
+        inst_pct = min(100, (total_inst_shares / shares_outstanding) * 100)
+        insider_pct = min(100 - inst_pct, (total_insider_shares / shares_outstanding) * 100)
+        retail_pct = max(0, 100 - inst_pct - insider_pct)
+        
+        ownership_breakdown["institutional"]["percentage"] = round(inst_pct, 2)
+        ownership_breakdown["insider"]["percentage"] = round(insider_pct, 2)
+        ownership_breakdown["retail_other"]["percentage"] = round(retail_pct, 2)
+        ownership_breakdown["retail_other"]["shares"] = int(shares_outstanding - total_inst_shares - total_insider_shares)
+    else:
+        # Estimate based on typical ownership patterns
+        # Most large-cap stocks are 60-80% institutional
+        total_known = total_inst_shares + total_insider_shares
+        if total_known > 0:
+            inst_ratio = total_inst_shares / total_known
+            ownership_breakdown["institutional"]["percentage"] = round(inst_ratio * 70, 2)  # Estimate
+            ownership_breakdown["insider"]["percentage"] = round((1 - inst_ratio) * 15, 2)
+            ownership_breakdown["retail_other"]["percentage"] = round(100 - ownership_breakdown["institutional"]["percentage"] - ownership_breakdown["insider"]["percentage"], 2)
+    
+    result = {
+        "ticker": ticker,
+        "company_name": company_info.get("name", ticker),
+        "cik": cik,
+        "cusip": cusip,
+        "shares_outstanding": shares_outstanding,
+        "ownership_breakdown": ownership_breakdown,
+        "top_institutional_holders": institutional_data.get("holders", [])[:15],
+        "large_shareholders": large_shareholders_data.get("shareholders", [])[:10],
+        "top_insiders": insider_data.get("top_insiders", [])[:10],
+        "data_quality": "estimated" if not shares_outstanding else "calculated",
+        "fetched_at": datetime.now().isoformat(),
+    }
+    
+    _write_cache(cache_path_file, result)
+    logger.info("Ownership data fetched for %s: inst=%.1f%%, insider=%.1f%%",
+                ticker,
+                ownership_breakdown["institutional"]["percentage"] or 0,
+                ownership_breakdown["insider"]["percentage"] or 0)
+    
+    return {**result, "from_cache": False}
+
+
+def fetch_ownership_history(
+    ticker: str,
+    num_quarters: int = 8,
+    force_refresh: bool = False,
+) -> Dict:
+    """
+    Fetch historical ownership data over multiple quarters.
+    
+    Returns time-series of institutional ownership percentages.
+    """
+    ticker = ticker.upper()
+    cache_key = f"ownership_history_{ticker}_{num_quarters}"
+    cache_path_file = _cache_path(cache_key)
+    
+    if not force_refresh:
+        cached = _read_cache(cache_path_file)
+        if cached:
+            return {**cached, "from_cache": True}
+    
+    # Fetch current ownership data
+    current = fetch_company_ownership(ticker, force_refresh=force_refresh)
+    
+    # Build history from available 13F filing dates
+    # For now we show current quarter; historical data would require parsing past 13F data sets
+    history = []
+    
+    # Add current quarter
+    inst_pct = current["ownership_breakdown"]["institutional"]["percentage"]
+    insider_pct = current["ownership_breakdown"]["insider"]["percentage"]
+    
+    if inst_pct is not None:
+        current_period = datetime.now().strftime("%Y-%m")
+        history.append({
+            "period": current_period,
+            "institutional_pct": inst_pct,
+            "insider_pct": insider_pct or 0,
+        })
+    
+    # Note: EDGAR provides quarterly 13F snapshots. Full historical tracking
+    # would require parsing all historical 13F filings for each major institution.
+    # This is computationally expensive and typically done by data providers.
+    
+    result = {
+        "ticker": ticker,
+        "company_name": current.get("company_name", ticker),
+        "history": history,
+        "current": current["ownership_breakdown"],
+        "note": "Historical ownership tracking requires aggregating quarterly 13F filings. Currently showing latest available data.",
+        "fetched_at": datetime.now().isoformat(),
+    }
+    
+    _write_cache(cache_path_file, result)
+    return {**result, "from_cache": False}
+
+
+# ══════════════════════════════════════════════════════════════════
+# CLI ENTRY POINT
+# ══════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    import argparse
+    
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    
+    parser = argparse.ArgumentParser(description="Company Ownership Data Collection")
+    parser.add_argument("ticker", help="Stock ticker symbol")
+    parser.add_argument("--refresh", action="store_true", help="Force refresh from EDGAR")
+    parser.add_argument("--history", action="store_true", help="Fetch historical data")
+    parser.add_argument("--quarters", type=int, default=8, help="Number of quarters for history")
+    
+    args = parser.parse_args()
+    
+    if args.history:
+        data = fetch_ownership_history(args.ticker, args.quarters, args.refresh)
+        print(f"\n{data['company_name']} ({args.ticker}) — Ownership History")
+        for h in data["history"]:
+            print(f"  {h['quarter']}: Inst {h['institutional_pct']:.1f}% | Insider {h['insider_pct']:.1f}% | Retail {h['retail_pct']:.1f}%")
+    else:
+        data = fetch_company_ownership(args.ticker, args.refresh)
+        print(f"\n{data['company_name']} ({data['ticker']})")
+        print(f"CIK: {data['cik']} | CUSIP: {data['cusip']}")
+        if data['shares_outstanding']:
+            print(f"Shares Outstanding: {data['shares_outstanding']:,.0f}")
+        
+        breakdown = data['ownership_breakdown']
+        print(f"\nOwnership Breakdown ({data['data_quality']}):")
+        print(f"  Institutional: {breakdown['institutional']['percentage']:.1f}% ({breakdown['institutional']['num_holders']} holders)")
+        print(f"  Insider: {breakdown['insider']['percentage']:.1f}% ({breakdown['insider']['num_holders']} holders)")
+        print(f"  Retail/Other: {breakdown['retail_other']['percentage']:.1f}%")
+        
+        print(f"\nTop Institutional Holders:")
+        for h in data['top_institutional_holders'][:5]:
+            print(f"  {h['investor_name']}: {h['shares']:,.0f} shares (${h['value']:,.0f})")
+        
+        print(f"\nTop Insiders:")
+        for h in data['top_insiders'][:5]:
+            print(f"  {h['name']} ({h['role']}): {h['shares']:,.0f} shares")
