@@ -196,3 +196,186 @@ def _get_cusip_for_ticker(ticker: str) -> Optional[str]:
     
     return None
 
+
+# ══════════════════════════════════════════════════════════════════
+# PARSE SC 13G/13D FILINGS FOR LARGE SHAREHOLDERS
+# ══════════════════════════════════════════════════════════════════
+
+def _fetch_large_shareholders(cik: str, ticker: str) -> Dict:
+    """
+    Fetch large shareholders (>5% owners) from SC 13G/13D filings.
+    
+    These filings are required when an entity acquires >5% of a company's shares.
+    This is the most reliable source for institutional ownership data.
+    
+    Returns:
+        dict with cusip, shareholders list, and metadata
+    """
+    cache_key = f"large_shareholders_{ticker}"
+    cache_path_file = _cache_path(cache_key)
+    
+    cached = _read_cache(cache_path_file)
+    if cached:
+        return cached
+    
+    # Get company filings
+    url = f"https://data.sec.gov/submissions/CIK{cik}.json"
+    resp = requests.get(url, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    data = resp.json()
+    
+    filings = data.get("filings", {}).get("recent", {})
+    forms = filings.get("form", [])
+    dates = filings.get("filingDate", [])
+    accessions = filings.get("accessionNumber", [])
+    docs = filings.get("primaryDocument", [])
+    
+    # Find SC 13G/13D filings
+    ownership_filings = []
+    for i in range(len(forms)):
+        form = forms[i]
+        if "13G" in form or "13D" in form:
+            ownership_filings.append({
+                "form": form,
+                "date": dates[i],
+                "accession": accessions[i].replace("-", ""),
+                "doc": docs[i] if i < len(docs) else None,
+            })
+    
+    shareholders = []
+    cusip = None
+    
+    # Parse each filing to extract shareholder data
+    for filing in ownership_filings[:15]:  # Check last 15 filings
+        try:
+            time.sleep(0.15)  # Rate limiting
+            acc = filing["accession"]
+            doc = filing["doc"]
+            
+            # Build URL to filing
+            filing_url = f"https://www.sec.gov/Archives/edgar/data/{cik.lstrip('0')}/{acc}/{doc}"
+            
+            resp = requests.get(filing_url, headers=HEADERS, timeout=15)
+            if resp.status_code != 200:
+                continue
+            
+            content = resp.text
+            soup = BeautifulSoup(content, "html.parser")
+            text = soup.get_text()
+            
+            # Extract CUSIP (9-character identifier)
+            if not cusip:
+                cusip_match = re.search(r"CUSIP[^\d]*(\d{6,9}[A-Z0-9]{0,3})", text, re.IGNORECASE)
+                if cusip_match:
+                    cusip = cusip_match.group(1)[:9]
+            
+            # Extract shareholder name
+            name = None
+            name_patterns = [
+                r"Names?\s*of\s*Reporting\s*Person[s]?\s*[:\s]*([A-Z][A-Za-z0-9\s,\.&/\-]+?)(?:\d|Check|S\.?E\.?C|Item)",
+                r"Name\s*of\s*person\s*filing[:\s]*([A-Z][A-Za-z0-9\s,\.&/\-]+?)(?:\(|Address|Item)",
+            ]
+            for pattern in name_patterns:
+                match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+                if match:
+                    name = match.group(1).strip()
+                    # Clean up extracted name
+                    name = re.sub(r"\s+", " ", name)
+                    name = re.sub(r"\s*(Item|Check|S\.?E\.?C).*$", "", name, flags=re.IGNORECASE)
+                    name = name.strip()[:60]
+                    if len(name) > 3:  # Valid name
+                        break
+                    name = None
+            
+            # Extract share count
+            shares = None
+            shares_patterns = [
+                r"Aggregate\s*Amount\s*Beneficially\s*Owned[^\d]*?([\d,]+(?:\.\d+)?)",
+                r"Sole\s*Voting\s*Power[^\d]*?([\d,]+(?:\.\d+)?)",
+                r"(\d{1,3}(?:,\d{3})+(?:\.\d+)?)\s*shares",
+            ]
+            for pattern in shares_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    shares_str = match.group(1).replace(",", "")
+                    shares = _safe_float(shares_str)
+                    if shares and shares > 0:
+                        break
+            
+            # Extract percentage
+            pct = None
+            pct_patterns = [
+                r"Percent\s*of\s*[Cc]lass[^\d]*?([\d]+(?:\.\d+)?)\s*%",
+                r"([\d]+(?:\.\d+)?)\s*%\s*(?:of|percent)",
+            ]
+            for pattern in pct_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    pct = _safe_float(match.group(1))
+                    if pct and 0 < pct <= 100:
+                        break
+            
+            if name and (shares or pct):
+                # Skip invalid names
+                invalid_patterns = ["I.R.S", "IRS", "IDENTIFICATION", "CUSIP", "SCHEDULE", "EXCHANGE ACT", "COMMUNICATIONS INC", "CORP/DE"]
+                if any(inv in name.upper() for inv in invalid_patterns):
+                    continue
+                # Skip if the company is filing about itself (check ticker in name)
+                if ticker.upper() in name.upper().replace(" ", ""):
+                    continue
+                    
+                # Normalize name for deduplication
+                name_normalized = name.upper().replace(",", "").replace(".", "").replace("/", " ")
+                
+                # Check if we already have this shareholder (keep most recent)
+                existing = next((s for s in shareholders if s["name"].upper().replace(",", "").replace(".", "")[:20] == name_normalized[:20]), None)
+                if existing:
+                    if filing["date"] > existing["filing_date"]:
+                        existing.update({
+                            "shares": shares or existing["shares"],
+                            "percentage": pct or existing["percentage"],
+                            "filing_date": filing["date"],
+                            "form": filing["form"],
+                        })
+                else:
+                    shareholders.append({
+                        "name": name,
+                        "shares": shares,
+                        "percentage": pct,
+                        "filing_date": filing["date"],
+                        "form": filing["form"],
+                        "type": "institutional" if "LLC" in name.upper() or "INC" in name.upper() or "LP" in name.upper() or "CORP" in name.upper() or "CAPITAL" in name.upper() or "FUND" in name.upper() else "individual",
+                    })
+                    
+        except Exception as exc:
+            logger.debug("Failed to parse filing %s: %s", filing.get("accession"), exc)
+            continue
+    
+    # Sort by percentage (descending)
+    shareholders.sort(key=lambda x: x.get("percentage") or 0, reverse=True)
+    
+    result = {
+        "cusip": cusip,
+        "shareholders": shareholders,
+        "num_filings_parsed": len(ownership_filings[:15]),
+        "fetched_at": datetime.now().isoformat(),
+    }
+    
+    _write_cache(cache_path_file, result)
+    return result
+
+
+def _fetch_13f_data_for_quarter(year: int, quarter: int) -> Optional[Dict]:
+    """
+    Fetch SEC 13F data set for a specific quarter.
+    SEC provides aggregated 13F data at: https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets
+    Files: https://www.sec.gov/files/structureddata/data/form-13f-data-sets/2024q1.zip
+    """
+    # Try to fetch from SEC's 13F data sets
+    # These are quarterly compilations of all 13F filings
+    quarter_str = f"{year}q{quarter}"
+    
+    # For now, we'll aggregate from individual 13F filings instead
+    # The SEC data sets require downloading and parsing ZIP files
+    return None
+
