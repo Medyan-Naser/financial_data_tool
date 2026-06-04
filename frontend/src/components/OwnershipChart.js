@@ -169,3 +169,103 @@ export default function OwnershipChart({ ticker }) {
     if (!shares || !sharesOutstanding) return 0;
     return ((shares / sharesOutstanding) * 100).toFixed(2);
   };
+
+  return (
+    <div className="own-panel">
+      <div className="own-header">
+        <div className="own-title-row">
+          <h3>📊 Company Ownership</h3>
+        </div>
+        <div className="own-controls">
+          <div className="own-view-toggle">
+            <button
+              className={`own-view-btn ${viewMode === 'pie' ? 'active' : ''}`}
+              onClick={() => setViewMode('pie')}
+            >
+              Breakdown
+            </button>
+            <button
+              className={`own-view-btn ${viewMode === 'holders' ? 'active' : ''}`}
+              onClick={() => setViewMode('holders')}
+            >
+              Top Holders
+            </button>
+            <button
+              className={`own-view-btn ${viewMode === 'history' ? 'active' : ''}`}
+              onClick={() => setViewMode('history')}
+            >
+              History
+            </button>
+          </div>
+          <button className="own-refresh-btn" onClick={handleRefresh}>
+            🔄
+          </button>
+        </div>
+      </div>
+
+      <div className="own-company-info">
+        <span className="own-company-name">{ownershipData.company_name}</span>
+        {ownershipData.shares_outstanding && (
+          <span className="own-shares-out">
+            {formatShares(ownershipData.shares_outstanding)} shares outstanding
+          </span>
+        )}
+      </div>
+
+      {viewMode === 'pie' && (
+        <div className="own-content">
+          <div className="own-chart-container">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+                  labelLine={false}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="own-breakdown-stats">
+            <div className="own-stat institutional">
+              <div className="own-stat-icon" style={{ background: OWNERSHIP_COLORS.institutional }}>🏛️</div>
+              <div className="own-stat-info">
+                <div className="own-stat-label">Institutional</div>
+                <div className="own-stat-value">{(breakdown.institutional?.percentage || 0).toFixed(1)}%</div>
+                <div className="own-stat-detail">{breakdown.institutional?.num_holders || 0} holders</div>
+              </div>
+            </div>
+            <div className="own-stat insider">
+              <div className="own-stat-icon" style={{ background: OWNERSHIP_COLORS.insider }}>👤</div>
+              <div className="own-stat-info">
+                <div className="own-stat-label">Insider</div>
+                <div className="own-stat-value">{(breakdown.insider?.percentage || 0).toFixed(1)}%</div>
+                <div className="own-stat-detail">{breakdown.insider?.num_holders || 0} insiders</div>
+              </div>
+            </div>
+            <div className="own-stat retail">
+              <div className="own-stat-icon" style={{ background: OWNERSHIP_COLORS.retail }}>🌐</div>
+              <div className="own-stat-info">
+                <div className="own-stat-label">Retail/Other</div>
+                <div className="own-stat-value">{(breakdown.retail_other?.percentage || 0).toFixed(1)}%</div>
+                <div className="own-stat-detail">Public float</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
