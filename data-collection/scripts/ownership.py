@@ -478,3 +478,125 @@ def _estimate_insider_ownership(ticker: str) -> Dict:
         logger.warning("Could not estimate insider ownership for %s: %s", ticker, exc)
         return {"total_shares": 0, "num_insiders": 0, "top_insiders": []}
 
+
+# ══════════════════════════════════════════════════════════════════
+# SHARES OUTSTANDING
+# ══════════════════════════════════════════════════════════════════
+
+def _get_shares_outstanding(ticker: str) -> Optional[float]:
+    """
+    Get shares outstanding for a company from SEC filings.
+    This is found in 10-K/10-Q filings in the dei:EntityCommonStockSharesOutstanding tag.
+    """
+    try:
+        cik = _get_cik_from_ticker(ticker)
+        url = f"https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/dei/EntityCommonStockSharesOutstanding.json"
+        
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        if resp.status_code != 200:
+            return None
+            
+        data = resp.json()
+        
+        # Get the most recent value
+        units = data.get("units", {})
+        shares_data = units.get("shares", [])
+        
+        if not shares_data:
+            return None
+            
+        # Sort by end date and get most recent
+        sorted_data = sorted(shares_data, key=lambda x: x.get("end", ""), reverse=True)
+        
+        if sorted_data:
+            return sorted_data[0].get("val")
+            
+        return None
+        
+    except Exception as exc:
+        logger.debug("Could not get shares outstanding for %s: %s", ticker, exc)
+        return None
+
+
+# ══════════════════════════════════════════════════════════════════
+# 13F AGGREGATION BY STOCK (Who owns this company?)
+# ══════════════════════════════════════════════════════════════════
+
+def _fetch_13f_holders_for_stock(
+    ticker: str,
+    cusip: str,
+    top_n: int = 25,
+    quarter: Optional[str] = None,
+) -> Dict:
+    """
+    Aggregate 13F holdings for a specific stock across all institutional investors.
+    
+    Strategy: Search through major institutional investors' 13F filings and
+    find their holdings of this stock.
+    """
+    # Major institutional investors to check (by CIK)
+    MAJOR_INSTITUTIONS = [
+        ("0001067983", "BERKSHIRE HATHAWAY INC"),
+        ("0001364742", "BLACKROCK INC."),
+        ("0000102909", "VANGUARD GROUP INC"),
+        ("0001166559", "STATE STREET CORP"),
+        ("0000091142", "FIDELITY MANAGEMENT"),
+        ("0000315066", "CAPITAL RESEARCH GLOBAL"),
+        ("0001061768", "T. ROWE PRICE"),
+        ("0000919859", "JP MORGAN CHASE"),
+        ("0001037389", "WELLINGTON MANAGEMENT"),
+        ("0001423053", "CITADEL ADVISORS"),
+        ("0001159159", "GEODE CAPITAL"),
+        ("0001360329", "NORTHERN TRUST"),
+        ("0001067983", "BERKSHIRE HATHAWAY"),
+        ("0000070858", "BANK OF AMERICA"),
+        ("0001135644", "MORGAN STANLEY"),
+        ("0001331431", "INVESCO LTD"),
+        ("0000093751", "CHARLES SCHWAB"),
+        ("0001577552", "TWO SIGMA INVESTMENTS"),
+        ("0001649339", "MILLENNIUM MANAGEMENT"),
+        ("0001273087", "AQR CAPITAL"),
+        ("0000813917", "CAPITAL GROUP"),
+        ("0000891554", "DIMENSIONAL FUND ADVISORS"),
+    ]
+    
+    holders: List[Dict] = []
+    cusip_base = cusip[:8] if cusip else ""  # 8-char base CUSIP
+    
+    for inst_cik, inst_name in MAJOR_INSTITUTIONS[:15]:  # Limit to avoid rate limiting
+        try:
+            # Import here to avoid circular dependency
+            from insider_trading import fetch_13f_holdings
+            
+            data = fetch_13f_holdings(inst_cik, filing_date=None, force_refresh=False)
+            
+            # Search for this stock in holdings
+            for holding in data.get("holdings", []):
+                h_cusip = holding.get("cusip", "")
+                if cusip_base and h_cusip[:8] == cusip_base:
+                    holders.append({
+                        "investor_name": data.get("investor_name", inst_name),
+                        "investor_cik": inst_cik,
+                        "shares": holding.get("shares", 0),
+                        "value": holding.get("value", 0),
+                        "filing_date": data.get("filing_date", ""),
+                        "report_date": data.get("report_date", ""),
+                    })
+                    break
+            
+            time.sleep(0.1)  # Rate limiting
+            
+        except Exception as exc:
+            logger.debug("Could not fetch 13F for %s: %s", inst_name, exc)
+            continue
+    
+    # Sort by value
+    holders.sort(key=lambda x: x.get("value", 0) or 0, reverse=True)
+    
+    return {
+        "holders": holders[:top_n],
+        "total_institutional_value": sum(h.get("value", 0) or 0 for h in holders),
+        "total_institutional_shares": sum(h.get("shares", 0) or 0 for h in holders),
+        "num_institutions": len(holders),
+    }
+
