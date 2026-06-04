@@ -339,6 +339,88 @@ export default function OwnershipChart({ ticker }) {
         </div>
       )}
 
+      {viewMode === 'history' && (
+        <div className="own-history-content">
+          {historyLoading ? (
+            <div className="own-loading">Loading historical data...</div>
+          ) : historyData && historyData.history && historyData.history.length > 1 ? (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={historyData.history}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="period" 
+                    tick={{ fontSize: 11 }} 
+                    tickFormatter={(val) => val.slice(0, 7)}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 11 }} 
+                    tickFormatter={(val) => `${val}%`}
+                    domain={[0, 'auto']}
+                  />
+                  <Tooltip 
+                    formatter={(val) => [`${val.toFixed(1)}%`, '']}
+                    labelFormatter={(label) => `Period: ${label}`}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="institutional_pct" 
+                    name="Institutional" 
+                    stroke={OWNERSHIP_COLORS.institutional} 
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="insider_pct" 
+                    name="Insider" 
+                    stroke={OWNERSHIP_COLORS.insider} 
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="own-history-note">
+                Ownership trends from quarterly 13F filings
+              </div>
+            </>
+          ) : historyData && historyData.current ? (
+            <div className="own-current-snapshot">
+              <div className="own-snapshot-title">Current Ownership Snapshot</div>
+              <div className="own-snapshot-stats">
+                <div className="own-snapshot-stat">
+                  <span className="own-snapshot-label">Institutional</span>
+                  <span className="own-snapshot-value" style={{ color: OWNERSHIP_COLORS.institutional }}>
+                    {historyData.current.institutional?.percentage?.toFixed(1) || 0}%
+                  </span>
+                </div>
+                <div className="own-snapshot-stat">
+                  <span className="own-snapshot-label">Insider</span>
+                  <span className="own-snapshot-value" style={{ color: OWNERSHIP_COLORS.insider }}>
+                    {historyData.current.insider?.percentage?.toFixed(1) || 0}%
+                  </span>
+                </div>
+                <div className="own-snapshot-stat">
+                  <span className="own-snapshot-label">Retail</span>
+                  <span className="own-snapshot-value" style={{ color: OWNERSHIP_COLORS.retail }}>
+                    {historyData.current.retail_other?.percentage?.toFixed(1) || 0}%
+                  </span>
+                </div>
+              </div>
+              <div className="own-history-note">
+                Historical tracking requires aggregating quarterly 13F filings from all major institutions.
+                Currently showing latest available data.
+              </div>
+            </div>
+          ) : (
+            <div className="own-no-holders">
+              Historical data not available.
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
