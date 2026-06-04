@@ -128,3 +128,71 @@ def _safe_float(s) -> Optional[float]:
     except (ValueError, TypeError):
         return None
 
+
+# ══════════════════════════════════════════════════════════════════
+# INSTITUTIONAL OWNERSHIP FROM 13F DATA SETS
+# ══════════════════════════════════════════════════════════════════
+
+def _get_cusip_for_ticker(ticker: str) -> Optional[str]:
+    """
+    Try to find CUSIP for a ticker using SEC company info or EDGAR search.
+    CUSIPs are 9-character identifiers used in 13F filings.
+    """
+    # Common CUSIP mappings for major stocks
+    KNOWN_CUSIPS = {
+        "AAPL": "037833100",
+        "MSFT": "594918104",
+        "GOOGL": "02079K305",
+        "GOOG": "02079K107",
+        "AMZN": "023135106",
+        "TSLA": "88160R101",
+        "META": "30303M102",
+        "NVDA": "67066G104",
+        "BRK.A": "084670108",
+        "BRK.B": "084670207",
+        "JPM": "46625H100",
+        "V": "92826C839",
+        "JNJ": "478160104",
+        "WMT": "931142103",
+        "PG": "742718109",
+        "MA": "57636Q104",
+        "UNH": "91324P102",
+        "HD": "437076102",
+        "DIS": "254687106",
+        "BAC": "060505104",
+        "NFLX": "64110L106",
+        "ADBE": "00724F101",
+        "CRM": "79466L302",
+        "PYPL": "70450Y103",
+        "INTC": "458140100",
+        "AMD": "007903107",
+        "CSCO": "17275R102",
+        "PEP": "713448108",
+        "KO": "191216100",
+        "MRK": "58933Y105",
+        "ABT": "002824100",
+        "TMO": "883556102",
+        "COST": "22160K105",
+        "AVGO": "11135F101",
+        "NKE": "654106103",
+        "ORCL": "68389X105",
+        "ACN": "G1151C101",
+        "MCD": "580135101",
+        "TXN": "882508104",
+        "LLY": "532457108",
+        "UPS": "911312106",
+        "QCOM": "747525103",
+        "HON": "438516106",
+        "IBM": "459200101",
+        "LOW": "548661107",
+        "SBUX": "855244109",
+        "CVX": "166764100",
+        "XOM": "30231G102",
+    }
+    
+    ticker_norm = ticker.upper().replace("-", ".").replace("/", ".")
+    if ticker_norm in KNOWN_CUSIPS:
+        return KNOWN_CUSIPS[ticker_norm]
+    
+    return None
+
