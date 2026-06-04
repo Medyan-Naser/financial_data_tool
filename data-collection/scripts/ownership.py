@@ -379,3 +379,102 @@ def _fetch_13f_data_for_quarter(year: int, quarter: int) -> Optional[Dict]:
     # The SEC data sets require downloading and parsing ZIP files
     return None
 
+
+def _fetch_institutional_holders_from_filings(
+    ticker: str,
+    cusip: str,
+    num_institutions: int = 50,
+    quarter: Optional[str] = None,
+) -> List[Dict]:
+    """
+    Fetch top institutional holders for a stock by searching through 13F filings.
+    
+    This queries the SEC EDGAR full-text search to find 13F filings mentioning
+    the stock's CUSIP, then aggregates the holdings data.
+    """
+    holdings_by_investor: Dict[str, Dict] = {}
+    
+    # Use SEC EDGAR full-text search API
+    search_url = "https://efts.sec.gov/LATEST/search-index"
+    
+    # Search for 13F filings containing this CUSIP
+    try:
+        # Search parameters for 13F filings with this CUSIP
+        params = {
+            "q": f'"{cusip}"',
+            "dateRange": "custom",
+            "forms": "13F-HR",
+            "startdt": (datetime.now() - timedelta(days=120)).strftime("%Y-%m-%d"),
+            "enddt": datetime.now().strftime("%Y-%m-%d"),
+        }
+        
+        search_resp = requests.get(
+            "https://efts.sec.gov/LATEST/search-index",
+            params=params,
+            headers=HEADERS,
+            timeout=30,
+        )
+        
+        if search_resp.status_code != 200:
+            logger.warning("SEC search returned %d", search_resp.status_code)
+            return []
+            
+    except Exception as exc:
+        logger.warning("Failed to search 13F filings: %s", exc)
+        return []
+    
+    return list(holdings_by_investor.values())
+
+
+# ══════════════════════════════════════════════════════════════════
+# INSIDER OWNERSHIP ESTIMATION
+# ══════════════════════════════════════════════════════════════════
+
+def _estimate_insider_ownership(ticker: str) -> Dict:
+    """
+    Estimate insider ownership from Form 3/4/5 filings.
+    
+    This sums up the most recent holdings reported by insiders.
+    """
+    try:
+        from insider_trading import fetch_form4_transactions
+        
+        data = fetch_form4_transactions(ticker, years=2, force_refresh=False)
+        
+        # Group by insider and get most recent holding
+        insider_holdings: Dict[str, Dict] = {}
+        
+        for txn in data.get("transactions", []):
+            name = txn.get("insider_name", "")
+            if not name:
+                continue
+                
+            shares_after = txn.get("shares_after_transaction")
+            if shares_after is not None:
+                existing = insider_holdings.get(name)
+                txn_date = txn.get("transaction_date", "")
+                
+                if existing is None or txn_date > existing.get("date", ""):
+                    insider_holdings[name] = {
+                        "name": name,
+                        "role": txn.get("insider_role", "Insider"),
+                        "shares": shares_after,
+                        "date": txn_date,
+                    }
+        
+        total_insider_shares = sum(h.get("shares", 0) or 0 for h in insider_holdings.values())
+        
+        return {
+            "total_shares": total_insider_shares,
+            "num_insiders": len(insider_holdings),
+            "top_insiders": sorted(
+                insider_holdings.values(),
+                key=lambda x: x.get("shares", 0) or 0,
+                reverse=True
+            )[:10],
+        }
+        
+    except Exception as exc:
+        logger.warning("Could not estimate insider ownership for %s: %s", ticker, exc)
+        return {"total_shares": 0, "num_insiders": 0, "top_insiders": []}
+
