@@ -28,3 +28,19 @@ function formatShares(val) {
   if (val >= 1e3) return `${(val / 1e3).toFixed(1)}K`;
   return val.toLocaleString();
 }
+
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="own-tooltip">
+        <div className="own-tooltip-name">{data.name}</div>
+        <div className="own-tooltip-value">{data.value?.toFixed(1)}%</div>
+        {data.shares && (
+          <div className="own-tooltip-shares">{formatShares(data.shares)} shares</div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
