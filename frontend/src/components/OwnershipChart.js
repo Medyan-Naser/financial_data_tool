@@ -266,6 +266,79 @@ export default function OwnershipChart({ ticker }) {
         </div>
       )}
 
+      {viewMode === 'holders' && (
+        <div className="own-holders-content">
+          {/* Large Shareholders (>5% from SC 13G/13D) */}
+          {ownershipData.large_shareholders?.length > 0 && (
+            <div className="own-holders-section">
+              <h4>📈 Major Shareholders (&gt;5%)</h4>
+              <div className="own-holders-list">
+                {ownershipData.large_shareholders.slice(0, 6).map((sh, idx) => (
+                  <div key={idx} className="own-holder-row major">
+                    <span className="own-holder-rank">{idx + 1}</span>
+                    <span className="own-holder-name">
+                      {sh.name}
+                      <span className="own-holder-date">{sh.form} - {sh.filing_date}</span>
+                    </span>
+                    {sh.percentage ? (
+                      <span className="own-holder-pct major">{sh.percentage.toFixed(1)}%</span>
+                    ) : (
+                      <span className="own-holder-pct">{calcPct(sh.shares)}%</span>
+                    )}
+                    <span className="own-holder-shares">{formatShares(sh.shares)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {topHolders.length > 0 && (
+            <div className="own-holders-section">
+              <h4>🏛️ Institutional Holders (13F)</h4>
+              <div className="own-holders-list">
+                {topHolders.slice(0, 8).map((holder, idx) => (
+                  <div key={idx} className="own-holder-row">
+                    <span className="own-holder-rank">{idx + 1}</span>
+                    <span className="own-holder-name">
+                      {holder.investor_name}
+                      {holder.report_date && (
+                        <span className="own-holder-date">Q: {holder.report_date}</span>
+                      )}
+                    </span>
+                    <span className="own-holder-pct">{calcPct(holder.shares)}%</span>
+                    <span className="own-holder-shares">{formatShares(holder.shares)}</span>
+                    <span className="own-holder-value">{formatValue(holder.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {topInsiders.length > 0 && (
+            <div className="own-holders-section">
+              <h4>👤 Top Insiders</h4>
+              <div className="own-holders-list">
+                {topInsiders.slice(0, 8).map((insider, idx) => (
+                  <div key={idx} className="own-holder-row">
+                    <span className="own-holder-rank">{idx + 1}</span>
+                    <span className="own-holder-name">
+                      {insider.name}
+                      <span className="own-holder-role">{insider.role}</span>
+                    </span>
+                    <span className="own-holder-pct">{calcPct(insider.shares)}%</span>
+                    <span className="own-holder-shares">{formatShares(insider.shares)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {topHolders.length === 0 && topInsiders.length === 0 && (
+            <div className="own-no-holders">No holder data available</div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
