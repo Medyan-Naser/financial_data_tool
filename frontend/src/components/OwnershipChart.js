@@ -140,3 +140,32 @@ export default function OwnershipChart({ ticker }) {
 
   const breakdown = ownershipData.ownership_breakdown;
   
+  const pieData = [
+    {
+      name: 'Institutional',
+      value: breakdown.institutional?.percentage || 0,
+      shares: breakdown.institutional?.shares,
+      color: OWNERSHIP_COLORS.institutional,
+    },
+    {
+      name: 'Insider',
+      value: breakdown.insider?.percentage || 0,
+      shares: breakdown.insider?.shares,
+      color: OWNERSHIP_COLORS.insider,
+    },
+    {
+      name: 'Retail/Other',
+      value: breakdown.retail_other?.percentage || 0,
+      shares: breakdown.retail_other?.shares,
+      color: OWNERSHIP_COLORS.retail,
+    },
+  ].filter(d => d.value > 0);
+
+  const topHolders = ownershipData.top_institutional_holders || [];
+  const topInsiders = ownershipData.top_insiders || [];
+  const sharesOutstanding = ownershipData.shares_outstanding || 1;
+
+  const calcPct = (shares) => {
+    if (!shares || !sharesOutstanding) return 0;
+    return ((shares / sharesOutstanding) * 100).toFixed(2);
+  };
