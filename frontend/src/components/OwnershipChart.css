@@ -1,0 +1,423 @@
+.own-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.own-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.own-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.own-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.own-cache-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+}
+
+.own-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.own-view-toggle {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.own-view-btn {
+  background: transparent;
+  border: none;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.own-view-btn:hover {
+  color: #1e293b;
+}
+
+.own-view-btn.active {
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.own-refresh-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+
+.own-refresh-btn:hover {
+  background: #e2e8f0;
+}
+
+.own-company-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.own-company-name {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.own-shares-out {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.own-quality-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+}
+
+.own-quality-badge.calculated {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.own-quality-badge.estimated {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.own-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+.own-chart-container {
+  flex-shrink: 0;
+}
+
+.own-breakdown-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.own-stat {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.own-stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.own-stat-info {
+  min-width: 0;
+}
+
+.own-stat-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.own-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.own-stat-detail {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.own-holders-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.own-holders-section {
+  margin-bottom: 16px;
+}
+
+.own-holders-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.own-holders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.own-holder-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.own-holder-row:hover {
+  background: #f1f5f9;
+}
+
+.own-holder-rank {
+  width: 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.own-holder-name {
+  flex: 1;
+  color: #1e293b;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.own-holder-role {
+  display: block;
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.own-holder-shares {
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 70px;
+}
+
+.own-holder-value {
+  color: #16a34a;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 70px;
+}
+
+.own-holder-pct {
+  color: #1d4ed8;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 55px;
+  background: #eff6ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+.own-holder-pct.major {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.own-holder-row.major {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.own-holder-date {
+  display: block;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+.own-no-holders {
+  text-align: center;
+  color: #94a3b8;
+  padding: 24px;
+  font-size: 0.85rem;
+}
+
+.own-history-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px 0;
+}
+
+.own-history-note {
+  text-align: center;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 8px;
+  padding: 0 12px;
+}
+
+.own-current-snapshot {
+  padding: 16px;
+  text-align: center;
+}
+
+.own-snapshot-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 20px;
+}
+
+.own-snapshot-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.own-snapshot-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.own-snapshot-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.own-snapshot-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.own-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.own-data-source {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.own-timestamp {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.own-loading {
+  text-align: center;
+  padding: 40px 16px;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.own-error {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-size: 0.85rem;
+}
+
+.own-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 40px 16px;
+  font-size: 0.9rem;
+}
+
+.own-tooltip {
+  background: #1e293b;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.own-tooltip-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.own-tooltip-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.own-tooltip-shares {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}

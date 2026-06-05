@@ -12,6 +12,7 @@ import DataCollectionProgress from './components/DataCollectionProgress';
 import StockPriceChart from './components/StockPriceChart';
 import InsiderTradingPanel from './components/InsiderTradingPanel';
 import InvestorView from './components/InvestorView';
+import OwnershipChart from './components/OwnershipChart';
 import { checkCacheStatus, getCachedFinancialData, collectFinancialData, refreshFinancialData } from './api';
 
 const API_BASE_URL = 'http://localhost:8000';
@@ -37,6 +38,10 @@ function App() {
   const [insiderPanel, setInsiderPanel] = useState({
     position: { x: 20, y: 740 },
     size: { width: 1000, height: 700 }
+  });
+  const [ownershipPanel, setOwnershipPanel] = useState({
+    position: { x: 1040, y: 640 },
+    size: { width: 450, height: 500 }
   });
   const [chartPanels, setChartPanels] = useState({});
   const [draggingPanel, setDraggingPanel] = useState(null);
@@ -223,6 +228,7 @@ function App() {
       { id: 'table', ...tablePanel },
       { id: 'stockPrice', ...stockPricePanel },
       { id: 'insider', ...insiderPanel },
+      { id: 'ownership', ...ownershipPanel },
       ...Object.entries(chartPanels).map(([id, panel]) => ({ id, ...panel }))
     ].filter(p => p.id !== excludePanelId);
 
@@ -513,6 +519,29 @@ function App() {
                 <InsiderTradingPanel
                   ticker={selectedTicker}
                 />
+              </DraggableResizablePanel>
+            )}
+
+            {/* Ownership Chart Panel — shows who owns this company */}
+            {selectedTicker && financialData && (
+              <DraggableResizablePanel
+                id="ownership"
+                position={ownershipPanel.position}
+                size={ownershipPanel.size}
+                onPositionChange={(pos) => {
+                  setOwnershipPanel(prev => ({ ...prev, position: pos }));
+                  setDraggingPanel('ownership');
+                  setAlignmentGuides(calculateAlignmentGuides('ownership'));
+                }}
+                onSizeChange={(size) => setOwnershipPanel(prev => ({ ...prev, size }))}
+                onFocus={handlePanelFocus}
+                zIndex={getPanelZIndex('ownership')}
+                minWidth={350}
+                minHeight={400}
+                alignmentGuides={alignmentGuides}
+                showAlignmentGuides={draggingPanel === 'ownership'}
+              >
+                <OwnershipChart ticker={selectedTicker} />
               </DraggableResizablePanel>
             )}
 
